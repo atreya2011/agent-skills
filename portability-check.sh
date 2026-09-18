@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Portability check: fails when a tracked file, or a path given as an argument,
-# contains a machine value (CONTEXT.md: a string that ties text to a person, an
-# organization or a machine).
+# Portability check: fails when a machine value (CONTEXT.md: a string that ties
+# text to a person, an organization or a machine) sits in the content of a
+# tracked file or of a path given as an argument, in a tracked path name, or in
+# a tracked symlink target.
 #
 # Built-in patterns: absolute home-directory paths on Unix and on Windows, email
 # addresses and IPv4 addresses. Extra patterns are read from
@@ -24,7 +25,8 @@
 # file there like the rest of the tree; pass a fixture path as an argument to
 # scan it.
 #
-# Exit 1 with one file:line:match per hit; exit 0 when clean.
+# Exit 1 with one <path>:<line>:<match> per content or symlink-target hit and
+# one <path>:name:<match> per path-name hit; exit 0 when clean.
 set -euo pipefail
 
 patterns_file="${PORTABILITY_PATTERNS_FILE:-$HOME/.agents/local/portability-patterns.txt}"
@@ -53,6 +55,12 @@ if [[ -f "$patterns_file" ]]; then
   done <"$patterns_file"
 fi
 
+grep_args=()
+for pattern in "${free_patterns[@]}"; do grep_args+=(-e "$pattern"); done
+for pattern in "${word_patterns[@]}"; do
+  grep_args+=(-e "(^|[^0-9A-Za-z])($pattern)($|[^0-9A-Za-z])")
+done
+
 files=()
 for path in "$@"; do
   [[ "$path" == /* ]] || path="$PWD/$path"
@@ -76,32 +84,66 @@ is_exempt() {
   return 1
 }
 
-while IFS= read -r -d '' file; do
-  is_exempt "$file" && continue
-  [[ -f "$file" ]] || continue
-  files+=("$file")
-done < <(git ls-files -z)
-(( ${#files[@]} )) || exit 0
+clean=1
+labels=()
+texts=()
 
-# Runs grep with the given options and -e patterns over every file. Returns 1
-# on a hit, 0 on none; a grep failure ends the check with grep's status.
-scan() {
-  local status=0
-  grep -a -n -o -i -E -H "$@" -- "${files[@]}" || status=$?
-  case "$status" in
-    0) return 1 ;;
-    1) return 0 ;;
-    *) exit "$status" ;;
+# Queues a string that is not file content, with the prefix its hits are
+# reported under. Each line of the string becomes its own entry, so that the
+# grep line number of a hit names the line's own label.
+add_text() {
+  local label=$1 line
+  while IFS= read -r line; do
+    labels+=("$label")
+    texts+=("$line")
+  done <<<"$2"
+}
+
+# Records a grep status: 0 is a hit, 1 a clean scan, anything else ends the
+# check with grep's status.
+record() {
+  case "$1" in
+    0) clean=0 ;;
+    1) ;;
+    *) exit "$1" ;;
   esac
 }
 
-grep_args=()
-for pattern in "${free_patterns[@]}"; do grep_args+=(-e "$pattern"); done
-for pattern in "${word_patterns[@]}"; do
-  grep_args+=(-e "(^|[^0-9A-Za-z])($pattern)($|[^0-9A-Za-z])")
-done
+# Scans the contents of the given files.
+scan_files() {
+  (( $# )) || return 0
+  local status=0
+  grep -a -n -o -i -E -H "${grep_args[@]}" -- "$@" || status=$?
+  record "$status"
+}
 
-clean=1
-scan "${grep_args[@]}" || clean=0
+# Scans every queued string and prints "<label><match>" for each hit.
+scan_texts() {
+  (( ${#texts[@]} )) || return 0
+  local out status=0 line number
+  out=$(printf '%s\n' "${texts[@]}" | grep -a -n -o -i -E "${grep_args[@]}") || status=$?
+  record "$status"
+  [[ "$status" == 0 ]] || return 0
+  while IFS= read -r line; do
+    number=${line%%:*}
+    printf '%s%s\n' "${labels[number-1]}" "${line#*:}"
+  done <<<"$out"
+}
+
+while IFS= read -r -d '' entry; do
+  mode=${entry%% *}
+  file=${entry#*$'\t'}
+  is_exempt "$file" && continue
+  add_text "$file:name:" "$file"
+  if [[ "$mode" == 120000 ]]; then
+    # grep reads a symlink's target file, never the target string; scan that.
+    add_text "$file:1:" "$(readlink "$file" 2>/dev/null || true)"
+  elif [[ -f "$file" ]]; then
+    files+=("$file")
+  fi
+done < <(git ls-files -s -z)
+
+scan_files ${files[@]+"${files[@]}"}
+scan_texts
 (( clean )) && exit 0
 exit 1

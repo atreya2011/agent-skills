@@ -5,7 +5,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
-check=./portability-check.sh
+check="$PWD/portability-check.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -77,6 +77,69 @@ for row in "${cases[@]}"; do
   done <<<"$output"
   (( reported )) || fail "$name" "no hit reported"
   printf 'ok: %s\n' "$name"
+done
+
+# A tracked path name, a tracked symlink and a commit whose content the worktree
+# no longer holds can only come from git, so they live in a throwaway repo. It
+# gets an empty hooks path so that no global hook runs, and an identity whose
+# host has no dot, which keeps this tracked file free of machine values.
+repo="$tmp/repo"
+mkdir -p "$tmp/nohooks"
+git init -q -b main "$repo"
+git -C "$repo" config core.hooksPath "$tmp/nohooks"
+git -C "$repo" config user.name portability-check-test
+git -C "$repo" config user.email test@localhost
+
+# The planted values come from fixtures, so this file holds none of them.
+bad_name=$(cat tests/fixtures/bad-name.txt)
+bad_target=$(cat tests/fixtures/bad-link-target.txt)
+
+# Commits everything in the throwaway repo and prints the new commit.
+commit_repo() {
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m "$1"
+  git -C "$repo" rev-parse HEAD
+}
+
+# Runs the check inside the throwaway repo, leaving its output in run_output and
+# its exit status in run_status.
+run_in_repo() {
+  run_status=0
+  run_output=$(cd "$repo" && PORTABILITY_PATTERNS_FILE="$patterns_absent" "$check") || run_status=$?
+}
+
+cp tests/fixtures/home-path.txt "$repo/doc.md"
+commit_repo 'feat: add a doc' >/dev/null
+git -C "$repo" rm -q doc.md
+commit_repo 'chore: remove the doc' >/dev/null
+
+name='worktree scan is clean once the machine value is removed'
+run_in_repo
+if [[ "$run_status" == 0 && -z "$run_output" ]]; then
+  printf 'ok: %s\n' "$name"
+else
+  fail "$name" "exit $run_status, want 0; output: $run_output"
+fi
+
+printf 'The note says nothing about any machine.\n' >"$repo/$bad_name"
+ln -s "$bad_target" "$repo/link"
+commit_repo 'feat: add a note and a link' >/dev/null
+
+name='worktree scan reaches names and symlink targets'
+run_in_repo
+[[ "$run_status" == 1 ]] || fail "$name" "exit $run_status, want 1; output: $run_output"
+
+# behavior | line the worktree scan must report
+worktree_cases=(
+  "tracked path name|$bad_name:name:"
+  "tracked symlink target|link:1:"
+)
+for row in "${worktree_cases[@]}"; do
+  IFS='|' read -r name marker <<<"$row"
+  case "$run_output" in
+    *"$marker"*) printf 'ok: %s\n' "$name" ;;
+    *) fail "$name" "no line starting $marker in: $run_output" ;;
+  esac
 done
 
 (( failed )) && exit 1

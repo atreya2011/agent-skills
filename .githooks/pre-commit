@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs the user's global pre-commit hook. This repo checks its own content at
+# push time, so this hook exists only to keep the global hook running. Enable
+# with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+# shellcheck source=.githooks/chain.sh
+. "$(dirname "$0")/chain.sh"
+chain_global_hook "$@"

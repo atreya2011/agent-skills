@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# Runs the portability check before every push. Enable with:
+# Runs the portability check before every push, after the user's global pre-push
+# hook. Enable with:
 #   git config core.hooksPath .githooks
 set -euo pipefail
+
+# The pushed refs arrive on standard input, which is readable once, and both the
+# global hook and this hook's own logic need them.
+refs=$(cat)
+
+# shellcheck source=.githooks/chain.sh
+. "$(dirname "$0")/chain.sh"
+chain_global_hook "$@" <<<"$refs"
 
 cd "$(git rev-parse --show-toplevel)"
 if ! ./portability-check.sh; then

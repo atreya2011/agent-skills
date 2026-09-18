@@ -1,0 +1,3 @@
+# Machine values live in ~/.agents/local, outside the checkout
+
+Skills need values that apply to one machine only: launch commands, profile names, home directories, the seat table. We keep them in `~/.agents/local/<skill>.md`, a directory the repo never sees, and each skill reads its file by that convention. Gitignored files inside the checkout were rejected because one `git add -A` or a wrong ignore rule publishes them; environment variables were rejected because they vanish with the shell and cannot be read by a cron-started tab. The cost is one extra file per skill to set up on a new machine, which each skill's "Local file" section documents.

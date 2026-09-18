@@ -165,9 +165,10 @@ if [[ -n "$commit" ]]; then
     file=${entry#*$'\t'}
     is_exempt "$file" && continue
     add_text "$commit:$file:name:" "$file"
-    # git grep skips a symlink's blob, so read the target out of the tree.
-    [[ "${meta%% *}" == 120000 ]] || continue
-    add_text "$commit:$file:1:" "$(git cat-file -p "${meta##* }")"
+    if [[ "${meta%% *}" == 120000 ]]; then
+      # git grep skips a symlink's blob, so read the target out of the tree.
+      add_text "$commit:$file:1:" "$(git cat-file -p "${meta##* }")"
+    fi
   done < <(git ls-tree -r -z "$commit")
 
   add_text "$commit:message:" "$(git log -1 --format=%B "$commit")"

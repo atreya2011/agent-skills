@@ -75,6 +75,10 @@ _Avoid_: evidence
 A todo change that lacks proof. It is tagged `+ask` and put to the user in a batch.
 _Avoid_: decision, question
 
+**Gate**:
+A typed decision with calibrated confidence over a fixed label set, taken between rule and judgment call: it acts above a threshold and escalates below it or on unknown.
+_Avoid_: classifier, check, filter
+
 **Assignee**:
 The agent a todo is tagged to, `+cos` or `+cto`.
 _Avoid_: owner, holder, desk
@@ -149,11 +153,11 @@ _Avoid_: toast, alert, ping
 ### Portability
 
 **Machine value**:
-Any string that applies to one machine only: a person, organization, account, host, home directory, profile name, launch command, model or permission setting.
+Any string that ties text to a person, an organization or a machine: a name, email, hostname, IP, home directory, wrapper or profile name, organization repo or internal tool. Public agent CLI names, model ids and flags are not machine values.
 _Avoid_: config, site
 
 **Launch command**:
-The exact shell command that starts an agent CLI for a seat or for the CTO; always a machine value.
+The exact shell command that starts an agent CLI for a seat or for the CTO. A machine value only when it names a wrapper or profile.
 _Avoid_: binary, invocation
 
 **Installed skill**:

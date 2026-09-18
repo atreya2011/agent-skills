@@ -1,0 +1,7 @@
+interface:
+  display_name: "Major Refactor"
+  short_description: "Manage a large or irreversible refactor"
+  default_prompt: "Use $major-refactor to manage this large or irreversible change as a gated program."
+
+policy:
+  allow_implicit_invocation: false

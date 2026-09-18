@@ -11,3 +11,4 @@ jobs:
       - uses: actions/checkout@v4
       # No ~/.agents/local on the runner, so only the built-in patterns run.
       - run: ./portability-check.sh
+      - run: ./portability-check.test.sh

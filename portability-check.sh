@@ -7,8 +7,9 @@
 # addresses. Extra patterns are read from PORTABILITY_PATTERNS_FILE, default
 # ~/.agents/local/portability-patterns.txt, when that file exists: one extended
 # regular expression per line, matched case-insensitively; a "w:" prefix matches
-# the pattern as a whole word only; "#" lines and blank lines are ignored. Extra
-# patterns are never printed; only the matched text is.
+# the pattern as a whole word only; "#" lines and blank lines are ignored; a
+# trailing carriage return is dropped, so a CRLF file works. Extra patterns are
+# never printed; only the matched text is.
 #
 # tests/fixtures/ holds this check's own fixtures and is skipped in the tracked
 # scan; pass a fixture path as an argument to scan it.
@@ -31,6 +32,7 @@ word_patterns=(
 
 if [[ -f "$patterns_file" ]]; then
   while IFS= read -r line || [[ -n "$line" ]]; do
+    line=${line%$'\r'}
     [[ -z "$line" || "$line" == \#* ]] && continue
     if [[ "$line" == w:* ]]; then
       word_patterns+=("${line#w:}")

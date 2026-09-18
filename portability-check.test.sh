@@ -10,9 +10,11 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 # "absent" points at a file that does not exist; "extra" at the synthetic
-# patterns fixture, so no case depends on ~/.agents/local.
+# patterns fixture and "crlf" at the same patterns with CRLF line endings, so no
+# case depends on ~/.agents/local.
 patterns_absent="$tmp/absent.txt"
 patterns_extra="$PWD/tests/fixtures/extra-patterns.txt"
+patterns_crlf="$PWD/tests/fixtures/extra-patterns-crlf.txt"
 
 # name | patterns file | fixture (empty = repo only) | expected exit
 cases=(
@@ -25,6 +27,8 @@ cases=(
   'extra pattern with the extra file|extra|tests/fixtures/extra-pattern.txt|1'
   'whole-word extra pattern on a whole word|extra|tests/fixtures/extra-word.txt|1'
   'whole-word extra pattern inside a word|extra|tests/fixtures/extra-word-inside.txt|0'
+  'extra pattern from a crlf patterns file|crlf|tests/fixtures/extra-pattern.txt|1'
+  'whole-word extra pattern from a crlf patterns file|crlf|tests/fixtures/extra-word.txt|1'
 )
 
 failed=0
@@ -38,6 +42,7 @@ for row in "${cases[@]}"; do
   case "$mode" in
     absent) patterns_file=$patterns_absent ;;
     extra) patterns_file=$patterns_extra ;;
+    crlf) patterns_file=$patterns_crlf ;;
   esac
   args=()
   [[ -n "$fixture" ]] && args+=("$fixture")

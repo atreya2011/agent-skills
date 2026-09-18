@@ -1,0 +1,7 @@
+interface:
+  display_name: "Adversarial Refactor Pipeline"
+  short_description: "Run a tab-based adversarial refactor"
+  default_prompt: "Use $adversarial-refactor-pipeline to run this refactor through isolated herdr agents and review rounds."
+
+policy:
+  allow_implicit_invocation: false

@@ -14,12 +14,9 @@
 #
 # Built-in patterns: absolute home-directory paths on Unix and on Windows, email
 # addresses and IPv4 addresses. Extra patterns are read from
-# PORTABILITY_PATTERNS_FILE, default
-# ~/.agents/local/portability-patterns.txt, when that file exists: one extended
-# regular expression per line, matched case-insensitively; a "w:" prefix makes
-# the pattern a word pattern; "#" lines and blank lines are ignored; a trailing
-# carriage return is dropped, so a CRLF file works. Extra patterns are never
-# printed; only the matched text is.
+# PORTABILITY_PATTERNS_FILE, default ~/.agents/local/portability-patterns.txt,
+# when that file exists; README's "Portability check" section gives their
+# format. Extra patterns are never printed; only the matched text is.
 #
 # A word pattern — the built-in IPv4 pattern and every "w:" pattern — matches
 # only where the character on each side is neither a letter nor a digit, so it

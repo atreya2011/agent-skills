@@ -7,7 +7,7 @@ description: Survey all Claude and Codex tabs across herdr workspaces, report ac
 
 ## Local file
 
-`~/.agents/local/herdr-orchestrator.md` holds the operator's org chart, per-seat launch
+`~/.agents/local/herdr-orchestrator.md` holds the user's org chart, per-seat launch
 commands, and standing rules. Read it when it exists and apply it on top of the
 procedure below; without it, run the procedure alone.
 
@@ -21,7 +21,7 @@ command syntax re-checked against 0.9.0.
 
 ## What herdr exposes
 
-`herdr agent list` returns JSON, one object per tab that hosts a detected agent:
+`herdr agent list` returns JSON, one object per detected agent; `tab_id` names its tab:
 
 - `agent` — `claude`, `codex`, or another detected agent kind
 - `agent_status` — `idle` `working` `blocked` `done` `unknown`
@@ -40,7 +40,7 @@ plain shells, with `label`, `number`, `agent_status` and `tab_id`;
 
 IDs (`wC`, `wC:t3`, `wC:pQ`) are opaque handles for the current live session.
 Closed IDs retire permanently — a stale ID fails loudly instead of hitting a
-neighbor. Herdr injects `$HERDR_PANE_ID`, `$HERDR_TAB_ID`, `$HERDR_WORKSPACE_ID`
+neighbor. herdr injects `$HERDR_PANE_ID`, `$HERDR_TAB_ID`, `$HERDR_WORKSPACE_ID`
 into every tab, so identify yourself from those instead of guessing.
 
 Status meaning:

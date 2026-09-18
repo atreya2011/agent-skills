@@ -20,6 +20,7 @@ patterns_crlf="$PWD/tests/fixtures/extra-patterns-crlf.txt"
 cases=(
   'built-in home path|absent|tests/fixtures/home-path.txt|1'
   'built-in Users path|absent|tests/fixtures/users-path.txt|1'
+  'built-in Windows Users path|absent|tests/fixtures/windows-path.txt|1'
   'built-in email|absent|tests/fixtures/email.txt|1'
   'built-in IPv4|absent|tests/fixtures/ipv4.txt|1'
   'clean repo|absent||0'

@@ -21,7 +21,7 @@ A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/
 
 ## Portability check
 
-`./portability-check.sh` scans every tracked file, plus any paths given as arguments, for absolute home-directory paths, email addresses and IPv4 addresses. It exits 1 listing `file:line:match` on any hit and 0 when clean. When `~/.agents/local/portability-patterns.txt` exists, its lines are added as extra patterns: one extended regular expression per line, matched case-insensitively; a `w:` prefix matches only as a whole word; `#` lines and blank lines are ignored. `PORTABILITY_PATTERNS_FILE` overrides that path. `./portability-check.test.sh` runs the check's tests against the fixtures under `tests/fixtures/`, which the tracked scan skips.
+`./portability-check.sh` scans every tracked file, plus any paths given as arguments, for absolute home-directory paths on Unix (`/home/<user>`, `/Users/<user>`) and on Windows (`C:\Users\<user>`), email addresses and IPv4 addresses. It exits 1 listing `file:line:match` on any hit and 0 when clean. When `~/.agents/local/portability-patterns.txt` exists, its lines are added as extra patterns: one extended regular expression per line, matched case-insensitively; a `w:` prefix matches only as a whole word; `#` lines and blank lines are ignored. `PORTABILITY_PATTERNS_FILE` overrides that path. `./portability-check.test.sh` runs the check's tests against the fixtures under `tests/fixtures/`, which the tracked scan skips.
 
 CI runs the check with the built-in patterns only, and runs its tests. To run it before every push, run this once after cloning:
 

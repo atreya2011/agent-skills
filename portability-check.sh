@@ -3,8 +3,8 @@
 # contains a machine value (CONTEXT.md: a string that ties text to a person, an
 # organization or a machine).
 #
-# Built-in patterns: absolute home-directory paths, email addresses and IPv4
-# addresses. Extra patterns are read from PORTABILITY_PATTERNS_FILE, default
+# Built-in patterns: absolute home-directory paths on Unix and on Windows, email
+# addresses and IPv4 addresses. Extra patterns are read from PORTABILITY_PATTERNS_FILE, default
 # ~/.agents/local/portability-patterns.txt, when that file exists: one extended
 # regular expression per line, matched case-insensitively; a "w:" prefix matches
 # the pattern as a whole word only; "#" lines and blank lines are ignored; a
@@ -23,6 +23,7 @@ patterns_file="${PORTABILITY_PATTERNS_FILE:-$HOME/.agents/local/portability-patt
 free_patterns=(
   '/home/[A-Za-z0-9._-]+'
   '/Users/[A-Za-z0-9._-]+'
+  '[A-Za-z]:\\Users\\[A-Za-z0-9._-]+'
   '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
 )
 # Matched as whole words only.

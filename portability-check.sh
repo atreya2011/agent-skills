@@ -4,7 +4,8 @@
 # organization or a machine).
 #
 # Built-in patterns: absolute home-directory paths on Unix and on Windows, email
-# addresses and IPv4 addresses. Extra patterns are read from PORTABILITY_PATTERNS_FILE, default
+# addresses and IPv4 addresses. Extra patterns are read from
+# PORTABILITY_PATTERNS_FILE, default
 # ~/.agents/local/portability-patterns.txt, when that file exists: one extended
 # regular expression per line, matched case-insensitively; a "w:" prefix makes
 # the pattern a word pattern; "#" lines and blank lines are ignored; a trailing
@@ -18,8 +19,10 @@
 # match. An example here would be a machine value itself, so the fixtures under
 # tests/fixtures/ carry the cases instead.
 #
-# tests/fixtures/ holds this check's own fixtures and is skipped in the tracked
-# scan; pass a fixture path as an argument to scan it.
+# The fixtures hold machine values on purpose, so the tracked scan skips every
+# tests/fixtures/ path that portability-check.test.sh names and scans any other
+# file there like the rest of the tree; pass a fixture path as an argument to
+# scan it.
 #
 # Exit 1 with one file:line:match per hit; exit 0 when clean.
 set -euo pipefail
@@ -56,8 +59,25 @@ for path in "$@"; do
   files+=("$path")
 done
 cd "$(git rev-parse --show-toplevel)"
+
+# The test names every fixture it uses, and those paths are the only ones the
+# tracked scan skips.
+exempt=()
+while IFS= read -r path; do
+  exempt+=("$path")
+done < <(grep -h -o -E 'tests/fixtures/[A-Za-z0-9._-]+' portability-check.test.sh 2>/dev/null | sort -u)
+
+# Reports whether the test names the given path as a fixture.
+is_exempt() {
+  local exempt_path
+  for exempt_path in ${exempt[@]+"${exempt[@]}"}; do
+    [[ "$1" == "$exempt_path" ]] && return 0
+  done
+  return 1
+}
+
 while IFS= read -r -d '' file; do
-  [[ "$file" == tests/fixtures/* ]] && continue
+  is_exempt "$file" && continue
   [[ -f "$file" ]] || continue
   files+=("$file")
 done < <(git ls-files -z)

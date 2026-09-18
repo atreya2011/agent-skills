@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs the portability check before every push, after the user's global pre-push
-# hook. Enable with:
+# Runs the portability check over every commit being pushed, after the user's
+# global pre-push hook. Enable with:
 #   git config core.hooksPath .githooks
 set -euo pipefail
 
@@ -13,7 +13,24 @@ refs=$(cat)
 chain_global_hook "$@" <<<"$refs"
 
 cd "$(git rev-parse --show-toplevel)"
-if ! ./portability-check.sh; then
+zero=0000000000000000000000000000000000000000
+blocked=0
+# git sends one line per ref: <local ref> <local oid> <remote ref> <remote oid>.
+# Only the two object ids decide which commits the push would add.
+while read -r _ local_oid _ remote_oid; do
+  [[ -z "$local_oid" || "$local_oid" == "$zero" ]] && continue
+  if [[ "$remote_oid" == "$zero" ]]; then
+    # A new branch: everything it adds to the remote.
+    commits=$(git rev-list "$local_oid" --not --remotes)
+  else
+    commits=$(git rev-list "$remote_oid..$local_oid")
+  fi
+  for commit in $commits; do
+    ./portability-check.sh --commit "$commit" || blocked=1
+  done
+done <<<"$refs"
+
+if (( blocked )); then
   printf 'push blocked: the portability check found machine values\n' >&2
   exit 1
 fi

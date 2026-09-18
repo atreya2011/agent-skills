@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # Portability check: fails when a machine value (CONTEXT.md: a string that ties
-# text to a person, an organization or a machine) sits in the content of a
-# tracked file or of a path given as an argument, in a tracked path name, or in
-# a tracked symlink target.
+# text to a person, an organization or a machine) sits in file content, in a
+# path name, in a symlink target or in a commit message.
+#
+#   portability-check.sh [path ...]      scans the worktree's tracked files and
+#                                        their names, the targets of the tracked
+#                                        symlinks, and any paths given as
+#                                        arguments
+#   portability-check.sh --commit <sha>  scans that commit's tree, the names and
+#                                        symlink targets in it, and its message;
+#                                        the pre-push hook runs this for every
+#                                        commit it pushes
 #
 # Built-in patterns: absolute home-directory paths on Unix and on Windows, email
 # addresses and IPv4 addresses. Extra patterns are read from
@@ -20,14 +28,26 @@
 # match. An example here would be a machine value itself, so the fixtures under
 # tests/fixtures/ carry the cases instead.
 #
-# The fixtures hold machine values on purpose, so the tracked scan skips every
+# The fixtures hold machine values on purpose, so a scan skips every
 # tests/fixtures/ path that portability-check.test.sh names and scans any other
 # file there like the rest of the tree; pass a fixture path as an argument to
 # scan it.
 #
-# Exit 1 with one <path>:<line>:<match> per content or symlink-target hit and
-# one <path>:name:<match> per path-name hit; exit 0 when clean.
+# Exit 1 with one <path>:<line>:<match> per content or symlink-target hit, one
+# <path>:name:<match> per path-name hit and one <sha>:message:<match> per commit
+# message hit; --commit puts the commit in front of every line. Exit 0 when
+# clean.
 set -euo pipefail
+
+commit=""
+if [[ "${1-}" == --commit ]]; then
+  commit="${2-}"
+  if [[ -z "$commit" || $# -gt 2 ]]; then
+    printf 'usage: %s --commit <sha>\n' "${0##*/}" >&2
+    exit 2
+  fi
+  shift 2
+fi
 
 patterns_file="${PORTABILITY_PATTERNS_FILE:-$HOME/.agents/local/portability-patterns.txt}"
 
@@ -68,12 +88,18 @@ for path in "$@"; do
 done
 cd "$(git rev-parse --show-toplevel)"
 
-# The test names every fixture it uses, and those paths are the only ones the
-# tracked scan skips.
+# The test names every fixture it uses, and those paths are the only ones a scan
+# skips. A commit is read against its own test file.
+test_source=""
+if [[ -n "$commit" ]]; then
+  test_source=$(git show "$commit:portability-check.test.sh" 2>/dev/null || true)
+elif [[ -f portability-check.test.sh ]]; then
+  test_source=$(<portability-check.test.sh)
+fi
 exempt=()
 while IFS= read -r path; do
   exempt+=("$path")
-done < <(grep -h -o -E 'tests/fixtures/[A-Za-z0-9._-]+' portability-check.test.sh 2>/dev/null | sort -u)
+done < <(printf '%s\n' "$test_source" | grep -o -E 'tests/fixtures/[A-Za-z0-9._-]+' | sort -u)
 
 # Reports whether the test names the given path as a fixture.
 is_exempt() {
@@ -130,18 +156,38 @@ scan_texts() {
   done <<<"$out"
 }
 
-while IFS= read -r -d '' entry; do
-  mode=${entry%% *}
-  file=${entry#*$'\t'}
-  is_exempt "$file" && continue
-  add_text "$file:name:" "$file"
-  if [[ "$mode" == 120000 ]]; then
-    # grep reads a symlink's target file, never the target string; scan that.
-    add_text "$file:1:" "$(readlink "$file" 2>/dev/null || true)"
-  elif [[ -f "$file" ]]; then
-    files+=("$file")
-  fi
-done < <(git ls-files -s -z)
+if [[ -n "$commit" ]]; then
+  pathspec=(.)
+  for path in ${exempt[@]+"${exempt[@]}"}; do pathspec+=(":!$path"); done
+  status=0
+  git grep -a -n -o -i -E "${grep_args[@]}" "$commit" -- "${pathspec[@]}" || status=$?
+  record "$status"
+
+  while IFS= read -r -d '' entry; do
+    meta=${entry%%$'\t'*}
+    file=${entry#*$'\t'}
+    is_exempt "$file" && continue
+    add_text "$commit:$file:name:" "$file"
+    # git grep skips a symlink's blob, so read the target out of the tree.
+    [[ "${meta%% *}" == 120000 ]] || continue
+    add_text "$commit:$file:1:" "$(git cat-file -p "${meta##* }")"
+  done < <(git ls-tree -r -z "$commit")
+
+  add_text "$commit:message:" "$(git log -1 --format=%B "$commit")"
+else
+  while IFS= read -r -d '' entry; do
+    mode=${entry%% *}
+    file=${entry#*$'\t'}
+    is_exempt "$file" && continue
+    add_text "$file:name:" "$file"
+    if [[ "$mode" == 120000 ]]; then
+      # grep reads a symlink's target file, never the target string; scan that.
+      add_text "$file:1:" "$(readlink "$file" 2>/dev/null || true)"
+    elif [[ -f "$file" ]]; then
+      files+=("$file")
+    fi
+  done < <(git ls-files -s -z)
+fi
 
 scan_files ${files[@]+"${files[@]}"}
 scan_texts

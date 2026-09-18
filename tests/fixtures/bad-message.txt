@@ -1,0 +1,1 @@
+fix: mail the weekly report to someone@example.com

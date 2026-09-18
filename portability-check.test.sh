@@ -93,6 +93,7 @@ git -C "$repo" config user.email test@localhost
 # The planted values come from fixtures, so this file holds none of them.
 bad_name=$(cat tests/fixtures/bad-name.txt)
 bad_target=$(cat tests/fixtures/bad-link-target.txt)
+bad_message=$(cat tests/fixtures/bad-message.txt)
 
 # Commits everything in the throwaway repo and prints the new commit.
 commit_repo() {
@@ -105,13 +106,15 @@ commit_repo() {
 # its exit status in run_status.
 run_in_repo() {
   run_status=0
-  run_output=$(cd "$repo" && PORTABILITY_PATTERNS_FILE="$patterns_absent" "$check") || run_status=$?
+  run_output=$(cd "$repo" && PORTABILITY_PATTERNS_FILE="$patterns_absent" "$check" "$@") || run_status=$?
 }
 
 cp tests/fixtures/home-path.txt "$repo/doc.md"
-commit_repo 'feat: add a doc' >/dev/null
+content_commit=$(commit_repo 'feat: add a doc')
 git -C "$repo" rm -q doc.md
-commit_repo 'chore: remove the doc' >/dev/null
+removal_commit=$(commit_repo 'chore: remove the doc')
+printf 'This note names no machine.\n' >"$repo/notes.md"
+message_commit=$(commit_repo "$bad_message")
 
 name='worktree scan is clean once the machine value is removed'
 run_in_repo
@@ -123,7 +126,7 @@ fi
 
 printf 'The note says nothing about any machine.\n' >"$repo/$bad_name"
 ln -s "$bad_target" "$repo/link"
-commit_repo 'feat: add a note and a link' >/dev/null
+tracked_commit=$(commit_repo 'feat: add a note and a link')
 
 name='worktree scan reaches names and symlink targets'
 run_in_repo
@@ -139,6 +142,41 @@ for row in "${worktree_cases[@]}"; do
   case "$run_output" in
     *"$marker"*) printf 'ok: %s\n' "$name" ;;
     *) fail "$name" "no line starting $marker in: $run_output" ;;
+  esac
+done
+
+# --commit reads the commit, not the worktree: the removed doc is still a hit,
+# and the message is scanned along with the tree.
+# name | commit | expected exit | line the report must contain
+commit_cases=(
+  "commit content the worktree dropped|$content_commit|1|:doc.md:1:"
+  "commit with nothing in it|$removal_commit|0|"
+  "commit message|$message_commit|1|:message:"
+  "commit path name|$tracked_commit|1|:$bad_name:name:"
+  "commit symlink target|$tracked_commit|1|:link:1:"
+)
+
+for row in "${commit_cases[@]}"; do
+  IFS='|' read -r name commit want_status marker <<<"$row"
+  run_in_repo --commit "$commit"
+  if [[ "$run_status" != "$want_status" ]]; then
+    fail "$name" "exit $run_status, want $want_status; output: $run_output"
+    continue
+  fi
+
+  if [[ "$want_status" == 0 ]]; then
+    [[ -z "$run_output" ]] || fail "$name" "expected no output, got: $run_output"
+    printf 'ok: %s\n' "$name"
+    continue
+  fi
+
+  # Every reported hit names the commit it came from.
+  while IFS= read -r line; do
+    [[ "$line" == "$commit:"* ]] || fail "$name" "hit without the commit: $line"
+  done <<<"$run_output"
+  case "$run_output" in
+    *"$marker"*) printf 'ok: %s\n' "$name" ;;
+    *) fail "$name" "no $marker line in: $run_output" ;;
   esac
 done
 

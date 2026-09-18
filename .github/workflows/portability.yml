@@ -1,0 +1,13 @@
+name: portability
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No ~/.agents/local on the runner, so only the built-in patterns run.
+      - run: ./portability-check.sh

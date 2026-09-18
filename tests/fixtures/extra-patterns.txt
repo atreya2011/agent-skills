@@ -1,0 +1,3 @@
+# Synthetic extra patterns for portability-check.test.sh; same format as the real file.
+examplecorp
+w:acme

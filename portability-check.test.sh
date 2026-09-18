@@ -23,11 +23,15 @@ cases=(
   'built-in Windows Users path|absent|tests/fixtures/windows-path.txt|1'
   'built-in email|absent|tests/fixtures/email.txt|1'
   'built-in IPv4|absent|tests/fixtures/ipv4.txt|1'
+  'built-in IPv4 joined by underscores|absent|tests/fixtures/ipv4-underscore.txt|1'
+  # The boundary that keeps a longer word out keeps a letter-joined address out.
+  'built-in IPv4 joined to a letter|absent|tests/fixtures/ipv4-letter-adjacent.txt|0'
   'clean repo|absent||0'
   'extra pattern without the extra file|absent|tests/fixtures/extra-pattern.txt|0'
   'extra pattern with the extra file|extra|tests/fixtures/extra-pattern.txt|1'
   'whole-word extra pattern on a whole word|extra|tests/fixtures/extra-word.txt|1'
   'whole-word extra pattern inside a word|extra|tests/fixtures/extra-word-inside.txt|0'
+  'whole-word extra pattern joined by an underscore|extra|tests/fixtures/word-underscore.txt|1'
   'extra pattern from a crlf patterns file|crlf|tests/fixtures/extra-pattern.txt|1'
   'whole-word extra pattern from a crlf patterns file|crlf|tests/fixtures/extra-word.txt|1'
 )

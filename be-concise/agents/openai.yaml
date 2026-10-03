@@ -1,0 +1,7 @@
+interface:
+  display_name: "Be concise"
+  short_description: "Explain outcomes without code-level clutter"
+  default_prompt: "Use $be-concise to answer in plain language without unnecessary code locators."
+
+policy:
+  allow_implicit_invocation: false

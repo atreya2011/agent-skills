@@ -1,0 +1,3 @@
+# Synthetic extra patterns with CRLF line endings; same format as the real file.
+examplecorp
+w:acme

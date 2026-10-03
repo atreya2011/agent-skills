@@ -1,0 +1,7 @@
+interface:
+  display_name: "Where are we"
+  short_description: "Reconstruct the current session state"
+  default_prompt: "Use $where-are-we to explain how this session started and where it stands now."
+
+policy:
+  allow_implicit_invocation: false

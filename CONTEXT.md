@@ -131,7 +131,7 @@ A page correction appended with llm-wiki's `rule` command.
 ### Output
 
 **Snapshot**:
-The JSON the gathering tool emits: facts only, no judgment.
+The JSON the gathering tool emits: facts, and the rule and gate judgments on them. The tool only reads.
 _Avoid_: state, dump, fleet view
 
 **Brief**:

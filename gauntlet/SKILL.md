@@ -28,9 +28,9 @@ The file holds one table. An alternate table is `~/.agents/local/gauntlet-<name>
 At each run start, before any dispatch, the orchestrator MUST take two settings from the run's kickoff when it states them, and otherwise MUST ask the user:
 
 - Seat table: the default `gauntlet.md`, or the `<name>` of an alternate table.
-- Reviewers: from the pool, by name or by count, minimum one. A count takes the first rows of the pool in table order. Only the chosen reviewers are launched.
+- Reviewers: from the pool, by seat name `reviewer-<name>` or by count, minimum one. A count takes the first rows of the pool in table order. A bare number is always a count. Only the chosen reviewers are launched.
 
-The orchestrator then runs `gauntlet/seats.sh [--table <name>] <reviewers>` once. It prints one line per chosen seat in launch order: seat, kind, args, and clear command, separated by tabs. The orchestrator launches the seats from those lines and records which table ran. A changed launch command applies to the next run.
+The orchestrator then runs `gauntlet/seats.sh [--table <name>] <reviewers>` once. It prints one line for the implementer and one for each chosen reviewer: seat, kind, args, and clear command, separated by tabs. The orchestrator is the session running this skill, so its row only has to exist; the orchestrator launches the implementer and the reviewers from those lines and records which table ran. A changed launch command applies to the next run.
 
 A missing file, or a missing orchestrator, implementer, or chosen reviewer, stops the run with `SEAT MISSING <seat>`. A reviewer count larger than the pool stops the run with `SEAT MISSING reviewer`.
 
@@ -45,7 +45,7 @@ KISS and YAGNI drive every phase: run the least process that closes the selected
 | --- | --- |
 | Spec source | spec + tickets from tracker |
 | Seats | seat table from the local file, chosen at run start |
-| Reviewers | chosen from the pool at run start, by name or count, minimum one |
+| Reviewers | chosen from the pool at run start, by seat name or count, minimum one |
 | Engine | `tab` unless the user names `subagent-worktrees` at run start |
 | Dirty tree | quarantine each path |
 

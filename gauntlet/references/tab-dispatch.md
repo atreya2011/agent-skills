@@ -53,11 +53,11 @@ Report the implementer or the reviewer group as `running` after every target has
 
 Applies to Claude Code seats only, per the Session goal section of [SKILL.md](../SKILL.md). `send.sh` cannot carry a slash command: it requires the first line to start with `AGENT MESSAGE`. After the seat acknowledges its kickoff, send the goal through `gauntlet/goal.sh` with the condition on stdin:
 
-    gauntlet/goal.sh <pane> <<'EOF'
+    gauntlet/goal.sh <seat> <<'EOF'
     <condition>
     EOF
 
-`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <pane>` and exits 1. On a seat restart, follow the restart step in the Session goal section of [SKILL.md](../SKILL.md).
+`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <seat>` and exits 1. On a seat restart, follow the restart step in the Session goal section of [SKILL.md](../SKILL.md).
 
 ## Capture results
 

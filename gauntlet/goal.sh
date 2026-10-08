@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-target=${1:?usage: goal.sh PANE}
+target=${1:?usage: goal.sh SEAT}
 block() { echo "GOAL BLOCKED $target" >&2; exit 1; }
 # A slash command is one line, so newlines in the condition become spaces.
 condition=$(tr '\r\n' '  ' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')

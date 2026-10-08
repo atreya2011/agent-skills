@@ -2,7 +2,7 @@
 
 Use this file for herdr tab and agent spawn, seat brief delivery, receipt, watch, capture, clear, and close. Read shared contracts and role templates from [contracts.md](contracts.md) and each stage's `briefs/` directory. At each run start or resume, read the current [SKILL.md](../SKILL.md) and this file.
 
-Seat brief delivery goes through `gauntlet/send.sh`: clear the composer with Escape only when the seat is idle or done (skipped for Codex, which exits on Escape when its composer is empty, and for a working or blocked seat, where Escape interrupts the turn or dismisses the dialog), paste, verify content, submit once, and confirm working. Claude and Cursor can stage and need one Enter; Codex submits directly. On failure print `SEND BLOCKED <agent> <reason>`. Waiting and capture go through `gauntlet/watch.sh`; `CAPTURE BLOCKED` stays for read failures.
+Seat brief delivery goes through `gauntlet/send.sh`: empty the composer with Escape only when the seat is idle or done (skipped for Codex, which exits on Escape when its composer is empty, and for a working or blocked seat, where Escape interrupts the turn or dismisses the dialog), paste, verify content, submit once, and confirm working. Claude and Cursor can stage and need one Enter; Codex submits directly. On failure print `SEND BLOCKED <agent> <reason>`. Waiting and capture go through `gauntlet/watch.sh`; `CAPTURE BLOCKED` stays for read failures.
 
 ## Spawn tabs
 

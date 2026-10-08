@@ -14,7 +14,7 @@ head -n 1 "$message" | grep -q '^AGENT MESSAGE' || blocked "no agent marker"
 info=$(herdr agent get "$target") || blocked "agent get failed"
 kind=$(jq -r '.result.agent.agent // empty' <<<"$info") || blocked "agent get unparsable"
 status=$(jq -r '.result.agent.agent_status // empty' <<<"$info") || blocked "agent get unparsable"
-# Escape clears a staged composer before the paste, so it is sent only to a seat
+# Escape empties a staged composer before the paste, so it is sent only to a seat
 # that is ready for input (herdr reports idle or done). On a working Claude Code
 # seat Escape interrupts the running turn, and on a blocked seat it dismisses the
 # approval dialog. Codex exits when it receives Escape on an empty composer, so
@@ -22,9 +22,9 @@ status=$(jq -r '.result.agent.agent_status // empty' <<<"$info") || blocked "age
 if [[ "$kind" != codex && ( "$status" == idle || "$status" == "done" ) ]]; then
   herdr agent send-keys "$target" esc || blocked "esc failed"
 fi
-clear_state=$(herdr agent read "$target" --source visible) || blocked "screen read failed"
-clear_state=$(sed '/^[[:space:]]*›/d' <<<"$clear_state")
-test -n "$clear_state" || blocked "blank screen"
+screen=$(herdr agent read "$target" --source visible) || blocked "screen read failed"
+screen=$(sed '/^[[:space:]]*›/d' <<<"$screen")
+test -n "$screen" || blocked "blank screen"
 prompt_result=$(herdr agent prompt "$target" "$(<"$message")" --wait --until working --timeout 15000) || prompt_result=agent_prompt_timeout
 composer=$(herdr agent read "$target" --source visible) || blocked "composer read failed"
 if [[ "$prompt_result" == *agent_prompt_stalled* || "$composer" == *composer* ]]; then

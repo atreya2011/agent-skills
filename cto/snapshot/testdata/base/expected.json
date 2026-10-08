@@ -109,7 +109,9 @@
           "ask": false,
           "status": "pending",
           "annotations": [
-            "spec: https://github.com/example/alpha/issues/3"
+            "spec: https://github.com/example/alpha/issues/3",
+            "ask: Is the docs todo done? | suggested: done | cto todo_state done 0.70 escalate HASH8 2026-10-03",
+            "cto todo_state open 0.90 act HASH8 2026-10-04"
           ],
           "due": "20261015T000000Z",
           "links": [
@@ -221,8 +223,7 @@
       ],
       "vault": {
         "path": "{{root}}/vaults/alpha",
-        "readable": true,
-        "last_page_edit": "2026-10-08T10:00:00Z"
+        "readable": true
       }
     },
     {
@@ -259,10 +260,9 @@
           "agent": "codex",
           "target": "beta-impl",
           "state": "working",
-          "age_s": 1200,
+          "age_s": null,
           "pinned": false,
-          "cwd": "{{root}}/beta",
-          "session_id": "33333333-3333-4333-8333-333333333333"
+          "cwd": "{{root}}/beta"
         },
         {
           "id": "w3:t2",
@@ -305,7 +305,6 @@
           "modified": "2026-10-08T11:40:00Z",
           "age_s": 1200,
           "cwd": "{{root}}/beta",
-          "tab_id": "w3:t1",
           "excerpt": "user: run the tests\nassistant: Tests pass."
         }
       ]
@@ -477,8 +476,8 @@
     },
     {
       "source": "transcript",
-      "target": "helper",
-      "error": "the tab has no session ID"
+      "target": "codex",
+      "error": "herdr reports no session ID for 2 codex tabs (impl, helper), so their age is unknown"
     }
   ],
   "judgments": [

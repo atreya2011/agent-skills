@@ -14,35 +14,57 @@ const window = 6 * time.Hour
 
 func TestHerdrSources(t *testing.T) {
 	w := newWorld(t, "")
-	cfg := w.config(t)
-	r := runner{cmds: cfg.Commands}
-
+	base := w.config(t)
+	r := runner{cmds: base.Commands}
 	ws, err := r.herdrList(t.Context(), "workspace")
 	require.NoError(t, err)
 	tabs, err := r.herdrList(t.Context(), "tab")
 	require.NoError(t, err)
 	agents, err := r.herdrList(t.Context(), "agent")
 	require.NoError(t, err)
-	workspaces, outTabs := buildHerdr(cfg, ws.Result.Workspaces, tabs.Result.Tabs, agents.Result.Agents)
 
-	assert.Equal(t, []Workspace{
-		{ID: "w1", Label: "alpha", State: "idle", OrchestratorTab: "w1:t1"},
-		{ID: "w2", Label: "notes", State: "blocked"},
-		{ID: "w3", Label: "beta", State: "working"},
-	}, workspaces)
-	assert.Equal(t, []Tab{
-		{ID: "w1:t1", Label: "orchestrator", Workspace: "w1", Agent: "claude", Target: "alpha-orch", State: "idle", CWD: filepath.Join(w.Root, "alpha-wt"), SessionID: sessAlpha},
-		{ID: "w1:t2", Label: "shell", Workspace: "w1", State: "unknown"},
-		{ID: "w2:t1", Label: "keep-me", Workspace: "w2", Agent: "claude", Target: "w2:p1", State: "blocked", Pinned: true, CWD: filepath.Join(w.Root, "notes"), SessionID: sessNotes},
-		{ID: "w3:t1", Label: "impl", Workspace: "w3", Agent: "codex", Target: "beta-impl", State: "working", CWD: filepath.Join(w.Root, "beta"), SessionID: sessBeta},
-		{ID: "w3:t2", Label: "helper", Workspace: "w3", Agent: "codex", Target: "w3:p2", State: "done", CWD: filepath.Join(w.Root, "beta")},
-	}, outTabs)
-
-	pinnedWS := cfg
-	pinnedWS.Pinned.Workspaces = []string{"beta"}
-	workspaces, outTabs = buildHerdr(pinnedWS, ws.Result.Workspaces, tabs.Result.Tabs, agents.Result.Agents)
-	assert.True(t, workspaces[2].Pinned, "a pinned workspace label pins the workspace")
-	assert.True(t, outTabs[3].Pinned && outTabs[4].Pinned, "and every tab in it")
+	tests := []struct {
+		name           string
+		pinned         Pinned
+		wantWorkspaces []Workspace
+		wantTabs       []Tab
+	}{
+		{"the recorded lists join into workspaces and tabs", base.Pinned,
+			[]Workspace{
+				{ID: "w1", Label: "alpha", State: "idle", OrchestratorTab: "w1:t1"},
+				{ID: "w2", Label: "notes", State: "blocked"},
+				{ID: "w3", Label: "beta", State: "working"},
+			},
+			[]Tab{
+				{ID: "w1:t1", Label: "orchestrator", Workspace: "w1", Agent: "claude", Target: "alpha-orch", State: "idle", CWD: filepath.Join(w.Root, "alpha-wt"), SessionID: sessAlpha},
+				{ID: "w1:t2", Label: "shell", Workspace: "w1", State: "unknown"},
+				{ID: "w2:t1", Label: "keep-me", Workspace: "w2", Agent: "claude", Target: "w2:p1", State: "blocked", Pinned: true, CWD: filepath.Join(w.Root, "notes"), SessionID: sessNotes},
+				{ID: "w3:t1", Label: "impl", Workspace: "w3", Agent: "codex", Target: "beta-impl", State: "working", CWD: filepath.Join(w.Root, "beta")},
+				{ID: "w3:t2", Label: "helper", Workspace: "w3", Agent: "codex", Target: "w3:p2", State: "done", CWD: filepath.Join(w.Root, "beta")},
+			}},
+		{"a pinned workspace label pins the workspace and every tab in it", Pinned{Workspaces: []string{"beta"}},
+			[]Workspace{
+				{ID: "w1", Label: "alpha", State: "idle", OrchestratorTab: "w1:t1"},
+				{ID: "w2", Label: "notes", State: "blocked"},
+				{ID: "w3", Label: "beta", State: "working", Pinned: true},
+			},
+			[]Tab{
+				{ID: "w1:t1", Label: "orchestrator", Workspace: "w1", Agent: "claude", Target: "alpha-orch", State: "idle", CWD: filepath.Join(w.Root, "alpha-wt"), SessionID: sessAlpha},
+				{ID: "w1:t2", Label: "shell", Workspace: "w1", State: "unknown"},
+				{ID: "w2:t1", Label: "keep-me", Workspace: "w2", Agent: "claude", Target: "w2:p1", State: "blocked", CWD: filepath.Join(w.Root, "notes"), SessionID: sessNotes},
+				{ID: "w3:t1", Label: "impl", Workspace: "w3", Agent: "codex", Target: "beta-impl", State: "working", Pinned: true, CWD: filepath.Join(w.Root, "beta")},
+				{ID: "w3:t2", Label: "helper", Workspace: "w3", Agent: "codex", Target: "w3:p2", State: "done", Pinned: true, CWD: filepath.Join(w.Root, "beta")},
+			}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := base
+			cfg.Pinned = tt.pinned
+			workspaces, outTabs := buildHerdr(cfg, ws.Result.Workspaces, tabs.Result.Tabs, agents.Result.Agents)
+			assert.Equal(t, tt.wantWorkspaces, workspaces)
+			assert.Equal(t, tt.wantTabs, outTabs)
+		})
+	}
 }
 
 func TestCommandFailures(t *testing.T) {
@@ -324,16 +346,4 @@ func TestReadTranscript(t *testing.T) {
 		_, _, err := readTranscript(transcriptFile{Kind: "claude", Path: filepath.Join(w.Root, "absent.jsonl")}, 10, 10)
 		require.Error(t, err)
 	})
-}
-
-func TestReadVault(t *testing.T) {
-	w := newWorld(t, "")
-	v, err := readVault(filepath.Join(w.Root, "vaults", "alpha"))
-	require.NoError(t, err)
-	assert.True(t, v.Readable)
-	assert.True(t, v.LastPageEdit.Equal(testNow.Add(-2*time.Hour)), "pages in dot directories are ignored: %v", v.LastPageEdit)
-
-	v, err = readVault(filepath.Join(w.Root, "vaults", "absent"))
-	require.Error(t, err)
-	assert.False(t, v.Readable)
 }

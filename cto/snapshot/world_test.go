@@ -17,7 +17,7 @@ import (
 const (
 	sessAlpha      = "11111111-1111-4111-8111-111111111111" // claude, bound to tab w1:t1
 	sessNotes      = "22222222-2222-4222-8222-222222222222" // claude, bound to tab w2:t1
-	sessBeta       = "33333333-3333-4333-8333-333333333333" // codex, bound to tab w3:t1
+	sessBeta       = "33333333-3333-4333-8333-333333333333" // codex; herdr gives codex agents no session ID, so no tab is bound
 	sessUnbound    = "44444444-4444-4444-8444-444444444444" // claude, no tab, in the window
 	sessOldUnbound = "55555555-5555-4555-8555-555555555555" // claude, no tab, outside the window
 )
@@ -131,7 +131,6 @@ func newWorld(t *testing.T, gateURL string) *world {
 		now.Add(-20*time.Minute))
 
 	writeFile(t, filepath.Join(root, "vaults", "alpha", "index.md"), "# index\n", now.Add(-2*time.Hour))
-	writeFile(t, filepath.Join(root, "vaults", "alpha", ".trash", "gone.md"), "x\n", now)
 
 	subs := strings.NewReplacer("{{root}}", root, "{{sha_merged}}", w.ShaMerged, "{{sha_unmerged}}", w.ShaOpen)
 	require.NoError(t, filepath.WalkDir("testdata/base/fixtures", func(path string, d fs.DirEntry, err error) error {

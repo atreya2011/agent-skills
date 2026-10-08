@@ -113,7 +113,6 @@ type ProfileInfo struct {
 
 // Vault describes the wiki vault mapped to a project.
 type Vault struct {
-	Path         string    `json:"path"`
-	Readable     bool      `json:"readable"`
-	LastPageEdit time.Time `json:"last_page_edit,omitzero"`
+	Path     string `json:"path"`
+	Readable bool   `json:"readable"`
 }

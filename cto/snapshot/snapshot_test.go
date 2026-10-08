@@ -187,6 +187,31 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 			assert.Equal(t, "no assignee tag", j.Reason)
 			assert.NotContains(t, seen, todoOffsite)
 		}},
+		{"the gate never sees the annotations the CTO wrote", func(t *testing.T) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			var docs []byte
+			for _, b := range f.bodies {
+				if bytes.Contains(b, []byte(todoDocs)) {
+					docs = b
+				}
+			}
+			require.NotNil(t, docs)
+			assert.Contains(t, string(docs), "spec: https://github.com/example/alpha/issues/3")
+			assert.NotContains(t, string(docs), "suggested: done")
+			assert.NotContains(t, string(docs), "cto todo_state")
+		}},
+		{"tabs without a session ID are reported once per agent kind", func(t *testing.T) {
+			var codex []Unreadable
+			for _, u := range s.Unreadable {
+				if u.Source == "transcript" {
+					codex = append(codex, u)
+				}
+			}
+			require.Len(t, codex, 1)
+			assert.Equal(t, "codex", codex[0].Target)
+			assert.Contains(t, codex[0].Error, "2 codex tabs (impl, helper)")
+		}},
 		{"a cos todo gets no judgment", func(t *testing.T) {
 			assert.Empty(t, s.judgment("todo", todoDentist).Verdict)
 			assert.NotContains(t, seen, todoDentist)

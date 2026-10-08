@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -56,6 +57,15 @@ type sessionState struct {
 	Excerpt  string `json:"excerpt"`
 }
 
+// gateAnnotations drops the annotations the CTO wrote itself: a pending
+// question ("ask:") and a recorded verdict ("cto "). The gate must judge the
+// todo from the facts, not from its own earlier output.
+func gateAnnotations(all []string) []string {
+	return slices.DeleteFunc(slices.Clone(all), func(a string) bool {
+		return strings.HasPrefix(a, "ask:") || strings.HasPrefix(a, "cto ")
+	})
+}
+
 // judgeAll returns one judgment per judged todo and per session, in the order
 // of the projects. An untagged todo escalates, because it has no assignee yet.
 // Rules decide first. A todo with an unreadable link source
@@ -91,7 +101,7 @@ func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Tim
 			}
 			state := todoState{
 				ID: t.UUID, Today: today, Description: t.Description, Domain: t.Domain, Due: t.Due,
-				Annotations: t.Annotations, Links: t.Links, ProjectTabs: tabs,
+				Annotations: gateAnnotations(t.Annotations), Links: t.Links, ProjectTabs: tabs,
 			}
 			if t.SessionID != "" {
 				state.Transcript = excerptFor(t.SessionID)

@@ -4,9 +4,12 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -65,11 +68,11 @@ func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapsho
 	c.readLinks(ctx, projects)
 	for _, p := range projects {
 		if path, ok := cfg.Vaults[p.ID]; ok {
-			v, err := readVault(path)
-			if err != nil {
+			p.Vault = &Vault{Path: path, Readable: true}
+			if _, err := os.ReadDir(path); err != nil {
 				c.fail("vault", path, err)
+				p.Vault.Readable = false
 			}
-			p.Vault = &v
 		}
 	}
 
@@ -101,16 +104,19 @@ func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapsho
 }
 
 // bindTabs sets each agent tab's age from its transcript and lists the tabs
-// with no readable transcript. It returns the tab ID of every bound session.
+// with no readable transcript. A kind of agent that herdr gives no session ID
+// is listed once, not once per tab. It returns the tab ID of every bound
+// session.
 func (c *collector) bindTabs(tabs []Tab, ix *transcriptIndex) map[string]string {
 	bound := map[string]string{}
+	noSession := map[string][]string{} // agent kind -> labels of its tabs without a session ID
 	for i := range tabs {
 		t := &tabs[i]
 		if t.Agent == "" {
 			continue
 		}
 		if t.SessionID == "" {
-			c.fail("transcript", t.Label, errors.New("the tab has no session ID"))
+			noSession[t.Agent] = append(noSession[t.Agent], t.Label)
 			continue
 		}
 		bound[t.SessionID] = t.ID
@@ -120,6 +126,10 @@ func (c *collector) bindTabs(tabs []Tab, ix *transcriptIndex) map[string]string 
 			continue
 		}
 		t.AgeS = new(int(c.now.Sub(f.Modified).Seconds()))
+	}
+	for _, kind := range slices.Sorted(maps.Keys(noSession)) {
+		c.fail("transcript", kind, fmt.Errorf("herdr reports no session ID for %d %s tabs (%s), so their age is unknown",
+			len(noSession[kind]), kind, strings.Join(noSession[kind], ", ")))
 	}
 	return bound
 }

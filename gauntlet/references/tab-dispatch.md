@@ -67,11 +67,13 @@ For the implementer, search for the runtime-valued terminal signal (`IMPLEMENTER
 
 ## Clear a tab
 
-Send the seat's Clear command from the seat table with `herdr agent prompt <agent> "<Clear>"`, without `--wait`. The command is local, so the seat never works: `--wait` returns `agent_prompt_stalled` for a claude seat, and `--until idle` times out for a codex seat, which ends `done`. Read `herdr agent read <agent> --source visible` until the earlier turns are gone, then confirm the empty composer.
+Send the seat's Clear command from the seat table with `herdr agent prompt <agent> "<Clear>"`, without `--wait`. The command is local, so the seat never works: `--wait` returns `agent_prompt_stalled` for a claude seat, and `--until idle` times out for a codex seat, which ends `done`.
 
-After `/clear` a claude seat shows its header, the `/clear` line and an empty composer. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. For a cursor seat, confirm live before use.
+Read `herdr agent read <agent> --source visible`. If the composer still holds the command, send `herdr agent send-keys <agent> Enter` once. Then read the screen every second for about 15 seconds until the earlier turns are gone and the composer is empty; otherwise stop with `SEAT BLOCKED <seat>`.
 
-If the command remains staged, send `herdr agent send-keys <agent> Enter` once and check again. Send the fresh rendered seat brief only after the composer is empty, applying the send receipt protocol above. The orchestrator never clears itself during a run.
+After `/clear` a claude seat shows its header, the `/clear` line and an empty composer, and `herdr tab list` reports its tab idle. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. For a cursor seat, confirm live before use.
+
+Send the fresh rendered seat brief only after the composer is empty, applying the send receipt protocol above. The orchestrator never clears itself during a run.
 
 ## Watch completion
 

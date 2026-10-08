@@ -87,7 +87,7 @@ func testGate(t *testing.T, url string) (*Gate, string) {
 	logger, f, err := openGateLog(logPath)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = f.Close() })
-	g := newGate(GateConfig{URL: url, Model: defaultGateModel}, testThresholds, keySentinel, nil, logger, testNow)
+	g := newGate(GateConfig{URL: url}, testThresholds, keySentinel, nil, logger, testNow)
 	g.client.RetryWaitMin = time.Millisecond
 	g.client.RetryWaitMax = 5 * time.Millisecond
 	return g, logPath
@@ -139,7 +139,7 @@ func TestJudgeVerdicts(t *testing.T) {
 	}
 }
 
-func TestJudgeReplaysRecordedResponses(t *testing.T) {
+func TestJudgeReplaysSyntheticResponses(t *testing.T) {
 	tests := []struct {
 		file  string
 		def   gateDef
@@ -246,65 +246,70 @@ func TestJudgeRetriesThrottledCalls(t *testing.T) {
 		name         string
 		throttle     int
 		status       int
+		retryAfter   string
 		wantRequests int
 	}{
-		{"one 429 then success", 1, 429, 2},
-		{"two 529 then success", 2, 529, 3},
-		{"four 429 then success on the last retry", 4, 429, 5},
+		{"one 429 then success", 1, 429, "0", 2},
+		{"two 529 then success", 2, 529, "0", 3},
+		{"four 429 then success on the last retry", 4, 429, "0", 5},
+		{"a day-long Retry-After on a 429 is capped at the maximum wait", 1, 429, "86400", 2},
+		{"a day-long Retry-After on a 529 is capped at the maximum wait", 1, 529, "86400", 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFakeGate(t, func(n int, w http.ResponseWriter) {
 				if n <= tt.throttle {
-					w.Header().Set("Retry-After", "0")
+					w.Header().Set("Retry-After", tt.retryAfter)
 					w.WriteHeader(tt.status)
 					return
 				}
 				_, _ = io.WriteString(w, ok)
 			})
 			g, _ := testGate(t, f.srv.URL)
-			j := g.Judge(t.Context(), "todo", "t1", d, "state")
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			j := g.Judge(ctx, "todo", "t1", d, "state")
 			assert.Equal(t, verdictAct, j.Verdict, j.Reason)
 			assert.Equal(t, tt.wantRequests, f.requests())
 		})
 	}
 }
 
-func TestAskSendsOneRequestWithEveryQuestion(t *testing.T) {
-	both := `{"model":"m","answers":{` +
-		`"todo_state":{"type":"choice","choice":"open","probabilities":{"done":0.05,"open":0.9,"stale":0.03,"unknown":0.02},"confidence":0.85},` +
-		`"session_activity":{"type":"choice","choice":"unknown","probabilities":{"implementing":0.1,"reviewing":0.1,"investigating":0.1,"blocked":0.1,"chatting":0.1,"unknown":0.5},"confidence":0.4}}}`
-	f := newFakeGate(t, serve(200, both))
-	g, _ := testGate(t, f.srv.URL)
-	state := map[string]string{"text": "synthetic state"}
-	answers, hash, err := g.ask(t.Context(), state, gateTodoState, gateSession)
-	require.NoError(t, err)
-	assert.Len(t, hash, 16)
-	assert.Equal(t, answer{Label: "open", Confidence: 0.85}, answers["todo_state"])
-	assert.Equal(t, "unknown", answers["session_activity"].Label)
-	require.Equal(t, 1, f.requests())
+func TestRequestShape(t *testing.T) {
+	for _, d := range []gateDef{gateTodoState, gateSession, gateReply} {
+		t.Run(d.Name, func(t *testing.T) {
+			label := d.Unknown
+			f := newFakeGate(t, serve(200, answerBody(d.Name, label, probs(d, label, 0.9), 0.9)))
+			g, _ := testGate(t, f.srv.URL)
+			state := map[string]string{"text": "synthetic state"}
+			a, hash, err := g.ask(t.Context(), state, d)
+			require.NoError(t, err)
+			assert.Len(t, hash, 16)
+			assert.Equal(t, answer{Label: label, Confidence: 0.9}, a)
+			require.Equal(t, 1, f.requests())
 
-	h := f.headers[0]
-	assert.Equal(t, "Bearer "+keySentinel, h.Get("Authorization"))
-	assert.Equal(t, "application/json", h.Get("Content-Type"))
-	var sent struct {
-		State     map[string]string `json:"state"`
-		Model     string            `json:"model"`
-		Questions map[string]struct {
-			Type     string            `json:"type"`
-			Criteria map[string]string `json:"criteria"`
-		} `json:"questions"`
+			h := f.headers[0]
+			assert.Equal(t, "Bearer "+keySentinel, h.Get("Authorization"))
+			assert.Equal(t, "application/json", h.Get("Content-Type"))
+			var sent struct {
+				State     map[string]string `json:"state"`
+				Model     string            `json:"model"`
+				Questions map[string]struct {
+					Type     string            `json:"type"`
+					Criteria map[string]string `json:"criteria"`
+				} `json:"questions"`
+			}
+			require.NoError(t, json.Unmarshal(f.bodies[0], &sent))
+			assert.Equal(t, state, sent.State)
+			assert.Equal(t, "jev-latest", sent.Model)
+			require.Len(t, sent.Questions, 1)
+			q := sent.Questions[d.Name]
+			assert.Equal(t, "choice", q.Type)
+			assert.Contains(t, q.Criteria, d.Unknown, "the label set always includes the unknown label")
+			assert.Len(t, q.Criteria, len(d.Criteria))
+			assert.NotContains(t, string(f.bodies[0]), keySentinel)
+		})
 	}
-	require.NoError(t, json.Unmarshal(f.bodies[0], &sent))
-	assert.Equal(t, state, sent.State)
-	assert.Equal(t, "jev-latest", sent.Model)
-	require.Len(t, sent.Questions, 2)
-	for name, q := range sent.Questions {
-		assert.Equal(t, "choice", q.Type, name)
-	}
-	assert.Contains(t, sent.Questions["todo_state"].Criteria, "unknown")
-	assert.Contains(t, sent.Questions["session_activity"].Criteria, "unknown")
-	assert.NotContains(t, string(f.bodies[0]), keySentinel)
 }
 
 func TestReadAPIKey(t *testing.T) {
@@ -322,6 +327,9 @@ func TestReadAPIKey(t *testing.T) {
 			require.NoError(t, keyring.Set(keyringService, keyringUser, "from-keyring"))
 		}, "from-keyring", ""},
 		{"a keyring miss is an error", "", func(*testing.T) {}, "", "no API key"},
+		{"an empty keyring value is an error", "", func(t *testing.T) {
+			require.NoError(t, keyring.Set(keyringService, keyringUser, ""))
+		}, "", "no API key"},
 		{"a keyring failure is an error", "", func(*testing.T) { keyring.MockInitWithError(fmt.Errorf("no session bus")) }, "", "no session bus"},
 	}
 	for _, tt := range tests {
@@ -342,51 +350,90 @@ func TestReadAPIKey(t *testing.T) {
 	}
 }
 
-func TestKeyringMissEscalatesEveryGate(t *testing.T) {
-	keyring.MockInit()
-	t.Setenv(keyEnv, "")
-	key, keyErr := readAPIKey()
-	require.Error(t, keyErr)
-
-	f := newFakeGate(t, serve(200, ""))
-	logger, file, err := openGateLog(filepath.Join(t.TempDir(), "gate.log"))
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = file.Close() })
-	g := newGate(GateConfig{URL: f.srv.URL, Model: defaultGateModel}, testThresholds, key, keyErr, logger, testNow)
-
-	for _, d := range []gateDef{gateTodoState, gateSession, gateReply} {
-		t.Run(d.Name, func(t *testing.T) {
-			j := g.Judge(t.Context(), "todo", "t1", d, "state")
-			assert.Equal(t, verdictEscalate, j.Verdict)
-			assert.Equal(t, decidedByError, j.DecidedBy)
-			assert.Contains(t, j.Reason, "no API key")
-		})
+func TestNoKeyEscalatesEveryGate(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(t *testing.T)
+		direct bool // build the gate with an empty key and no error, as a bug would
+	}{
+		{"a keyring miss with no environment key", func(*testing.T) {}, false},
+		{"an empty keyring value", func(t *testing.T) { require.NoError(t, keyring.Set(keyringService, keyringUser, "")) }, false},
+		{"a keyring failure", func(*testing.T) { keyring.MockInitWithError(fmt.Errorf("no session bus")) }, false},
+		{"an empty key with no error", func(*testing.T) {}, true},
 	}
-	assert.Zero(t, f.requests(), "no request may be sent without a key")
+	for _, tt := range tests {
+		for _, d := range []gateDef{gateTodoState, gateSession, gateReply} {
+			t.Run(tt.name+"/"+d.Name, func(t *testing.T) {
+				keyring.MockInit()
+				t.Setenv(keyEnv, "")
+				tt.setup(t)
+				key, keyErr := readAPIKey()
+				if tt.direct {
+					key, keyErr = "", nil
+				} else {
+					require.Error(t, keyErr)
+				}
+				f := newFakeGate(t, serve(200, ""))
+				logger, file, err := openGateLog(filepath.Join(t.TempDir(), "gate.log"))
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = file.Close() })
+				g := newGate(GateConfig{URL: f.srv.URL}, testThresholds, key, keyErr, logger, testNow)
+
+				j := g.Judge(t.Context(), "todo", "t1", d, "state")
+				assert.Equal(t, verdictEscalate, j.Verdict)
+				assert.Equal(t, decidedByError, j.DecidedBy)
+				assert.Contains(t, j.Reason, "no API key")
+				assert.Empty(t, j.Hash)
+				assert.Zero(t, f.requests(), "no request may be sent without a key")
+			})
+		}
+	}
 }
 
 func TestGateCallLog(t *testing.T) {
 	d := gateTodoState
-	f := newFakeGate(t, serve(200, answerBody(d.Name, "done", probs(d, "done", 0.9), 0.9)))
-	g, logPath := testGate(t, f.srv.URL)
-	state := map[string]string{"text": "private todo text"}
-	j := g.Judge(t.Context(), "todo", "t1", d, state)
-	_ = g.Judge(t.Context(), "todo", "t2", d, state)
+	good := answerBody(d.Name, "done", probs(d, "done", 0.9), 0.9)
+	tests := []struct {
+		name      string
+		reply     func(int, http.ResponseWriter)
+		wantLines int
+		check     func(t *testing.T, entry map[string]any, j Judgment)
+	}{
+		{"a successful call logs the gate, subject, hash, label, confidence and verdict", serve(200, good), 1,
+			func(t *testing.T, e map[string]any, j Judgment) {
+				assert.Equal(t, "todo_state", e["gate"])
+				assert.Equal(t, "todo", e["subject"])
+				assert.Equal(t, "t1", e["id"])
+				assert.Equal(t, j.Hash, e["input_hash"])
+				assert.Equal(t, "done", e["label"])
+				assert.Equal(t, 0.9, e["confidence"])
+				assert.Equal(t, verdictAct, e["verdict"])
+				assert.Equal(t, "cto todo_state done 0.90 act "+j.Hash[:8]+" 2026-10-08", j.Annotation)
+			}},
+		{"a failed call logs its reason and escalates", serve(500, ""), 1,
+			func(t *testing.T, e map[string]any, j Judgment) {
+				assert.Equal(t, verdictEscalate, e["verdict"])
+				assert.Equal(t, "gate returned HTTP 500", e["reason"])
+				assert.Equal(t, j.Hash, e["input_hash"])
+				assert.Empty(t, j.Annotation)
+			}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFakeGate(t, tt.reply)
+			g, logPath := testGate(t, f.srv.URL)
+			state := map[string]string{"text": "private todo text"}
+			j := g.Judge(t.Context(), "todo", "t1", d, state)
 
-	data, err := os.ReadFile(logPath)
-	require.NoError(t, err)
-	lines := bytes.Split(bytes.TrimSpace(data), []byte("\n"))
-	require.Len(t, lines, 2)
-	var entry map[string]any
-	require.NoError(t, json.Unmarshal(lines[0], &entry))
-	assert.Equal(t, "todo_state", entry["gate"])
-	assert.Equal(t, j.Hash, entry["input_hash"])
-	assert.Equal(t, "done", entry["label"])
-	assert.Equal(t, 0.9, entry["confidence"])
-	assert.Equal(t, verdictAct, entry["verdict"])
-	assert.Equal(t, "todo", entry["subject"])
-	assert.Equal(t, "t1", entry["id"])
-	assert.NotContains(t, string(data), "private todo text")
-	assert.NotContains(t, string(data), keySentinel)
-	assert.Equal(t, "cto todo_state done 0.90 act "+j.Hash[:8]+" 2026-10-08", j.Annotation)
+			data, err := os.ReadFile(logPath)
+			require.NoError(t, err)
+			lines := bytes.Split(bytes.TrimSpace(data), []byte("\n"))
+			require.Len(t, lines, tt.wantLines)
+			var entry map[string]any
+			require.NoError(t, json.Unmarshal(lines[0], &entry))
+			tt.check(t, entry, j)
+			assert.NotContains(t, string(data), "private todo text", "the log holds a hash, never the state")
+			assert.NotContains(t, string(data), keySentinel)
+		})
+	}
 }

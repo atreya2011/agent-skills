@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	gateModel      = "jev-latest"
 	keyEnv         = "TYPESAFE_API_KEY"
 	keyringService = "typesafe"
 	keyringUser    = "api"
@@ -113,7 +114,6 @@ type Judgment struct {
 // the key only ever reaches the Authorization header.
 type Gate struct {
 	url    string
-	model  string
 	key    string
 	keyErr error
 	th     Thresholds
@@ -121,6 +121,10 @@ type Gate struct {
 	log    *slog.Logger
 	today  string
 }
+
+// errNoKey is the reason every gate escalates when no key is configured.
+var errNoKey = fmt.Errorf("no API key: %s is unset and the keyring has no entry for service %s, user %s",
+	keyEnv, keyringService, keyringUser)
 
 // readAPIKey returns the API key from the environment, else from the OS
 // keyring. It clears the environment variable first, so no child process the
@@ -135,18 +139,20 @@ func readAPIKey() (string, error) {
 	}
 	key, err := keyring.Get(keyringService, keyringUser)
 	switch {
-	case errors.Is(err, keyring.ErrNotFound):
-		return "", fmt.Errorf("no API key: %s is unset and the keyring has no entry for service %s, user %s",
-			keyEnv, keyringService, keyringUser)
+	case errors.Is(err, keyring.ErrNotFound) || (err == nil && key == ""):
+		return "", errNoKey
 	case err != nil:
 		return "", fmt.Errorf("no API key: %s is unset and the keyring failed: %w", keyEnv, err)
 	}
 	return key, nil
 }
 
-// newGate builds a gate. A non-nil keyErr means no key was found, and every
-// judgment then escalates without a request.
+// newGate builds a gate. Without a key, every judgment escalates with keyErr,
+// or errNoKey when keyErr is nil, and sends no request.
 func newGate(cfg GateConfig, th Thresholds, key string, keyErr error, log *slog.Logger, now time.Time) *Gate {
+	if key == "" && keyErr == nil {
+		keyErr = errNoKey
+	}
 	c := retryablehttp.NewClient()
 	c.Logger = nil
 	c.RetryMax = 4
@@ -157,7 +163,7 @@ func newGate(cfg GateConfig, th Thresholds, key string, keyErr error, log *slog.
 	c.Backoff = jitteredBackoff
 	c.ErrorHandler = retryablehttp.PassthroughErrorHandler
 	return &Gate{
-		url: cfg.URL, model: cfg.Model, key: key, keyErr: keyErr, th: th,
+		url: cfg.URL, key: key, keyErr: keyErr, th: th,
 		client: c, log: log, today: now.Format(time.DateOnly),
 	}
 }
@@ -176,15 +182,17 @@ func retryOnThrottle(ctx context.Context, resp *http.Response, err error) (bool,
 
 // jitteredBackoff waits for the Retry-After seconds the server names, else
 // for an exponential delay, plus up to a quarter more so that parallel calls
-// do not retry in step. The default backoff reads Retry-After for 429 only.
+// do not retry in step. No wait exceeds maxWait. The default backoff reads
+// Retry-After for 429 only and does not cap it.
 func jitteredBackoff(minWait, maxWait time.Duration, attempt int, resp *http.Response) time.Duration {
 	wait := retryablehttp.DefaultBackoff(minWait, maxWait, attempt, resp)
 	if resp != nil && resp.StatusCode == statusOverloaded {
 		if secs, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && secs >= 0 {
-			wait = min(time.Duration(secs)*time.Second, maxWait)
+			wait = time.Duration(secs) * time.Second
 		}
 	}
-	return wait + rand.N(wait/4+1)
+	wait = min(wait, maxWait)
+	return min(wait+rand.N(wait/4+1), maxWait)
 }
 
 type question struct {
@@ -215,60 +223,56 @@ type answer struct {
 	Confidence float64
 }
 
-// ask sends one request that carries the state and one question per gate, and
-// returns the validated answers by gate name with the hash of the request. A
-// response that does not match the documented shape and the offered labels is
-// an error, never a partial answer.
-func (g *Gate) ask(ctx context.Context, state any, defs ...gateDef) (map[string]answer, string, error) {
+// ask sends one request that carries the state and the gate's question, and
+// returns the validated answer with the hash of the request. A response that
+// does not match the documented shape and the offered labels is an error,
+// never a partial answer.
+func (g *Gate) ask(ctx context.Context, state any, d gateDef) (answer, string, error) {
 	if g.key == "" {
-		return nil, "", g.keyErr
+		return answer{}, "", g.keyErr
 	}
-	req := request{State: state, Model: g.model, Questions: map[string]question{}}
-	for _, d := range defs {
-		req.Questions[d.Name] = question{Type: "choice", Instructions: d.Instructions, Criteria: d.Criteria}
+	req := request{
+		State: state, Model: gateModel,
+		Questions: map[string]question{d.Name: {Type: "choice", Instructions: d.Instructions, Criteria: d.Criteria}},
 	}
 	body, err := json.Marshal(req, json.Deterministic(true))
 	if err != nil {
-		return nil, "", fmt.Errorf("encode gate request: %w", err)
+		return answer{}, "", fmt.Errorf("encode gate request: %w", err)
 	}
 	sum := sha256.Sum256(body)
 	hash := hex.EncodeToString(sum[:])[:16]
 
 	hreq, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, g.url, body)
 	if err != nil {
-		return nil, hash, fmt.Errorf("build gate request: %w", err)
+		return answer{}, hash, fmt.Errorf("build gate request: %w", err)
 	}
 	hreq.Header.Set("Authorization", "Bearer "+g.key)
 	hreq.Header.Set("Content-Type", "application/json")
 	resp, err := g.client.Do(hreq)
 	if err != nil {
-		return nil, hash, fmt.Errorf("gate unreachable: %w", err)
+		return answer{}, hash, fmt.Errorf("gate unreachable: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return nil, hash, fmt.Errorf("read gate response: %w", err)
+		return answer{}, hash, fmt.Errorf("read gate response: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, hash, fmt.Errorf("gate returned HTTP %d", resp.StatusCode)
+		return answer{}, hash, fmt.Errorf("gate returned HTTP %d", resp.StatusCode)
 	}
 	var parsed response
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, hash, fmt.Errorf("gate response is not valid JSON: %w", err)
+		return answer{}, hash, fmt.Errorf("gate response is not valid JSON: %w", err)
 	}
-	out := map[string]answer{}
-	for _, d := range defs {
-		raw, ok := parsed.Answers[d.Name]
-		if !ok {
-			return nil, hash, fmt.Errorf("gate response has no answer for %s", d.Name)
-		}
-		a, err := validateAnswer(d, raw)
-		if err != nil {
-			return nil, hash, fmt.Errorf("gate answer for %s: %w", d.Name, err)
-		}
-		out[d.Name] = a
+	raw, ok := parsed.Answers[d.Name]
+	if !ok {
+		return answer{}, hash, fmt.Errorf("gate response has no answer for %s", d.Name)
 	}
-	return out, hash, nil
+	a, err := validateAnswer(d, raw)
+	if err != nil {
+		return answer{}, hash, fmt.Errorf("gate answer for %s: %w", d.Name, err)
+	}
+	return a, hash, nil
 }
 
 // validateAnswer accepts a choice answer only when its probabilities cover
@@ -324,12 +328,11 @@ func (g *Gate) verdict(d gateDef, label string, confidence float64) (string, str
 // the judgment at escalate; it never acts on a failed or invalid call.
 func (g *Gate) Judge(ctx context.Context, subject, id string, d gateDef, state any) Judgment {
 	j := Judgment{Subject: subject, ID: id, Gate: d.Name, Verdict: verdictEscalate, DecidedBy: decidedByError}
-	answers, hash, err := g.ask(ctx, state, d)
+	a, hash, err := g.ask(ctx, state, d)
 	j.Hash = hash
 	if err != nil {
 		j.Reason = err.Error()
 	} else {
-		a := answers[d.Name]
 		j.Label, j.Confidence, j.DecidedBy = a.Label, a.Confidence, decidedByGate
 		j.Verdict, j.Reason = g.verdict(d, a.Label, a.Confidence)
 		j.Annotation = fmt.Sprintf("cto %s %s %.2f %s %s %s", d.Name, j.Label, j.Confidence, j.Verdict, hash[:8], g.today)

@@ -64,15 +64,11 @@ type Thresholds struct {
 // GateConfig locates the gate service and the gate-call log. The API key is
 // never configured here; it comes from the environment or the OS keyring.
 type GateConfig struct {
-	URL   string `toml:"url"`
-	Model string `toml:"model"`
-	Log   string `toml:"log"`
+	URL string `toml:"url"`
+	Log string `toml:"log"`
 }
 
-const (
-	defaultGateURL   = "https://api.typesafe.ai/v1/systemone"
-	defaultGateModel = "jev-latest"
-)
+const defaultGateURL = "https://api.typesafe.ai/v1/systemone"
 
 // tomlFence matches a fenced toml block of the markdown local file.
 var tomlFence = regexp.MustCompile("(?ms)^\x60\x60\x60toml[ \t]*\r?\n(.*?)^\x60\x60\x60[ \t]*\r?$")
@@ -102,7 +98,6 @@ func loadConfig(path string) (Config, error) {
 	cfg.Commands.Gh = cmp.Or(cfg.Commands.Gh, "gh")
 	cfg.Commands.Git = cmp.Or(cfg.Commands.Git, "git")
 	cfg.Gate.URL = cmp.Or(cfg.Gate.URL, defaultGateURL)
-	cfg.Gate.Model = cmp.Or(cfg.Gate.Model, defaultGateModel)
 	if err := cfg.validate(); err != nil {
 		return Config{}, fmt.Errorf("local file %s: %w", path, err)
 	}

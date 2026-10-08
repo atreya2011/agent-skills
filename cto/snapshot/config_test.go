@@ -39,7 +39,6 @@ func TestLoadConfig(t *testing.T) {
 				assert.Equal(t, "gh", c.Commands.Gh)
 				assert.Equal(t, "git", c.Commands.Git)
 				assert.Equal(t, defaultGateURL, c.Gate.URL)
-				assert.Equal(t, defaultGateModel, c.Gate.Model)
 				assert.Equal(t, 0.8, c.Thresholds.High)
 				assert.Equal(t, []Profile{{Name: "main", Kind: "claude", Dir: "/p/main"}}, c.Profiles)
 				assert.Equal(t, "/vaults/alpha", c.Vaults["example/alpha"])
@@ -50,6 +49,11 @@ func TestLoadConfig(t *testing.T) {
 			name:    "unknown field is rejected",
 			file:    localFile(append(base, "mystery = 1\n")...),
 			wantErr: "mystery",
+		},
+		{
+			name:    "a gate model field is rejected",
+			file:    localFile(base[0], "[gate]\nlog = \"/var/gate.log\"\nmodel = \"x\"\n", goodThresholds),
+			wantErr: "model",
 		},
 		{
 			name:    "an api key in the file is rejected",

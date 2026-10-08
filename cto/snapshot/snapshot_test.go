@@ -411,19 +411,25 @@ func TestSnapshotKeyHandling(t *testing.T) {
 }
 
 func TestReplySubcommand(t *testing.T) {
+	long := strings.Repeat("early text. ", 3000) + "THE-FINAL-VERDICT"
 	tests := []struct {
-		name        string
-		stdin       string
-		script      map[string]scriptedAnswer
-		wantVerdict string
-		wantLabel   string
-		wantCalls   int
+		name          string
+		stdin         string
+		script        map[string]scriptedAnswer
+		wantVerdict   string
+		wantLabel     string
+		wantCalls     int
+		wantInBody    string
+		wantNotInBody string
 	}{
-		{"a confident done acts", "All merged. The tabs can be closed.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.85}}, verdictAct, "done", 1},
-		{"a done below the high threshold escalates", "I think we are done.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.7}}, verdictEscalate, "done", 1},
-		{"an unclear reply escalates", "Hmm.", map[string]scriptedAnswer{"orchestrator_reply:": {"unclear", 0.99}}, verdictEscalate, "unclear", 1},
-		{"a not_done reply acts at the low threshold", "Still reviewing.", map[string]scriptedAnswer{"orchestrator_reply:": {"not_done", 0.65}}, verdictAct, "not_done", 1},
-		{"an empty reply escalates without a call", "", nil, verdictEscalate, "", 0},
+		{"a confident done acts", "All merged. The tabs can be closed.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.85}}, verdictAct, "done", 1, "All merged.", ""},
+		{"a done below the high threshold escalates", "I think we are done.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.7}}, verdictEscalate, "done", 1, "", ""},
+		{"an unclear reply escalates", "Hmm.", map[string]scriptedAnswer{"orchestrator_reply:": {"unclear", 0.99}}, verdictEscalate, "unclear", 1, "", ""},
+		{"a not_done reply acts at the low threshold", "Still reviewing.", map[string]scriptedAnswer{"orchestrator_reply:": {"not_done", 0.65}}, verdictAct, "not_done", 1, "", ""},
+		{"an empty reply escalates without a call", "", nil, verdictEscalate, "", 0, "", ""},
+		{"a whitespace-only reply escalates without a call", " \n\t \n", nil, verdictEscalate, "", 0, "", ""},
+		{"surrounding whitespace is trimmed", "\n\n done \n\n", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.9}}, verdictAct, "done", 1, `"reply":"done"`, ""},
+		{"a long reply keeps its last 16 KiB", long, map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.9}}, verdictAct, "done", 1, "THE-FINAL-VERDICT", strings.Repeat("early text. ", 2000)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -438,29 +444,38 @@ func TestReplySubcommand(t *testing.T) {
 			assert.Equal(t, tt.wantVerdict, j.Verdict)
 			assert.Equal(t, tt.wantLabel, j.Label)
 			assert.Equal(t, tt.wantCalls, f.requests())
+			if tt.wantInBody != "" {
+				assert.Contains(t, string(f.bodies[0]), tt.wantInBody)
+			}
+			if tt.wantNotInBody != "" {
+				assert.NotContains(t, string(f.bodies[0]), tt.wantNotInBody)
+			}
 		})
 	}
 }
 
 func TestRunRejectsABadInvocationOrLocalFile(t *testing.T) {
-	w := newWorld(t, "")
-	data, err := os.ReadFile(w.Local)
-	require.NoError(t, err)
 	tests := []struct {
 		name string
-		edit func(path string)
+		edit func(t *testing.T, path string)
 		args []string
 	}{
-		{"an unknown flag", func(string) {}, []string{"--bogus"}},
-		{"a local file that is missing", func(p string) { require.NoError(t, os.Remove(p)) }, nil},
-		{"a local file with an unknown field", func(p string) {
-			require.NoError(t, os.WriteFile(p, append(data, []byte("```toml\n[gate]\napi_key = \"x\"\n```\n")...), 0o600))
+		{"an unknown flag", func(*testing.T, string) {}, []string{"--bogus"}},
+		{"a local file that is missing", func(t *testing.T, p string) { require.NoError(t, os.Remove(p)) }, nil},
+		{"a local file with an unknown field", func(t *testing.T, p string) {
+			data, err := os.ReadFile(p)
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(p, append(data, []byte("```toml\n[gate]\nmodel = \"x\"\n```\n")...), 0o600))
 		}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := newWorld(t, "")
-			tt.edit(w.Local)
+			keyring.MockInit()
+			f := scriptedGate(t, nil)
+			closedURL := f.srv.URL
+			f.srv.Close()
+			w := newWorld(t, closedURL)
+			tt.edit(t, w.Local)
 			var out, errOut bytes.Buffer
 			code := run(t.Context(), append(slices.Clone(tt.args), "--local-file", w.Local), strings.NewReader(""), &out, &errOut, testNow)
 			assert.Equal(t, 2, code)

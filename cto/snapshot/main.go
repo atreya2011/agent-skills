@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -15,11 +16,18 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-// maxReplyBytes bounds the orchestrator reply the reply gate reads.
-const maxReplyBytes = 16 << 10
+const (
+	// maxReplyBytes bounds the orchestrator reply the reply gate reads. The
+	// last bytes are kept, because a reply ends with its verdict.
+	maxReplyBytes = 16 << 10
+	// runTimeout bounds one whole run, so a hung source or gate cannot stall a
+	// sweep. What it cuts off is reported as unreadable or escalated.
+	runTimeout = 5 * time.Minute
+)
 
 func main() {
 	os.Exit(run(context.Background(), os.Args[1:], os.Stdin, os.Stdout, os.Stderr, time.Now()))
@@ -48,6 +56,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
+	ctx, cancel := context.WithTimeout(ctx, runTimeout)
+	defer cancel()
 	// The key leaves the environment before any source command can start.
 	key, keyErr := readAPIKey()
 	cfg, err := loadConfig(*localFile)
@@ -78,12 +88,18 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 }
 
 // judgeReply asks the orchestrator_reply gate what an orchestrator's chat reply
-// says about its tabs. An empty reply escalates without a call.
+// says about its tabs. A reply that is empty after trimming escalates without a
+// call; a long reply is cut to its last maxReplyBytes.
 func judgeReply(ctx context.Context, gate *Gate, stdin io.Reader) Judgment {
-	text, err := io.ReadAll(io.LimitReader(stdin, maxReplyBytes))
-	if err != nil || len(text) == 0 {
+	data, err := io.ReadAll(stdin)
+	data = bytes.TrimSpace(data)
+	if len(data) > maxReplyBytes {
+		data = data[len(data)-maxReplyBytes:]
+	}
+	text := strings.ToValidUTF8(string(data), "") // drops a character the cut split
+	if err != nil || text == "" {
 		return Judgment{Subject: "reply", Gate: gateReply.Name, Verdict: verdictEscalate, DecidedBy: decidedByError,
 			Reason: "there is no reply text to judge"}
 	}
-	return gate.Judge(ctx, "reply", "", gateReply, map[string]string{"reply": string(text)})
+	return gate.Judge(ctx, "reply", "", gateReply, map[string]string{"reply": text})
 }

@@ -110,7 +110,7 @@ _Avoid_: job, pipeline, task
 A role in a run's seat table, mapped to a launch command: the orchestrator, the implementer or a reviewer.
 
 **Seat brief**:
-The rendered instructions one seat receives for one step of a run, named by the step, such as fix brief.
+The rendered instructions one seat receives for one step of a run, named by its template, such as implementer brief or fix brief.
 _Avoid_: brief
 
 **Check**:

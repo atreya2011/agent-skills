@@ -76,7 +76,7 @@ Nobody waits idle on a decision. The orchestrator reports a decision it cannot m
 
 ## Session goal
 
-An orchestrator receives its whole assignment as one goal prompt in chat: plain text, the full condition and instructions inline. Never hand an orchestrator a Markdown file, a brief path, or a pointer to a file to read as its instructions (user, 2026-10-02).
+An orchestrator receives its whole assignment as one goal prompt in chat: plain text, the full condition and instructions inline. Never hand an orchestrator a Markdown file, a file path, or a pointer to a file to read as its instructions (user, 2026-10-02).
 
 After a Claude Code orchestrator, or another long-running Claude seat, acknowledges its kickoff message, its sender MUST send it `/goal <condition>` with the run's completion condition, up to 4000 characters. A Stop-hook evaluator keeps the seat working until the condition holds; `/goal clear` removes it. It needs a trusted workspace with hooks allowed. Example condition:
 

@@ -12,3 +12,13 @@ jobs:
       # No ~/.agents/local on the runner, so only the built-in patterns run.
       - run: ./portability-check.sh
       - run: ./portability-check.test.sh
+
+  gauntlet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No herdr on the runner: send.test.sh passes without it and receipt.test.sh skips.
+      - run: tests/gauntlet/seats.test.sh
+      - run: tests/gauntlet/close-decision.test.sh
+      - run: tests/gauntlet/send.test.sh
+      - run: tests/gauntlet/receipt.test.sh

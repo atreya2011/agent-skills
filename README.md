@@ -8,6 +8,10 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `be-concise`: Answer concisely in plain language without unnecessary code details.
 - `cto`: Run a sweep-based project manager in one herdr tab: rebuild the picture of every session, todo and pull request from sources, close todos on proof, put judgment calls to the user in one batch, and write a brief. A Go snapshot tool gathers the facts.
 - `find-unknowns`: Map unknown unknowns before work by exploring the codebase and domain in parallel, teaching the findings, and writing a persistent map under docs/unknowns.
+- `gauntlet`: Take one approved issue from facts through blind adversarial review to a merge-ready pull request, with its seats read from a seat table in the local file.
+- `gauntlet-deliver`: Deliver a converged gauntlet branch as a pull request marked ready for review, with the review notes of the closing cycle.
+- `gauntlet-implement`: Stage and implement one approved issue into committed, cap-checked code on its own branch, through the implementer tab or parallel subagents in git worktrees.
+- `gauntlet-review`: Run blind review cycles against a locked HEAD with executable checks and review points until a cycle has no major bug.
 - `herdr-orchestrator`: Survey all Claude and Codex tabs across herdr workspaces, report activity and blockers, locate tabs, or resume dead sessions.
 - `implement-issue`: Implement a GitHub issue end-to-end through a draft pull request, including commits, push, adversarial review, fixes, and PR updates.
 - `major-refactor`: Run an explicit managed program for a large or irreversible codebase change, with audits, a committed manifest, risk-ordered waves, subagents, and approval gates.
@@ -18,7 +22,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 
 ## Local files
 
-A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cto`, `herdr-orchestrator`.
+A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cto`, `gauntlet`, `herdr-orchestrator`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.
 
 ## Portability check
 
@@ -37,3 +41,7 @@ git config core.hooksPath .githooks
 That setting replaces a global `core.hooksPath` for this repo, so each hook in `.githooks/` first runs the hook of the same name from the global path, passing its arguments and standard input through, and only then runs this repo's own logic. `pre-commit` and `commit-msg` do nothing else; they exist so that the global hooks keep running.
 
 The same rule covers commit messages, pull-request text and issues: none may contain a machine value.
+
+## Gauntlet tests
+
+`tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh`, `tests/gauntlet/send.test.sh` and `tests/gauntlet/receipt.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh`, the agent marker check of `gauntlet/send.sh` and `gauntlet/receipt.sh`. Each runs without a local file or a herdr server, except that `receipt.test.sh` skips without a herdr server, and CI runs them in the `gauntlet` job; the fixtures under `tests/gauntlet/` hold no machine values.

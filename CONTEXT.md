@@ -107,7 +107,19 @@ One gauntlet execution: one issue to one PR.
 _Avoid_: job, pipeline, task
 
 **Seat**:
-A role in a run's review panel, mapped to a launch command in the seat table.
+A role in a run's seat table, mapped to a launch command: the orchestrator, the implementer or a reviewer.
+
+**Seat brief**:
+The rendered instructions one seat receives for one step of a run, named by its template, such as implementer brief or fix brief.
+_Avoid_: brief
+
+**Check**:
+An executable test that fails on the locked commit.
+_Avoid_: evidence, gate
+
+**Finding**:
+One check plus one quoted spec clause.
+_Avoid_: evidence, report
 
 ### Sources
 

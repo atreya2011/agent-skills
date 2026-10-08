@@ -32,7 +32,7 @@ Expected: the finding leaves the result.
 
 ## 5. Stalled or unsent dispatch
 
-- Start a Claude tab and confirm it idle (`herdr agent get <target>`). Render the full reviewer brief with its `Write your review` receipt line at the top. Then dispatch the entire brief: `herdr agent prompt <target> "<full rendered brief>" --wait --until working --timeout 15000`.
+- Start a Claude tab and confirm it idle (`herdr tab list`). Render the full reviewer brief with its `Write your review` receipt line at the top. Then dispatch the entire brief: `herdr agent prompt <target> "<full rendered brief>" --wait --until working --timeout 15000`.
 - Observe `agent_prompt_stalled`, then read the tab and confirm the full text sits staged in the Claude composer.
 - Confirm the staged text remains unsubmitted: the tab shows an empty receipt response and the agent remains outside `working` for that brief.
 - Run `herdr agent send-keys <target> Enter` once and confirm the exact receipt appears and the agent begins the turn.

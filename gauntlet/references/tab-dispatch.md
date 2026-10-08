@@ -1,6 +1,6 @@
 # Gauntlet tab dispatch
 
-Use this file for herdr 0.7.5 tab and agent spawn, brief delivery, receipt, watch, capture, reset, and close. Read shared contracts and role templates from [contracts.md](contracts.md) and each stage's `briefs/` directory. At each run start or resume, read the current [SKILL.md](../SKILL.md) and this file.
+Use this file for herdr tab and agent spawn, brief delivery, receipt, watch, capture, clear, and close. Read shared contracts and role templates from [contracts.md](contracts.md) and each stage's `briefs/` directory. At each run start or resume, read the current [SKILL.md](../SKILL.md) and this file.
 
 Brief delivery goes through `gauntlet/send.sh`: clear the composer with Escape only when the seat is idle or done (skipped for Codex, which exits on Escape when its composer is empty, and for a working or blocked seat, where Escape interrupts the turn or dismisses the dialog), paste, verify content, submit once, and confirm working. Claude and Cursor can stage and need one Enter; Codex submits directly. On failure print `SEND BLOCKED <target> <reason>`. Waiting and capture go through `gauntlet/watch.sh`; `CAPTURE BLOCKED` stays for read failures.
 
@@ -24,13 +24,13 @@ A nonzero render exit MUST be reported as `RENDER BLOCKED <template>` and MUST s
 Select one implementation issue for the run. Record its branch, pinned PR base, hard cap, and current changed-line count. Keep every brief, review range, fix wave, and delivery action scoped to that issue.
 The brief is the tab's scope contract; deliver it in the tab's prompt. The repo's drift-guard scope serves the staged spec contract alone.
 
-Confirm the agent has settled before prompting: `herdr agent get <seat>` or `herdr agent wait <seat> --until idle`. Treat a raw shell prompt as not yet a valid target.
+Confirm the agent has settled before prompting: `herdr tab list` shows the seat's tab with its `agent_status`, or use `herdr agent wait <seat> --until idle`. Treat a raw shell prompt as not yet a valid target.
 
 Handle launch blockers before dispatch:
 
 - On startup failure, relaunch the agent once.
 - On the Codex updater menu, choose the install-free option with Down then Enter.
-- Re-run `herdr agent get <seat>` and confirm the idle state. A second startup failure reports `SEAT BLOCKED <seat>` and stops the cycle for the user.
+- Re-run `herdr tab list` and confirm the seat's tab is idle. A second startup failure reports `SEAT BLOCKED <seat>` and stops the cycle for the user.
 
 Before dispatching a rendered brief, verify its receipt line and required scope.
 
@@ -65,9 +65,13 @@ Capture output through `watch.sh` immediately after the completion wait succeeds
 
 For the implementer, search for the runtime-valued terminal signal (`IMPLEMENTER DONE — [0-9]+` or `FIX DONE — [0-9]+`). For reviewers, locate the final assistant message from the completed turn. Use the longest matching assistant message.
 
-## Reset a tab
+## Clear a tab
 
-Send the seat's Clear command from the seat table with `herdr agent prompt <seat> "<Clear>" --wait --until idle`. Confirm the empty composer with `herdr agent read <seat> --source visible`. If the command remains staged, send `herdr agent send-keys <seat> Enter` once and check again. Send the fresh rendered brief only after the composer is empty, applying the dispatch receipt protocol above. The orchestrator never resets itself during a run.
+Send the seat's Clear command from the seat table with `herdr agent prompt <seat> "<Clear>"`, without `--wait`. The command is local, so the seat never works: `--wait` returns `agent_prompt_stalled` for a claude seat, and `--until idle` times out for a codex seat, which ends `done`. Read `herdr agent read <seat> --source visible` until the earlier turns are gone, then confirm the empty composer.
+
+After `/clear` a claude seat shows its header, the `/clear` line and an empty composer. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. For a cursor seat, confirm live before use.
+
+If the command remains staged, send `herdr agent send-keys <seat> Enter` once and check again. Send the fresh rendered brief only after the composer is empty, applying the dispatch receipt protocol above. The orchestrator never clears itself during a run.
 
 ## Watch completion
 
@@ -81,7 +85,7 @@ Require digits such as `FIX DONE — [0-9]+`. Run `herdr agent wait` alongside i
 
 ## Close tabs
 
-Close a spawned tab only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab closes only at delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
+Close a spawned tab with `herdr tab close <tab_id>`, taking the id from `herdr tab list`, only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab closes only at delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
 
 ## Decisions
 

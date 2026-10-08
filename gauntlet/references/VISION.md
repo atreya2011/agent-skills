@@ -49,13 +49,13 @@ Tabs and worktrees close only after `gauntlet/landed.sh` returns landed proof.
 
 Rules are stated positively.
 Deletion is the default fix for prose.
-KISS and YAGNI gate every fix and implementation, and a fix changes only what its admitted check or point names.
+KISS and YAGNI govern every fix and implementation, and a fix changes only what its admitted check or point names.
 
 ## Scope and non-goals
 
 In scope: one branch, one selected issue, one PR per run, opened as a draft and marked ready for review when the run converges.
 Out of scope: commit protocols, sandboxes, and generated held-out test cases.
-Also out of scope: semantic deduplication of findings, new roles, and gates beyond the ones the skills name.
+Also out of scope: semantic deduplication of findings, new roles, and approval steps beyond the ones the skills name.
 A stop flag raised by the drift guard is cleared only by the user.
 
 ## Alignment tests
@@ -64,6 +64,6 @@ A stop flag raised by the drift guard is cleared only by the user.
 - A check that passes on the clean locked commit is inadmissible.
 - A cycle with no major bug ends the run, and its admitted points appear in the PR body.
 - A delivery whose commit differs from the converged commit blocks.
-- A proposal to add a role, gate, or sandbox is out of scope regardless of merit.
+- A proposal to add a role, approval step, or sandbox is out of scope regardless of merit.
 - An agent that stops on a decision while independent items remain unfinished fails the contract.
 - An inbox entry without background, situation, rule, stakes, options with consequences and a recommendation is returned unfiled; a reader who has not followed the run must be able to decide from the entry alone.

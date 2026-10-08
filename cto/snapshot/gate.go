@@ -182,8 +182,9 @@ func retryOnThrottle(ctx context.Context, resp *http.Response, err error) (bool,
 
 // jitteredBackoff waits for the Retry-After seconds the server names, else
 // for an exponential delay, plus up to a quarter more so that parallel calls
-// do not retry in step. No wait exceeds maxWait. The default backoff reads
-// Retry-After for 429 only and does not cap it.
+// do not retry in step. No wait exceeds maxWait, and a wait that is zero or
+// negative becomes maxWait. The default backoff reads Retry-After for 429 only
+// and does not cap it.
 func jitteredBackoff(minWait, maxWait time.Duration, attempt int, resp *http.Response) time.Duration {
 	wait := retryablehttp.DefaultBackoff(minWait, maxWait, attempt, resp)
 	if resp != nil && resp.StatusCode == statusOverloaded {
@@ -191,7 +192,9 @@ func jitteredBackoff(minWait, maxWait time.Duration, attempt int, resp *http.Res
 			wait = time.Duration(secs) * time.Second
 		}
 	}
-	wait = min(wait, maxWait)
+	if wait <= 0 || wait > maxWait { // an overflowing Retry-After wraps to a negative wait
+		wait = maxWait
+	}
 	return min(wait+rand.N(wait/4+1), maxWait)
 }
 

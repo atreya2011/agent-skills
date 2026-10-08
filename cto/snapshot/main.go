@@ -24,9 +24,11 @@ const (
 	// maxReplyBytes bounds the orchestrator reply the reply gate reads. The
 	// last bytes are kept, because a reply ends with its verdict.
 	maxReplyBytes = 16 << 10
-	// runTimeout bounds one whole run, so a hung source or gate cannot stall a
-	// sweep. What it cuts off is reported as unreadable or escalated.
-	runTimeout = 5 * time.Minute
+	// runTimeout bounds one call of the tool, so a hung source or gate cannot
+	// stall a sweep. It stays under the two minute command timeout of the agent
+	// CLIs that run the tool. What it cuts off is reported as unreadable or
+	// escalated.
+	runTimeout = 100 * time.Second
 )
 
 func main() {
@@ -42,7 +44,7 @@ func defaultLocalFile() string {
 	return filepath.Join(home, ".agents", "local", "cto.md")
 }
 
-// run is the whole program with its inputs explicit so tests can call it. It
+// run is one call of the tool with its inputs explicit so tests can call it. It
 // returns the process exit code: 0 once it prints a document, whatever it could
 // not read, and 2 for a bad invocation or a bad local file.
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, now time.Time) int {

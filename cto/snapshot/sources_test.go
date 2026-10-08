@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -84,13 +85,26 @@ func TestCommandFailures(t *testing.T) {
 		{"output that is not JSON", func(t *testing.T, w *world, _ *Commands) {
 			writeFile(t, filepath.Join(w.Fixtures, "herdr", "workspace_list.out"), "<html>", time.Time{})
 		}, "unreadable output"},
+		{"the run deadline has passed", func(*testing.T, *world, *Commands) {}, "the run deadline passed"},
+		{"the run was cancelled", func(*testing.T, *world, *Commands) {}, "the run was cancelled"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := newWorld(t, "")
 			cmds := w.config(t).Commands
 			tt.prepare(t, w, &cmds)
-			_, err := runner{cmds: cmds}.herdrList(t.Context(), "workspace")
+			ctx := t.Context()
+			switch tt.wantErr {
+			case "the run deadline passed":
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithDeadline(ctx, time.Now().Add(-time.Second))
+				defer cancel()
+			case "the run was cancelled":
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(ctx)
+				cancel()
+			}
+			_, err := runner{cmds: cmds}.herdrList(ctx, "workspace")
 			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}

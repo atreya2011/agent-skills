@@ -23,8 +23,8 @@ type runner struct {
 // output runs name in dir and returns its standard output and exit code. A
 // failure to start, a timeout or a nonzero exit is an error whose text carries
 // the program, its first arguments and the first line of its standard error.
-func (r runner) output(ctx context.Context, dir, name string, args ...string) ([]byte, int, error) {
-	ctx, cancel := context.WithTimeout(ctx, commandTimeout)
+func (r runner) output(parent context.Context, dir, name string, args ...string) ([]byte, int, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
@@ -39,7 +39,12 @@ func (r runner) output(ctx context.Context, dir, name string, args ...string) ([
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		code = exit.ExitCode()
 	}
-	if ctx.Err() != nil {
+	switch {
+	case errors.Is(parent.Err(), context.DeadlineExceeded):
+		err = errors.New("the run deadline passed")
+	case parent.Err() != nil:
+		err = errors.New("the run was cancelled")
+	case ctx.Err() != nil:
 		err = fmt.Errorf("timed out after %s", commandTimeout)
 	}
 	shown := args[:min(len(args), 3)]

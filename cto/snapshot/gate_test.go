@@ -254,6 +254,8 @@ func TestJudgeRetriesThrottledCalls(t *testing.T) {
 		{"four 429 then success on the last retry", 4, 429, "0", 5},
 		{"a day-long Retry-After on a 429 is capped at the maximum wait", 1, 429, "86400", 2},
 		{"a day-long Retry-After on a 529 is capped at the maximum wait", 1, 529, "86400", 2},
+		{"an overflowing Retry-After on a 429 is capped at the maximum wait", 1, 429, "9223372036854775807", 2},
+		{"an overflowing Retry-After on a 529 is capped at the maximum wait", 1, 529, "9223372036854775807", 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

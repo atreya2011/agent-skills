@@ -92,3 +92,10 @@ Expected: the commits and the PR body carry neither line, the orchestrator or de
 - Send the same condition through `goal.sh` to a codex seat.
 
 Expected: the dispatcher re-sends the goal with `goal.sh` and the visible screen shows `/goal active`, the seat re-arms its watchers, and `goal.sh` to the codex seat prints `GOAL BLOCKED <seat>` and sends nothing.
+
+## 12. Seat table and implementer clear
+
+- Start two runs in a disposable repository, each with its seat table named at run start: one run chooses one reviewer, the other chooses three.
+- Let each run reach a fix brief.
+
+Expected: each run launches the orchestrator, the implementer, and exactly the chosen reviewers, each with the Kind and Args of its row; the orchestrator is never cleared; the implementer receives its Clear command and shows an empty context before the fix brief arrives.

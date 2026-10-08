@@ -22,4 +22,5 @@ Point: <nit, design, or refactor item: what and why>
 
 - A point is one line, never a check. Design and refactor points name the change and the reason.
 - No check and no point: reply `NO FINDINGS`.
-- End with the success block and the verdict.
+- Never declare DIMINISHING RETURNS.
+- End with the success block.

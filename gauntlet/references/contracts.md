@@ -97,17 +97,15 @@ Runtime resources
 
 A decision the agent cannot make from the brief travels as one entry. Work that does not depend on it continues; nobody idles on an open decision. Every entry carries enough context for a human or an agent to decide without reading anything else.
 
-```text
-DECISION NEEDED <id> — <title>
-- Background: <every term the reader may not know, defined in plain language; where the requirement came from and why it exists>
-- Situation: <facts with locators: run, commit, file, time, exact error>
-- Rule: <the contract clause, ticket line, or user rule that makes this a decision>
-- Stakes: <what breaks if the answer is wrong or late; what happens if no answer arrives>
-- Options: (a) <option; its consequence> (b) <option; its consequence>
-- Recommendation: <one option and the reason>
-- Depends: <brief items or acceptance checkboxes that wait for the answer>
-- Independent: <items finished or continuing meanwhile>
-```
+    DECISION NEEDED <id> — <title>
+    - Background: <every term the reader may not know, defined in plain language; where the requirement came from and why it exists>
+    - Situation: <facts with locators: run, commit, file, time, exact error>
+    - Rule: <the contract clause, ticket line, or user rule that makes this a decision>
+    - Stakes: <what breaks if the answer is wrong or late; what happens if no answer arrives>
+    - Options: (a) <option; its consequence> (b) <option; its consequence>
+    - Recommendation: <one option and the reason>
+    - Depends: <brief items or acceptance checkboxes that wait for the answer>
+    - Independent: <items finished or continuing meanwhile>
 
 The `<id>` is `<run>-<short-slug>`. The reader is assumed to know nothing about the run: the entry alone must let a human who has not followed the work choose an option. An entry missing a field, or whose Background leaves a term undefined, is returned to its author unfiled. The answer returns as `DECISION <id> — <answer>` in a brief to the same seat, without its Clear command, so the seat keeps its context.
 

@@ -9,7 +9,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `find-unknowns`: Map unknown unknowns before work by exploring the codebase and domain in parallel, teaching the findings, and writing a persistent map under docs/unknowns.
 - `gauntlet`: Take one approved issue from facts through blind adversarial review to a merge-ready pull request, with its seats read from a seat table in the local file.
 - `gauntlet-deliver`: Deliver a converged gauntlet branch as a pull request marked ready for review, with the review notes of the closing cycle.
-- `gauntlet-implement`: Stage and implement one approved issue into committed, cap-checked code on a pinned branch, through the implementer tab or parallel subagents in git worktrees.
+- `gauntlet-implement`: Stage and implement one approved issue into committed, cap-checked code on its own branch, through the implementer tab or parallel subagents in git worktrees.
 - `gauntlet-review`: Run blind review cycles against a locked HEAD with executable checks and review points until a cycle has no major bug.
 - `herdr-orchestrator`: Survey all Claude and Codex tabs across herdr workspaces, report activity and blockers, locate tabs, or resume dead sessions.
 - `implement-issue`: Implement a GitHub issue end-to-end through a draft pull request, including commits, push, adversarial review, fixes, and PR updates.

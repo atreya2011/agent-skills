@@ -178,38 +178,50 @@ func TestJudgeEscalatesOnInvalidOrFailedCalls(t *testing.T) {
 		reply        func(int, http.ResponseWriter)
 		wantRequests int
 		wantReason   string
+		how          string // "closed" closes the server first, "cancelled" cancels the context first
 	}{
-		{"malformed JSON", serve(200, `{"answers": [`), 1, "not valid JSON"},
-		{"no answer for the gate", serve(200, `{"model":"m","answers":{},"usage":{}}`), 1, "no answer"},
-		{"wrong answer type", serve(200, `{"answers":{"todo_state":{"type":"noul","noul":0.9}}}`), 1, "want choice"},
-		{"choice outside the labels", serve(200, answerBody(d.Name, "finished", good, 0.9)), 1, "not an offered label"},
+		{"malformed JSON", serve(200, `{"answers": [`), 1, "not valid JSON", ""},
+		{"no answer for the gate", serve(200, `{"model":"m","answers":{},"usage":{}}`), 1, "no answer", ""},
+		{"wrong answer type", serve(200, `{"answers":{"todo_state":{"type":"noul","noul":0.9}}}`), 1, "want choice", ""},
+		{"choice outside the labels", serve(200, answerBody(d.Name, "finished", good, 0.9)), 1, "not an offered label", ""},
 		{"a label missing from probabilities", serve(200, answerBody(d.Name, "done", with(func(m map[string]float64) {
 			delete(m, "stale")
 			m["done"] += 0.1
-		}), 0.9)), 1, "do not cover"},
+		}), 0.9)), 1, "do not cover", ""},
 		{"an extra label in probabilities", serve(200, answerBody(d.Name, "done", with(func(m map[string]float64) {
 			m["extra"] = 0
-		}), 0.9)), 1, "do not cover"},
+		}), 0.9)), 1, "do not cover", ""},
 		{"probabilities sum to 0.98", serve(200, answerBody(d.Name, "done", with(func(m map[string]float64) {
 			m["open"] -= 0.02
-		}), 0.9)), 1, "sum to"},
+		}), 0.9)), 1, "sum to", ""},
 		{"a negative probability", serve(200, answerBody(d.Name, "done", with(func(m map[string]float64) {
 			m["open"] = -0.1
 			m["done"] += 0.14
-		}), 0.9)), 1, "outside 0 to 1"},
-		{"confidence above 1", serve(200, answerBody(d.Name, "done", good, 1.4)), 1, "confidence"},
-		{"confidence missing", serve(200, strings.Replace(answerBody(d.Name, "done", good, 0.9), `,"confidence":0.9`, "", 1)), 1, "confidence"},
-		{"401 is not retried", serve(401, `{"error":"bad key"}`), 1, "HTTP 401"},
-		{"422 is not retried", serve(422, `{"error":"bad body"}`), 1, "HTTP 422"},
-		{"500 is not retried", serve(500, ""), 1, "HTTP 500"},
-		{"429 forever exhausts the retries", serve(429, ""), 5, "HTTP 429"},
-		{"529 forever exhausts the retries", serve(529, ""), 5, "HTTP 529"},
+		}), 0.9)), 1, "outside 0 to 1", ""},
+		{"confidence above 1", serve(200, answerBody(d.Name, "done", good, 1.4)), 1, "confidence", ""},
+		{"confidence missing", serve(200, strings.Replace(answerBody(d.Name, "done", good, 0.9), `,"confidence":0.9`, "", 1)), 1, "confidence", ""},
+		{"401 is not retried", serve(401, `{"error":"bad key"}`), 1, "HTTP 401", ""},
+		{"422 is not retried", serve(422, `{"error":"bad body"}`), 1, "HTTP 422", ""},
+		{"500 is not retried", serve(500, ""), 1, "HTTP 500", ""},
+		{"429 forever exhausts the retries", serve(429, ""), 5, "HTTP 429", ""},
+		{"529 forever exhausts the retries", serve(529, ""), 5, "HTTP 529", ""},
+		{"a closed server", serve(200, ""), 0, "gate unreachable", "closed"},
+		{"a cancelled context", serve(200, answerBody(d.Name, "done", good, 0.9)), 0, "context canceled", "cancelled"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFakeGate(t, tt.reply)
 			g, _ := testGate(t, f.srv.URL)
-			j := g.Judge(t.Context(), "todo", "t1", d, "state")
+			ctx := t.Context()
+			switch tt.how {
+			case "closed":
+				f.srv.Close()
+			case "cancelled":
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(ctx)
+				cancel()
+			}
+			j := g.Judge(ctx, "todo", "t1", d, "state")
 			assert.Equal(t, verdictEscalate, j.Verdict)
 			assert.Equal(t, decidedByError, j.DecidedBy)
 			assert.Empty(t, j.Label)
@@ -218,25 +230,6 @@ func TestJudgeEscalatesOnInvalidOrFailedCalls(t *testing.T) {
 			assert.Equal(t, tt.wantRequests, f.requests())
 		})
 	}
-
-	t.Run("a closed server escalates", func(t *testing.T) {
-		f := newFakeGate(t, serve(200, ""))
-		g, _ := testGate(t, f.srv.URL)
-		f.srv.Close()
-		j := g.Judge(t.Context(), "todo", "t1", d, "state")
-		assert.Equal(t, verdictEscalate, j.Verdict)
-		assert.Contains(t, j.Reason, "gate unreachable")
-		assert.NotContains(t, j.Reason, keySentinel)
-	})
-
-	t.Run("a cancelled context escalates", func(t *testing.T) {
-		f := newFakeGate(t, serve(200, answerBody(d.Name, "done", good, 0.9)))
-		g, _ := testGate(t, f.srv.URL)
-		ctx, cancel := context.WithCancel(t.Context())
-		cancel()
-		j := g.Judge(ctx, "todo", "t1", d, "state")
-		assert.Equal(t, verdictEscalate, j.Verdict)
-	})
 }
 
 func TestJudgeRetriesThrottledCalls(t *testing.T) {

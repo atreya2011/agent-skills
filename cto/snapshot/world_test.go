@@ -23,7 +23,7 @@ const (
 )
 
 // world is a synthetic machine: real git repositories, transcripts for two
-// profiles, a vault, recorded herdr, gh and task output, and a local file that
+// profiles, a vault, synthetic herdr, gh and task output, and a local file that
 // points at all of it.
 type world struct {
 	Root      string
@@ -52,7 +52,7 @@ func writeFile(t *testing.T, path, content string, mtime time.Time) {
 }
 
 // newWorld builds the world under a temporary directory and points the process
-// at its recorded programs. gateURL goes into the local file.
+// at its stand-in programs. gateURL goes into the local file.
 func newWorld(t *testing.T, gateURL string) *world {
 	t.Helper()
 	root, err := filepath.EvalSymlinks(t.TempDir())

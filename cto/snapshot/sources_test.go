@@ -30,7 +30,7 @@ func TestHerdrSources(t *testing.T) {
 		wantWorkspaces []Workspace
 		wantTabs       []Tab
 	}{
-		{"the recorded lists join into workspaces and tabs", base.Pinned,
+		{"the fixture lists join into workspaces and tabs", base.Pinned,
 			[]Workspace{
 				{ID: "w1", Label: "alpha", State: "idle", OrchestratorTab: "w1:t1"},
 				{ID: "w2", Label: "notes", State: "blocked"},

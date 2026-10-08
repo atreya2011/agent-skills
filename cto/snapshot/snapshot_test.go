@@ -19,7 +19,7 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// Todo UUIDs of the recorded task export.
+// Todo UUIDs of the synthetic task export.
 const (
 	todoParser      = "00000000-0000-4000-8000-000000000001" // linked pull request is merged
 	todoDocs        = "00000000-0000-4000-8000-000000000002" // linked issue is open and ready
@@ -398,83 +398,98 @@ func TestSnapshotEscalatesWhenTheGateFails(t *testing.T) {
 	}
 }
 
+// keyRun is one run of the tool with a key setup, for the key handling rows.
+type keyRun struct {
+	f      *fakeGate
+	w      *world
+	envLog string
+	out    string
+	errOut string
+}
+
 func TestSnapshotKeyHandling(t *testing.T) {
-	t.Run("the key is out of the environment of every source command and stays out of every output", func(t *testing.T) {
-		f := scriptedGate(t, baseScript)
-		w := newWorld(t, f.srv.URL)
-		envLog := filepath.Join(w.Root, "env.log")
-		t.Setenv("SHIM_ENVLOG", envLog)
-		t.Setenv(keyEnv, keySentinel)
-
-		code, out, errOut := runTool(t, w, "")
-		require.Equal(t, 0, code, errOut)
-		children, err := os.ReadFile(envLog)
-		require.NoError(t, err)
-		assert.NotContains(t, string(children), keyEnv)
-		assert.NotContains(t, string(children), keySentinel)
-		logged, err := os.ReadFile(filepath.Join(w.Root, "state", "gate.log"))
-		require.NoError(t, err)
-		for name, text := range map[string]string{"stdout": out, "stderr": errOut, "gate log": string(logged)} {
-			assert.NotContains(t, text, keySentinel, name)
-		}
-		require.NotEmpty(t, f.headers)
-		assert.Equal(t, "Bearer "+keySentinel, f.headers[0].Get("Authorization"), "the gate still received the key")
-	})
-
-	t.Run("the keyring supplies the key when the environment has none", func(t *testing.T) {
-		f := scriptedGate(t, baseScript)
-		w := newWorld(t, f.srv.URL)
-		t.Setenv(keyEnv, "")
-		keyring.MockInit()
-		require.NoError(t, keyring.Set(keyringService, keyringUser, keySentinel))
-		var out, errOut bytes.Buffer
-		code := run(t.Context(), []string{"--local-file", w.Local}, strings.NewReader(""), &out, &errOut, testNow)
-		require.Equal(t, 0, code, errOut.String())
-		require.NotEmpty(t, f.headers)
-		assert.Equal(t, "Bearer "+keySentinel, f.headers[0].Get("Authorization"))
-	})
-
-	t.Run("a keyring miss with no environment key escalates every gate and sends nothing", func(t *testing.T) {
-		f := scriptedGate(t, baseScript)
-		w := newWorld(t, f.srv.URL)
-		t.Setenv(keyEnv, "")
-		code, out, _ := runTool(t, w, "")
-		require.Equal(t, 0, code)
-		s := decode(t, out)
-		noKey := 0
-		for _, j := range s.Judgments {
-			if j.DecidedBy != decidedByRule {
-				assert.Equal(t, verdictEscalate, j.Verdict, "%s %s", j.Subject, j.ID)
+	tests := []struct {
+		name    string
+		env     string // value of TYPESAFE_API_KEY; empty is unset
+		keyring string // the OS keyring entry; empty is none
+		check   func(t *testing.T, r keyRun)
+	}{
+		{"the key is out of the environment of every source command and stays out of every output", keySentinel, "",
+			func(t *testing.T, r keyRun) {
+				children, err := os.ReadFile(r.envLog)
+				require.NoError(t, err)
+				assert.NotContains(t, string(children), keyEnv)
+				assert.NotContains(t, string(children), keySentinel)
+				logged, err := os.ReadFile(filepath.Join(r.w.Root, "state", "gate.log"))
+				require.NoError(t, err)
+				for name, text := range map[string]string{"stdout": r.out, "stderr": r.errOut, "gate log": string(logged)} {
+					assert.NotContains(t, text, keySentinel, name)
+				}
+				require.NotEmpty(t, r.f.headers)
+				assert.Equal(t, "Bearer "+keySentinel, r.f.headers[0].Get("Authorization"), "the gate still received the key")
+			}},
+		{"the keyring supplies the key when the environment has none", "", keySentinel,
+			func(t *testing.T, r keyRun) {
+				require.NotEmpty(t, r.f.headers)
+				assert.Equal(t, "Bearer "+keySentinel, r.f.headers[0].Get("Authorization"))
+			}},
+		{"a keyring miss with no environment key escalates every gate and sends nothing", "", "",
+			func(t *testing.T, r keyRun) {
+				noKey := 0
+				for _, j := range decode(t, r.out).Judgments {
+					if j.DecidedBy != decidedByRule {
+						assert.Equal(t, verdictEscalate, j.Verdict, "%s %s", j.Subject, j.ID)
+					}
+					if strings.Contains(j.Reason, "no API key") {
+						noKey++
+					}
+				}
+				assert.Equal(t, wantGateCalls, noKey, "every judgment that would have called a gate says why it did not")
+				assert.Zero(t, r.f.requests())
+			}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := scriptedGate(t, baseScript)
+			w := newWorld(t, f.srv.URL)
+			envLog := filepath.Join(w.Root, "env.log")
+			t.Setenv("SHIM_ENVLOG", envLog)
+			t.Setenv(keyEnv, tt.env)
+			keyring.MockInit()
+			if tt.keyring != "" {
+				require.NoError(t, keyring.Set(keyringService, keyringUser, tt.keyring))
 			}
-			if strings.Contains(j.Reason, "no API key") {
-				noKey++
-			}
-		}
-		assert.Equal(t, wantGateCalls, noKey, "every judgment that would have called a gate says why it did not")
-		assert.Zero(t, f.requests())
-	})
+			var out, errOut bytes.Buffer
+			code := run(t.Context(), []string{"--local-file", w.Local}, strings.NewReader(""), &out, &errOut, testNow)
+			require.Equal(t, 0, code, errOut.String())
+			tt.check(t, keyRun{f: f, w: w, envLog: envLog, out: out.String(), errOut: errOut.String()})
+		})
+	}
 }
 
 func TestReplySubcommand(t *testing.T) {
 	long := strings.Repeat("early text. ", 3000) + "THE-FINAL-VERDICT"
+	done := map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.9}}
 	tests := []struct {
-		name          string
-		stdin         string
-		script        map[string]scriptedAnswer
-		wantVerdict   string
-		wantLabel     string
-		wantCalls     int
-		wantInBody    string
-		wantNotInBody string
+		name        string
+		stdin       string
+		script      map[string]scriptedAnswer
+		wantVerdict string
+		wantLabel   string
+		wantReply   string // the reply text sent to the gate; empty means no call
 	}{
-		{"a confident done acts", "All merged. The tabs can be closed.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.85}}, verdictAct, "done", 1, "All merged.", ""},
-		{"a done below the high threshold escalates", "I think we are done.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.7}}, verdictEscalate, "done", 1, "", ""},
-		{"an unclear reply escalates", "Hmm.", map[string]scriptedAnswer{"orchestrator_reply:": {"unclear", 0.99}}, verdictEscalate, "unclear", 1, "", ""},
-		{"a not_done reply acts at the low threshold", "Still reviewing.", map[string]scriptedAnswer{"orchestrator_reply:": {"not_done", 0.65}}, verdictAct, "not_done", 1, "", ""},
-		{"an empty reply escalates without a call", "", nil, verdictEscalate, "", 0, "", ""},
-		{"a whitespace-only reply escalates without a call", " \n\t \n", nil, verdictEscalate, "", 0, "", ""},
-		{"surrounding whitespace is trimmed", "\n\n done \n\n", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.9}}, verdictAct, "done", 1, `"reply":"done"`, ""},
-		{"a long reply keeps its last 16 KiB", long, map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.9}}, verdictAct, "done", 1, "THE-FINAL-VERDICT", strings.Repeat("early text. ", 2000)},
+		{"a confident done acts", "All merged. The tabs can be closed.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.85}},
+			verdictAct, "done", "All merged. The tabs can be closed."},
+		{"a done below the high threshold escalates", "I think we are done.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.7}},
+			verdictEscalate, "done", "I think we are done."},
+		{"an unclear reply escalates", "Hmm.", map[string]scriptedAnswer{"orchestrator_reply:": {"unclear", 0.99}},
+			verdictEscalate, "unclear", "Hmm."},
+		{"a not_done reply acts at the low threshold", "Still reviewing.", map[string]scriptedAnswer{"orchestrator_reply:": {"not_done", 0.65}},
+			verdictAct, "not_done", "Still reviewing."},
+		{"an empty reply escalates without a call", "", nil, verdictEscalate, "", ""},
+		{"a whitespace-only reply escalates without a call", " \n\t \n", nil, verdictEscalate, "", ""},
+		{"surrounding whitespace is trimmed", "\n\n done \n\n", done, verdictAct, "done", "done"},
+		{"a long reply keeps exactly its last 16384 bytes", long, done, verdictAct, "done", long[len(long)-16384:]},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -488,30 +503,38 @@ func TestReplySubcommand(t *testing.T) {
 			assert.Equal(t, "reply", j.Subject)
 			assert.Equal(t, tt.wantVerdict, j.Verdict)
 			assert.Equal(t, tt.wantLabel, j.Label)
-			assert.Equal(t, tt.wantCalls, f.requests())
-			if tt.wantInBody != "" {
-				assert.Contains(t, string(f.bodies[0]), tt.wantInBody)
+			if tt.wantReply == "" {
+				assert.Zero(t, f.requests())
+				return
 			}
-			if tt.wantNotInBody != "" {
-				assert.NotContains(t, string(f.bodies[0]), tt.wantNotInBody)
+			require.Equal(t, 1, f.requests())
+			var sent struct {
+				State struct {
+					Reply string `json:"reply"`
+				} `json:"state"`
 			}
+			require.NoError(t, json.Unmarshal(f.bodies[0], &sent))
+			assert.Equal(t, tt.wantReply, sent.State.Reply)
 		})
 	}
 }
 
 func TestRunRejectsABadInvocationOrLocalFile(t *testing.T) {
 	tests := []struct {
-		name string
-		edit func(t *testing.T, path string)
-		args []string
+		name    string
+		edit    func(t *testing.T, path string)
+		args    []string
+		wantErr string
 	}{
-		{"an unknown flag", func(*testing.T, string) {}, []string{"--bogus"}},
-		{"a local file that is missing", func(t *testing.T, p string) { require.NoError(t, os.Remove(p)) }, nil},
+		{"an unknown flag", func(*testing.T, string) {}, []string{"--bogus"}, "flag provided but not defined"},
+		{"a local file that is missing", func(t *testing.T, p string) { require.NoError(t, os.Remove(p)) }, nil, "no such file or directory"},
 		{"a local file with an unknown field", func(t *testing.T, p string) {
 			data, err := os.ReadFile(p)
 			require.NoError(t, err)
-			require.NoError(t, os.WriteFile(p, append(data, []byte("```toml\n[gate]\nmodel = \"x\"\n```\n")...), 0o600))
-		}, nil},
+			edited := strings.Replace(string(data), "[gate]\n", "[gate]\nmodel = \"x\"\n", 1)
+			require.NotEqual(t, string(data), edited, "the local file has a [gate] table")
+			require.NoError(t, os.WriteFile(p, []byte(edited), 0o600))
+		}, nil, "unknown field"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -525,7 +548,7 @@ func TestRunRejectsABadInvocationOrLocalFile(t *testing.T) {
 			code := run(t.Context(), append(slices.Clone(tt.args), "--local-file", w.Local), strings.NewReader(""), &out, &errOut, testNow)
 			assert.Equal(t, 2, code)
 			assert.Empty(t, out.String())
-			assert.NotEmpty(t, errOut.String())
+			assert.Contains(t, errOut.String(), tt.wantErr)
 		})
 	}
 }

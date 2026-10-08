@@ -26,6 +26,7 @@ func TestLoadConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		file    string
+		absent  bool // the local file does not exist
 		wantErr string
 		check   func(t *testing.T, c Config)
 	}{
@@ -86,6 +87,11 @@ func TestLoadConfig(t *testing.T) {
 			wantErr: "listed twice",
 		},
 		{
+			name:    "a file that is missing",
+			absent:  true,
+			wantErr: "no such file or directory",
+		},
+		{
 			name:    "invalid toml",
 			file:    localFile("not toml ==\n"),
 			wantErr: "local file",
@@ -94,7 +100,9 @@ func TestLoadConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "cto.md")
-			require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
+			if !tt.absent {
+				require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
+			}
 			c, err := loadConfig(path)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -105,10 +113,6 @@ func TestLoadConfig(t *testing.T) {
 		})
 	}
 
-	t.Run("missing file", func(t *testing.T) {
-		_, err := loadConfig(filepath.Join(t.TempDir(), "absent.md"))
-		require.ErrorIs(t, err, os.ErrNotExist)
-	})
 }
 
 // TestSkillExampleParses keeps the settings example in the skill text valid:

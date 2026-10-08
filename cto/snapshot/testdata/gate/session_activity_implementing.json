@@ -1,0 +1,12 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "session_activity": {
+      "type": "choice",
+      "choice": "implementing",
+      "probabilities": { "implementing": 0.8, "reviewing": 0.05, "investigating": 0.1, "blocked": 0.02, "chatting": 0.02, "unknown": 0.01 },
+      "confidence": 0.76
+    }
+  },
+  "usage": { "input_tokens": 350, "output_tokens": 40 }
+}

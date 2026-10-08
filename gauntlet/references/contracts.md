@@ -110,12 +110,3 @@ A decision the agent cannot make from the seat brief travels as one entry. Work 
 The `<id>` is `<run>-<short-slug>`. The reader is assumed to know nothing about the run: the entry alone must let a human who has not followed the work choose an option. An entry missing a field, or whose Background leaves a term undefined, is returned to its author unfiled. The answer returns as `DECISION <id> — <answer>` in a seat brief to the same seat, without its Clear command, so the seat keeps its context.
 
 The inbox file is `~/.agents/local/inbox-gauntlet.md`, or `~/.agents/local/inbox-gauntlet-<name>.md` for the seat table of that name, unless the kickoff names another path. It has two sections by who acts next: `## For agents` and `## For the user`. The orchestrator owns the file: it files every entry its seats post in chat, files its own, and moves an entry between sections when the next actor changes. An entry the orchestrator can answer itself is answered in chat and never filed. A resolved entry is deleted; its outcome lives where it belongs (ticket text, commit, program record), never in the inbox. Uppercase failure words stay for mechanical stops.
-
-## Gauntlet counts
-
-Track two counts:
-
-- Final accepted findings: records left after check admission.
-- Fix work items: discrete checks and points sent to the implementer.
-
-User-approved deferrals stay explicit and sit outside the accepted count. Convergence is defined in [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md).

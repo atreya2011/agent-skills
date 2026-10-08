@@ -1,11 +1,11 @@
 ---
 name: gauntlet-implement
-description: Stage and implement one approved issue or spec into committed, cap-checked code on a pinned branch. Dispatch through a chosen engine: the implementer seat in a herdr tab, or parallel subagents in git worktrees. Use standalone to run an implementation stage directly, or as gauntlet's stage 5.
+description: Stage and implement one approved issue or spec into committed, cap-checked code on its own branch. Send the implementer brief through a chosen engine: the implementer seat in a herdr tab, or parallel subagents in git worktrees. Use standalone to run an implementation stage directly, or as gauntlet's stage 5.
 ---
 
 # gauntlet-implement
 
-Take one approved implementation issue or spec from a pinned base SHA to
+Take one approved implementation issue or spec from a base SHA to
 committed, cap-checked code on its own branch.
 Apply KISS and YAGNI to the build: make the least change that satisfies the spec. Prefer the standard library, native capabilities, and existing dependencies over new ones. Add only abstractions the spec requires. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil.
 
@@ -24,19 +24,19 @@ Check the working tree with
 that check finds. Record every pre-existing path and quarantine it in the
 implementer brief so every mutation leaves it untouched.
 
-## 2. Pin the base and branch
+## 2. Record the base SHA and branch
 
-Pin the PR-base SHA that contains the code under change. Create one branch
-from that pinned SHA, decoupled from any worktree. Record the
-branch, pinned base, and hard changed-line cap. When the branch already exists, adopt it to resume.
+Record the base SHA that contains the code under change. Create one branch
+from that SHA, decoupled from any worktree. Record the
+branch, base SHA, and hard changed-line cap. When the branch already exists, adopt it to resume.
 
-## 3. Dispatch through the chosen engine
+## 3. Send through the chosen engine
 
 Render the implementer brief from
 [briefs/implementer.md](briefs/implementer.md), filling every field from
-current facts — pinned base, branch, scope, cap. Give the engine the
-complete rendered brief every time; render it fresh for each dispatch instead
-of reusing an earlier render. Dispatch through the chosen engine:
+current facts — base SHA, branch, scope, cap. Give the engine the
+complete rendered seat brief every time; render it fresh for each send instead
+of reusing an earlier render. Send it through the chosen engine:
 
 - **tab** — the implementer seat in a herdr tab; see
   [engines/tab.md](engines/tab.md).
@@ -62,5 +62,5 @@ branch returns under the cap.
 
 ## Report
 
-State the branch, pinned base, HEAD, changed-line count against the cap, and
+State the branch, base SHA, HEAD, changed-line count against the cap, and
 which engine ran. Hand a branch under the cap to the caller's next stage. With the tab engine, the implementer tab stays open; the review stage sends it every fix brief.

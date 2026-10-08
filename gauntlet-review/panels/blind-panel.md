@@ -6,4 +6,4 @@ Seats: the chosen `reviewer-<name>` rows from the pool, minimum one, each launch
 
 ## Hunt (blind)
 
-Deliver each reviewer a fresh-rendered brief in chat through the receipt protocol. Each seat hunts the locked HEAD independently and submits executable checks with clause citations in chat. The reviewers stay read-only everywhere.
+Deliver each reviewer a freshly rendered reviewer brief in chat through the receipt protocol. Each seat hunts the locked HEAD independently and submits executable checks with clause citations in chat. The reviewers stay read-only everywhere.

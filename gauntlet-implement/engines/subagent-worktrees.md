@@ -1,8 +1,8 @@
 # Engine: subagent-worktrees
 
 Run the implementer as one or more `Agent`-tool subagents, each hosted
-in an ephemeral git worktree off the pinned branch. Choose this engine when
-an in-session subagent dispatches faster than a tab and herdr is unavailable.
+in an ephemeral git worktree off the branch. Choose this engine when
+an in-session subagent starts faster than a tab and herdr is unavailable.
 
 ## 1. Decompose honestly
 
@@ -13,17 +13,17 @@ logical commits internally.
 
 ## 2. Branch first, worktrees second
 
-The branch already exists from the pinned-base step. Each worktree is an
+The branch already exists from the base SHA step. Each worktree is an
 ephemeral host added *after* branch creation. `git worktree add -b`
 locks the branch to that worktree, so use the plain `add` form.
 
 - **N = 1:** create or reuse a host worktree with `git worktree add <path>
-  <branch>`, then dispatch from that host with `<branch>` actually checked out.
+  <branch>`, then start the subagent in that host with `<branch>` actually checked out.
   The caller MUST verify that branch precondition; the subagent commits
   directly so the branch advances from its current commit.
 - **N > 1:** add an integration worktree on the branch itself, plus one
   worktree per part on its own part-branch
-  (`git worktree add <path-i> -b <branch>-p<i> <branch>`). Dispatch every
+  (`git worktree add <path-i> -b <branch>-p<i> <branch>`). Start every
   part's subagent in a single message so they run in parallel; each commits
   locally on its part-branch only, leaving the push to the caller.
 
@@ -46,7 +46,7 @@ verbatim.
   Resolve a conflict directly, or re-implement a part inline when it turns
   out interdependent after all.
 
-Run the full test and lint suite on the integrated branch; dispatch a fresh
+Run the full test and lint suite on the integrated branch; start a fresh
 subagent to fix what it can, and record any residual failure in the report.
 
 ## 5. Clean up

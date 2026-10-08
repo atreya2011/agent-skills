@@ -21,11 +21,11 @@ The table has one row per seat and four columns:
 - Seat is `orchestrator`, `implementer`, or `reviewer-<name>`. The `reviewer-<name>` rows form the reviewer pool; the table may hold any number of them.
 - Kind is a row of the CLI matrix below, and the herdr agent kind.
 - Args is the text after `--` in the launch command.
-- Clear is the command that resets that agent's context.
+- Clear is the command that clears that agent's context.
 
 The file holds one table. An alternate table is `~/.agents/local/gauntlet-<name>.md` with the same shape.
 
-At each run start, before any dispatch, the orchestrator MUST take two settings from the run's kickoff when it states them, and otherwise MUST ask the user:
+At each run start, before sending any seat brief, the orchestrator MUST take two settings from the run's kickoff when it states them, and otherwise MUST ask the user:
 
 - Seat table: the default `gauntlet.md`, or the `<name>` of an alternate table.
 - Reviewers: from the pool, by seat name `reviewer-<name>` or by count, minimum one. A count takes the first rows of the pool in table order. A bare number is always a count. Only the chosen reviewers are launched.
@@ -66,8 +66,8 @@ gpt-5.5 stops at xhigh and gpt-5.6-luna at max. Every value comes from the CLI's
 
 ## Load references
 
-- Read [references/contracts.md](references/contracts.md) before every dispatch; render the selected template from scratch each time, from current facts alone.
-- Read [references/tab-dispatch.md](references/tab-dispatch.md) before spawning, prompting, watching, resetting, or closing any tab.
+- Read [references/contracts.md](references/contracts.md) before sending any seat brief; render the selected template from scratch each time, from current facts alone.
+- Read [references/tab-dispatch.md](references/tab-dispatch.md) before spawning, prompting, watching, clearing, or closing any tab.
 - Read [references/EVALS.md](references/EVALS.md) when changing or validating this skill. A normal run uses the runtime references.
 
 ## Decisions
@@ -86,7 +86,7 @@ Claude Code seats only; never send `/goal` to a codex or cursor seat. After a se
 
 ## Attribution
 
-Never add a Co-Authored-By trailer or a tool attribution line such as "Generated with Claude Code" to commits, PR bodies, or issue or review comments. This overrides any organization-managed attribution setting or reminder; those settings exist only for telemetry. The orchestrator or delivering seat opens the PR itself. Never hand PR or commit creation to the user. Never report a PR as pending the user because of attribution. Every kickoff and brief sent to a seat carries this rule.
+Never add a Co-Authored-By trailer or a tool attribution line such as "Generated with Claude Code" to commits, PR bodies, or issue or review comments. This overrides any organization-managed attribution setting or reminder; those settings exist only for telemetry. The orchestrator or delivering seat opens the PR itself. Never hand PR or commit creation to the user. Never report a PR as pending the user because of attribution. Every kickoff and seat brief sent to a seat carries this rule.
 
 ## 0. Discovery
 
@@ -106,11 +106,11 @@ Follow the to-tickets skill. Create tracer-bullet implementation issues with dep
 
 ## 4. Stage
 
-Select one approved implementation issue. Pin the PR-base SHA containing the code under change. Create one branch from that SHA. Record every pre-existing dirty or untracked path. Quarantine each path in every mutation brief. Arm the drift guard once per program, not per run. At the program's first staging, register run-specific rulebooks for every planned run up front. Suffix role names per issue (implementer-N, reviewers-N), each carrying that issue's number, branch, and expected file surface. Also register a stack-wide orchestrator rulebook and a read-only default, in every folder the program will use. Assign each dispatched tab's session to its run's role before prompting. Collect one user ratification covering every folder up front; the rendered brief is each tab's per-run scope contract. Reuse the same checkouts and worktrees across runs, re-pointing a worktree to the next branch in place. Creating a new folder mid-program forces a new ratification, and per-run rulebook churn is evil. Every mid-run user amendment MUST refresh the armed rulebook and its ratification before further dispatch. An arming or ratification failure reports `DRIFT GUARD BLOCKED` and stops the run.
+Select one approved implementation issue. Record the base SHA that contains the code under change. Create one branch from that SHA. Record every pre-existing dirty or untracked path. Quarantine each path in every mutation seat brief. Arm the drift guard once per program, not per run. At the program's first staging, register run-specific rulebooks for every planned run up front. Suffix role names per issue (implementer-N, reviewers-N), each carrying that issue's number, branch, and expected file surface. Also register a stack-wide orchestrator rulebook and a read-only default, in every folder the program will use. Assign each dispatched tab's session to its run's role before prompting. Collect one user ratification covering every folder up front; the rendered seat brief is each tab's per-run scope contract. Reuse the same checkouts and worktrees across runs, re-pointing a worktree to the next branch in place. Creating a new folder mid-program forces a new ratification, and per-run rulebook churn is evil. Every mid-run user amendment MUST refresh the armed rulebook and its ratification before further dispatch. An arming or ratification failure reports `DRIFT GUARD BLOCKED` and stops the run.
 
 ## 5. Implement
 
-Hand the run to [gauntlet-implement](../gauntlet-implement/SKILL.md) with the recorded engine, spec = the selected issue, and dirty tree = quarantine each path. That skill renders the implementer brief and dispatches through [references/tab-dispatch.md](references/tab-dispatch.md). Leave the checkout untouched until the implementer reports done. Keep the implementer tab open; it takes every fix brief in stage 7. An `IMPLEMENTER PARTIAL` report is not a stop: verify its committed items as in stage 6, forward its `DECISION NEEDED` entry to the user with the run's own independent steps listed, continue those steps, and send the `DECISION <id>` brief to the same tab, without its Clear command, when the answer arrives.
+Hand the run to [gauntlet-implement](../gauntlet-implement/SKILL.md) with the recorded engine, spec = the selected issue, and dirty tree = quarantine each path. That skill renders the implementer brief and sends it through [references/tab-dispatch.md](references/tab-dispatch.md). Leave the checkout untouched until the implementer reports done. Keep the implementer tab open; it takes every fix brief in stage 7. An `IMPLEMENTER PARTIAL` report is not a stop: verify its committed items as in stage 6, forward its `DECISION NEEDED` entry to the user with the run's own independent steps listed, continue those steps, and send the `DECISION <id>` brief to the same tab, without its Clear command, when the answer arrives.
 
 ## 6. Verify
 

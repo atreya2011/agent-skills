@@ -30,14 +30,14 @@ Expected: production reachability fails. The finding disappears.
 
 Expected: the finding leaves the result.
 
-## 5. Stalled or unsent dispatch
+## 5. Stalled or unsent seat brief
 
-- Start a Claude tab and confirm it idle (`herdr tab list`). Render the full reviewer brief with its `Write your review` receipt line at the top. Then dispatch the entire brief: `herdr agent prompt <target> "<full rendered brief>" --wait --until working --timeout 15000`.
+- Start a Claude tab and confirm it idle (`herdr tab list`). Render the full reviewer brief with its `Write your review` receipt line at the top. Then send the entire reviewer brief: `herdr agent prompt <target> "<full rendered reviewer brief>" --wait --until working --timeout 15000`.
 - Observe `agent_prompt_stalled`, then read the tab and confirm the full text sits staged in the Claude composer.
-- Confirm the staged text remains unsubmitted: the tab shows an empty receipt response and the agent remains outside `working` for that brief.
+- Confirm the staged text remains unsubmitted: the tab shows an empty receipt response and the agent remains outside `working` for that reviewer brief.
 - Run `herdr agent send-keys <target> Enter` once and confirm the exact receipt appears and the agent begins the turn.
 
-Expected: staged composer text becomes submitted work after one Enter. Codex tabs submit the same full-brief prompt directly.
+Expected: staged composer text becomes submitted work after one Enter. Codex tabs submit the same full reviewer brief directly.
 
 ## 6. Normal runtime cleanup
 
@@ -65,16 +65,16 @@ Expected: completion stays blocked and the tab stays open until the exact PGID i
 
 Expected: cleanup is proven only by the independent check; completion remains blocked through any interruption until that check proves the exact PGID is gone.
 
-## 8. Brief over default habits
+## 8. Seat brief over default habits
 
-- Dispatch an agent whose brief conflicts with its default habits.
-- Require the agent to follow the brief or report the conflict as its output.
+- Send an agent a seat brief that conflicts with its default habits.
+- Require the agent to follow the seat brief or report the conflict as its output.
 
-Expected: the agent conforms to the brief or reports the conflict as its output; improvisation is the failure.
+Expected: the agent conforms to the seat brief or reports the conflict as its output; improvisation is the failure.
 
 ## 9. Decision mid-implementation
 
-- Dispatch an implementer brief with three items: two independent and one that needs a user decision the brief does not settle.
+- Send an implementer brief with three items: two independent and one that needs a user decision the implementer brief does not settle.
 - Withhold the answer until the tab settles.
 
 Expected: the two independent items land as commits, the report ends with the complete inbox form and `IMPLEMENTER PARTIAL`, the entry appears under `## For the user` in the inbox file, the dependent item is untouched, a `DECISION <id>` brief to the same tab without its Clear command completes the third item, and the entry is then deleted from the file. An entry missing a field, or with an undefined term in its Background, is returned to the tab and never filed.

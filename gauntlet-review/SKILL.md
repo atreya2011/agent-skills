@@ -9,7 +9,7 @@ Read this file, the tab-dispatch reference, the shared contracts, the blind-trio
 
 ## Cycle
 
-Lock HEAD and hold the cap. Render reviewer briefs and deliver each with `gauntlet/send.sh`. Wait and capture every seat with `gauntlet/watch.sh`. Admit each check with `gauntlet/check-gate.sh` under the check-evidence contract and mark it major or minor. Rule each prose point admit or skip under the simplicity contract and the issue scope; a skipped point is dropped.
+Lock HEAD and hold the cap. Render reviewer briefs and deliver each with `gauntlet/send.sh`. Wait and capture every seat with `gauntlet/watch.sh`. Admit each check with `gauntlet/admit-check.sh` under the finding contract and mark it major or minor. Rule each prose point admit or skip under the simplicity contract and the issue scope; a skipped point is dropped.
 
 While the cycle has a major bug, send every admitted check and point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. When the same acceptance checkbox produces a major bug in two consecutive cycles, stop fixing and send `DECISION NEEDED` to the dispatcher about the checkbox itself.
 

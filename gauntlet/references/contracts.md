@@ -32,7 +32,7 @@ For runs with a tracker issue, every implementation issue carries this estimate:
     Total: <changed lines>
     Basis: <files and assumptions supporting the estimate>
 
-Split before approval when the total exceeds the hard changed-line cap or the estimate lacks evidence. Keep replacement issues as tracer-bullet vertical slices with dependency edges.
+Split before approval when the total exceeds the hard changed-line cap or the estimate lacks a basis. Keep replacement issues as tracer-bullet vertical slices with dependency edges.
 
 ## Simplicity contract
 
@@ -42,7 +42,7 @@ Split before approval when the total exceeds the hard changed-line cap or the es
 - Comments: Google developer-documentation style, plain sentences on what the code does and why. Dead prose, aphorisms, flourishes: evil.
 - In touched scope, rewrite or delete garbage comments. Leaving one is evil.
 
-## Check-evidence contract
+## Finding contract
 
 Finding = one executable check + one line citing the spec clause it enforces. Prose findings: inadmissible.
 
@@ -50,10 +50,10 @@ Finding = one executable check + one line citing the spec clause it enforces. Pr
 - Clause MUST match one spec line exactly.
 - Orchestrator MUST rule yes or no that the clause describes the asserted behavior. Unclear clause: one question to the user, then stop.
 - Executable code: check MUST execute behavior. Source-text-only check: inadmissible. Text deliverable: text match is the behavior.
-- Evidence MUST exercise the real component it accuses. Simulated stand-in only: inadmissible.
-- Evidence runs at admission and closure. Evidence files stay out of the repository.
+- A check MUST exercise the real component it accuses. Simulated stand-in only: inadmissible.
+- A check runs at admission and closure. Check files stay out of the repository.
 - Finding MUST close a path reachable in real operation. Unreachable path or fictitious edge case: inadmissible.
-- Project has a test suite: a regression test in it MAY be the evidence.
+- Project has a test suite: a regression test in it MAY be the check.
 - Fix-wave commits are unreviewed. A check added with the code it exercises is a claim, not proof.
 - Point: one prose line `Point: <what and why>` for a nit, design, or refactor item. Not a finding. The orchestrator rules it admit or skip under the simplicity contract; a skipped point is dropped.
 - Major bug: an admitted red check that ordinary use can trigger and that fails an acceptance checkbox of the issue, or crashes, corrupts, loses, or exposes data on the shipping path. A bypass that needs a trusted committer to deliberately evade a check is a Point. Minor bug: any other admitted red check.
@@ -115,7 +115,7 @@ The inbox file is the ledger: `~/.agents/local/gauntlet-inbox.md`, or `~/.agents
 
 Track two counts:
 
-- Final accepted findings: records left after executable-check gating.
+- Final accepted findings: records left after check admission.
 - Fix work items: discrete checks and points sent to the implementer.
 
 User-approved deferrals stay explicit and sit outside the accepted count. Convergence is defined in [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md).

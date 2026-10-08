@@ -7,9 +7,9 @@ Run every scenario in a disposable repository and disposable herdr tabs. Record 
 
 - Exercise the shipping entrypoint against a real service with a valid load or stress test.
 - Produce an executed reproduction, observed material failure, production reachability, independent verification, bounded fix, and closure check.
-- Pass the finding through executable-check gating and orchestrator validation of the size cap once. Keep the load or stress test intact.
+- Pass the finding through check admission and orchestrator validation of the size cap once. Keep the load or stress test intact.
 
-Expected: the finding survives when every evidence answer passes.
+Expected: the finding survives when every item above passes.
 
 ## 2. Mock-only failure
 

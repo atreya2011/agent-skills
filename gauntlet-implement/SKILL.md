@@ -1,12 +1,12 @@
 ---
 name: gauntlet-implement
-description: Stage and implement one approved issue or spec into committed, size-gated code on a pinned branch. Dispatch through a chosen engine: the implementer seat in a herdr tab, or parallel subagents in git worktrees. Use standalone to run an implementation stage directly, or as gauntlet's stage 5.
+description: Stage and implement one approved issue or spec into committed, cap-checked code on a pinned branch. Dispatch through a chosen engine: the implementer seat in a herdr tab, or parallel subagents in git worktrees. Use standalone to run an implementation stage directly, or as gauntlet's stage 5.
 ---
 
 # gauntlet-implement
 
 Take one approved implementation issue or spec from a pinned base SHA to
-committed, size-gated code on its own branch.
+committed, cap-checked code on its own branch.
 Apply KISS and YAGNI to the build: make the least change that satisfies the spec. Prefer the standard library, native capabilities, and existing dependencies over new ones. Add only abstractions the spec requires. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil.
 
 ## Load references
@@ -34,7 +34,7 @@ branch, pinned base, and hard changed-line cap. When the branch already exists, 
 
 Render the implementer brief from
 [briefs/implementer.md](briefs/implementer.md), filling every field from
-current evidence — pinned base, branch, scope, cap. Give the engine the
+current facts — pinned base, branch, scope, cap. Give the engine the
 complete rendered brief every time; render it fresh for each dispatch instead
 of reusing an earlier render. Dispatch through the chosen engine:
 
@@ -51,7 +51,7 @@ confirm, not a substitute for verification. Treat any warning or dirty
 generated output as a failure and send the branch back to the engine for
 another pass.
 
-## 5. Size gate
+## 5. Cap check
 
 Run the committed-range count per
 [../gauntlet/references/contracts.md](../gauntlet/references/contracts.md)

@@ -31,8 +31,8 @@ Work rules
 Commit rules
 
 - MUST use lowercase conventional commits, one logical change each, intended paths only.
-- MUST run the staged count and every local gate together (formatter, linters, doc checks) before every commit; any warning fails:
-{{exact-gate-commands}}
+- MUST run the staged count and every local tool together (formatter, linters, doc checks) before every commit; any warning fails:
+{{exact-tool-commands}}
 
 Boundary rules
 
@@ -42,7 +42,7 @@ Boundary rules
 
 Report
 
-- Commit SHAs and subjects; files per commit; acceptance checks; gate tails; browser results; final committed changed-line count.
+- Commit SHAs and subjects; files per commit; acceptance checks; tool tails; browser results; final committed changed-line count.
 - Then the success block, then the terminal line.
 
 ```text

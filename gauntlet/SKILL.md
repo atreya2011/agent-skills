@@ -1,12 +1,12 @@
 ---
 name: gauntlet
-description: Gauntlet a feature from evidence through blind adversarial review to a merge-ready PR.
+description: Gauntlet a feature from facts through blind adversarial review to a merge-ready PR.
 disable-model-invocation: true
 ---
 
 # Gauntlet
 
-MUST take one approved implementation issue from evidence to a merge-ready PR: a draft from the first verified push, marked ready for review when the run converges. Evidence controls every transition.
+MUST take one approved implementation issue from facts to a merge-ready PR: a draft from the first verified push, marked ready for review when the run converges. Facts control every transition.
 KISS and YAGNI drive every phase: run the least process that closes the selected issue. Add mechanism, abstraction, or scope only when a demonstrated failure demands it. When two compliant options exist, take the simpler one. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil. Agents communicate in chat only; repo files carry only the deliverable itself.
 
 ## Run settings
@@ -56,7 +56,7 @@ gpt-5.5 stops at xhigh and gpt-5.6-luna at max. Every value comes from the CLI's
 
 ## Load references
 
-- Read [references/contracts.md](references/contracts.md) before every dispatch; render the selected template from scratch each time, from current evidence alone.
+- Read [references/contracts.md](references/contracts.md) before every dispatch; render the selected template from scratch each time, from current facts alone.
 - Read [references/tab-dispatch.md](references/tab-dispatch.md) before spawning, prompting, watching, resetting, or closing any tab.
 - Read [references/EVALS.md](references/EVALS.md) when changing or validating this skill. A normal run uses the runtime references.
 
@@ -86,15 +86,15 @@ Read the repository, configuration, state, and real data. Find the complication 
 
 ## 1. Grill
 
-Follow the grill-me skill. Resolve factual questions from evidence. Ask only genuine decision branches. Turn discovered traps into requirements.
+Follow the grill-me skill. Resolve factual questions yourself from the repository and real data. Ask only genuine decision branches. Turn discovered traps into requirements.
 
 ## 2. Spec
 
-Follow the to-spec skill. Record decisions, test seams, exclusions, and evidence in the chosen tracker.
+Follow the to-spec skill. Record decisions, test seams, exclusions, and facts in the chosen tracker.
 
 ## 3. Tickets
 
-Follow the to-tickets skill. Create tracer-bullet implementation issues with dependencies and acceptance checks. Before approval, every acceptance checkbox MUST be finite and checkable, MUST NOT require custom enforcement (a CI gate, custom lint rule, script, or fixture set) for a written rule, and MUST name the standard tool setting when one covers the requirement. Estimate and split per the size contract in [references/contracts.md](references/contracts.md). Stop and supersede an approved issue when it later exceeds the cap.
+Follow the to-tickets skill. Create tracer-bullet implementation issues with dependencies and acceptance checks. Before approval, every acceptance checkbox MUST be finite and checkable, MUST NOT require custom enforcement (a CI workflow, custom lint rule, script, or fixture set) for a written rule, and MUST name the standard tool setting when one covers the requirement. Estimate and split per the size contract in [references/contracts.md](references/contracts.md). Stop and supersede an approved issue when it later exceeds the cap.
 
 ## 4. Stage
 
@@ -114,9 +114,9 @@ Freeze scope and HEAD before each cycle. Keep valid load and stress tests intact
 
 Hand the cycle to [gauntlet-review](../gauntlet-review/SKILL.md) with the blind-trio panel. Let that flow own candidate order, review tools, admission, and the skip ruling.
 
-While the cycle has a major bug, send every admitted point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. Verify the fix, rerun the size gate, and start a fresh locked-HEAD cycle. The first cycle with no major bug closes the run as DIMINISHING RETURNS; carry its admitted points to stage 8 as review notes.
+While the cycle has a major bug, send every admitted point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. Verify the fix, rerun the cap check, and start a fresh locked-HEAD cycle. The first cycle with no major bug closes the run as DIMINISHING RETURNS; carry its admitted points to stage 8 as review notes.
 
 ## 8. Deliver
 
-Reconcile every acceptance check and rerun the final size gate.
+Reconcile every acceptance check and rerun the final cap check.
 Hand delivery to [gauntlet-deliver](../gauntlet-deliver/SKILL.md) with the review notes. The user controls merge.

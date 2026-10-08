@@ -19,7 +19,7 @@ contracts=$script_dir/references/contracts.md
 for key in data-safety finding-contract runtime-ownership agent-contract simplicity-contract; do
   case $key in
     data-safety) heading='Data safety'; include=0 ;;
-    finding-contract) heading='Check-evidence contract'; include=1 ;;
+    finding-contract) heading='Finding contract'; include=1 ;;
     runtime-ownership) heading='Runtime ownership'; include=1 ;;
     agent-contract) heading='Agent operating contract'; include=1 ;;
     simplicity-contract) heading='Simplicity contract'; include=1 ;;

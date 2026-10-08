@@ -108,11 +108,14 @@ Talk to orchestrators by chat only. Never edit their files.
 
 Dispatch only a todo that has `ready` true, assignee `cto` and `dispatched` false. A todo that is not ready is listed in Queued as not ready and is never dispatched. The user controls unspecified work.
 
-1. Create a workspace for the run: `herdr workspace create --cwd <project root> --label <project label>-<issue number> --no-focus`.
-2. Start the orchestrator in it from the `orchestrator` row of the gauntlet seat table, as the gauntlet skill's tab dispatch text describes. Label the tab `orchestrator`.
-3. Send the kickoff with `herdr agent prompt <name>`. It starts with the gauntlet skill invocation for the orchestrator's kind (`/gauntlet` for claude, `$gauntlet` for codex), then the issue URL, the seat table and reviewers from the `Dispatch default` ruling, the line "Report decisions and completion in chat to the agent named cto", and this rule: never add a Co-Authored-By trailer or a tool attribution line to commits, PR bodies, or issue or review comments.
-4. For a claude orchestrator, send `/goal` after it acknowledges the kickoff, as the gauntlet skill's session goal section describes.
-5. Record the run's workspace on the todo: `task <uuid> annotate "run: <workspace label>"`.
+The steps follow the gauntlet skill and its `references/tab-dispatch.md`. Name the orchestrator's agent `orchestrator-<issue number>`, because herdr agent names are unique per server. Call that name `<agent>` below.
+
+1. Create a workspace for the run: `herdr workspace create --cwd <project root> --label <project label>-<issue number> --no-focus`. Take the tab ID and root pane ID from the reply and run `herdr tab rename <tab_id> orchestrator`.
+2. Read the `orchestrator` row of the seat table that the `Dispatch default` ruling names (`gauntlet.md`, or `gauntlet-<name>.md`). Start the orchestrator with `herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>`, taking Kind and Args from that row.
+3. The gauntlet skill is invoked by the user, never by a model, so load it first: `herdr agent prompt <agent> "/gauntlet"` for a claude orchestrator, or `"$gauntlet"` for a codex one, then `herdr agent wait <agent> --until idle`.
+4. Send the kickoff through `gauntlet/send.sh <agent>`, with the message on standard input. The first line is `AGENT MESSAGE (cto, not a human).`, which `send.sh` requires. The message then gives the issue URL, `Seat table: <ruling>`, `Reviewers: <ruling>`, "Report decisions and completion in chat to the dispatcher, the agent named cto", this rule (never add a Co-Authored-By trailer or a tool attribution line to commits, PR bodies, or issue or review comments), and "Begin your response with exactly: RECEIVED <token>" with a token that is new for this send. If `send.sh` prints `SEND BLOCKED <agent> <reason>`, put it in Needs you and go no further.
+5. For a claude orchestrator, send the goal with `gauntlet/goal.sh <agent>`, the condition on standard input, using the example condition of the gauntlet skill's Session goal section. `goal.sh` prints `GOAL BLOCKED <agent>` on failure: put that in Needs you.
+6. Record the run's workspace on the todo: `task <uuid> annotate "run: <workspace label>"`.
 
 ## Wiki writes
 

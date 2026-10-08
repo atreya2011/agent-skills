@@ -12,7 +12,7 @@ Create a tab in the current workspace. Keep each tab unsplit. Label every tab by
     -> result.root_pane.pane_id
     herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>
 
-Kind and Args come from the seat's row in the seat table; see the Local file section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only.
+Kind and Args come from the seat's row in the seat table; see the Local file section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Before the first send to a cursor seat, read its visible screen and wait until the "Trusting workspace" prompt is gone; herdr reports the seat idle while it shows.
 
 Use a read-only allowlist where supported.
 

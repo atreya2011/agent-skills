@@ -57,3 +57,7 @@ Remove a clean worktree whose commits already landed on the branch
 resolve or confirm its changes are disposable, and only then force-remove it.
 Prune stale entries (`git worktree prune`), delete the part-branches
 (`git branch -D <branch>-p<i>`), and keep the branch itself.
+
+## 6. Fix briefs
+
+Under this engine no implementer tab exists, so each fix brief from the review stage goes to a fresh `Agent`-tool subagent in a new host worktree on the branch, set up as in step 2 and removed as in step 5.

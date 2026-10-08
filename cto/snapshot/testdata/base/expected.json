@@ -1,0 +1,570 @@
+{
+  "generated_at": "2026-10-08T12:00:00Z",
+  "window_hours": 6,
+  "workspaces": [
+    {
+      "id": "w1",
+      "label": "alpha",
+      "state": "idle",
+      "pinned": false,
+      "orchestrator_tab": "w1:t1"
+    },
+    {
+      "id": "w2",
+      "label": "notes",
+      "state": "blocked",
+      "pinned": false
+    },
+    {
+      "id": "w3",
+      "label": "beta",
+      "state": "working",
+      "pinned": false
+    }
+  ],
+  "projects": [
+    {
+      "id": "example/alpha",
+      "label": "alpha",
+      "root": "{{root}}/alpha",
+      "branch": "feat/x",
+      "dirty": 1,
+      "ahead": 0,
+      "behind": 0,
+      "default_branch": "origin/main",
+      "commits": [
+        {
+          "hash": "{{sha_merged}}",
+          "time": "2026-10-07T10:00:00+00:00",
+          "subject": "add the parser"
+        },
+        {
+          "hash": "{{sha}}",
+          "time": "2026-10-07T10:00:00+00:00",
+          "subject": "add the skeleton"
+        }
+      ],
+      "prs": [
+        {
+          "number": 7,
+          "title": "Add the parser",
+          "state": "MERGED",
+          "branch": "feat/parser",
+          "draft": false,
+          "merged_at": "2026-10-08T09:00:00Z",
+          "updated_at": "2026-10-08T09:00:00Z",
+          "url": "https://github.com/example/alpha/pull/7"
+        },
+        {
+          "number": 8,
+          "title": "Draft the docs",
+          "state": "OPEN",
+          "branch": "feat/y",
+          "draft": true,
+          "updated_at": "2026-10-08T10:30:00Z",
+          "url": "https://github.com/example/alpha/pull/8"
+        }
+      ],
+      "tabs": [
+        {
+          "id": "w1:t1",
+          "label": "orchestrator",
+          "workspace": "w1",
+          "agent": "claude",
+          "target": "alpha-orch",
+          "state": "idle",
+          "age_s": 600,
+          "pinned": false,
+          "cwd": "{{root}}/alpha-wt",
+          "session_id": "11111111-1111-4111-8111-111111111111"
+        }
+      ],
+      "todos": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "description": "Add the parser",
+          "domain": "work",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "pr: https://github.com/example/alpha/pull/7"
+          ],
+          "links": [
+            {
+              "kind": "pr",
+              "url": "https://github.com/example/alpha/pull/7",
+              "state": "MERGED",
+              "merged_at": "2026-10-08T09:00:00Z"
+            }
+          ],
+          "ready": false,
+          "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000002",
+          "description": "Write the docs",
+          "domain": "work",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "spec: https://github.com/example/alpha/issues/3"
+          ],
+          "due": "20261015T000000Z",
+          "links": [
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/alpha/issues/3",
+              "state": "OPEN",
+              "labels": [
+                "ready-for-agent"
+              ]
+            }
+          ],
+          "ready": true,
+          "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000007",
+          "description": "Land the merged change",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "https://github.com/example/alpha/issues/4 commit: {{sha_merged}}"
+          ],
+          "links": [
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/alpha/issues/4",
+              "state": "OPEN"
+            },
+            {
+              "kind": "commit",
+              "sha": "{{sha_merged}}",
+              "state": "on_default"
+            }
+          ],
+          "ready": false,
+          "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000010",
+          "description": "Land the unmerged change",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "https://github.com/example/alpha/issues/4 commit: {{sha_unmerged}}"
+          ],
+          "links": [
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/alpha/issues/4",
+              "state": "OPEN"
+            },
+            {
+              "kind": "commit",
+              "sha": "{{sha_unmerged}}",
+              "state": "not_on_default"
+            }
+          ],
+          "ready": false,
+          "dispatched": false
+        }
+      ],
+      "sessions": [
+        {
+          "profile": "main",
+          "id": "11111111-1111-4111-8111-111111111111",
+          "modified": "2026-10-08T11:50:00Z",
+          "age_s": 600,
+          "cwd": "{{root}}/alpha-wt",
+          "tab_id": "w1:t1",
+          "excerpt": "user: please add the parser\nassistant: Writing the parser now.\nassistant: Parser added and tests pass."
+        },
+        {
+          "profile": "main",
+          "id": "44444444-4444-4444-8444-444444444444",
+          "modified": "2026-10-08T11:00:00Z",
+          "age_s": 3600,
+          "cwd": "{{root}}/alpha",
+          "excerpt": "assistant: Reviewing the diff for PR 8."
+        }
+      ],
+      "vault": {
+        "path": "{{root}}/vaults/alpha",
+        "readable": true,
+        "last_page_edit": "2026-10-08T10:00:00Z"
+      }
+    },
+    {
+      "id": "example/beta",
+      "label": "beta",
+      "root": "{{root}}/beta",
+      "branch": "main",
+      "dirty": 0,
+      "ahead": 0,
+      "behind": 0,
+      "commits": [
+        {
+          "hash": "{{sha}}",
+          "time": "2026-10-07T10:00:00+00:00",
+          "subject": "first"
+        }
+      ],
+      "prs": [
+        {
+          "number": 2,
+          "title": "Tune the retries",
+          "state": "OPEN",
+          "branch": "feat/retry",
+          "draft": false,
+          "updated_at": "2026-10-08T11:00:00Z",
+          "url": "https://github.com/example/beta/pull/2"
+        }
+      ],
+      "tabs": [
+        {
+          "id": "w3:t1",
+          "label": "impl",
+          "workspace": "w3",
+          "agent": "codex",
+          "target": "beta-impl",
+          "state": "working",
+          "age_s": 1200,
+          "pinned": false,
+          "cwd": "{{root}}/beta",
+          "session_id": "33333333-3333-4333-8333-333333333333"
+        },
+        {
+          "id": "w3:t2",
+          "label": "helper",
+          "workspace": "w3",
+          "agent": "codex",
+          "target": "w3:p2",
+          "state": "done",
+          "age_s": null,
+          "pinned": false,
+          "cwd": "{{root}}/beta"
+        }
+      ],
+      "todos": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000004",
+          "description": "Fix the beta flake",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "https://github.com/example/beta/issues/9"
+          ],
+          "links": [
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/beta/issues/9",
+              "state": "CLOSED",
+              "state_reason": "COMPLETED"
+            }
+          ],
+          "ready": false,
+          "dispatched": false
+        }
+      ],
+      "sessions": [
+        {
+          "profile": "codex",
+          "id": "33333333-3333-4333-8333-333333333333",
+          "modified": "2026-10-08T11:40:00Z",
+          "age_s": 1200,
+          "cwd": "{{root}}/beta",
+          "tab_id": "w3:t1",
+          "excerpt": "user: run the tests\nassistant: Tests pass."
+        }
+      ]
+    },
+    {
+      "id": "example/gamma",
+      "label": "gamma",
+      "dirty": 0,
+      "ahead": 0,
+      "behind": 0,
+      "commits": [],
+      "prs": [],
+      "tabs": [],
+      "todos": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000008",
+          "description": "Check the gamma bug",
+          "assignee": "cto",
+          "ask": true,
+          "status": "pending",
+          "annotations": [
+            "https://github.com/example/gamma/issues/1"
+          ],
+          "links": [
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/gamma/issues/1",
+              "unreadable": true
+            }
+          ],
+          "ready": false,
+          "dispatched": false
+        }
+      ],
+      "sessions": []
+    },
+    {
+      "id": "{{root}}/notes",
+      "label": "notes",
+      "dirty": 0,
+      "ahead": 0,
+      "behind": 0,
+      "commits": [],
+      "prs": [],
+      "tabs": [
+        {
+          "id": "w2:t1",
+          "label": "keep-me",
+          "workspace": "w2",
+          "agent": "claude",
+          "target": "w2:p1",
+          "state": "blocked",
+          "age_s": 10800,
+          "pinned": true,
+          "cwd": "{{root}}/notes",
+          "session_id": "22222222-2222-4222-8222-222222222222"
+        }
+      ],
+      "todos": [],
+      "sessions": [
+        {
+          "profile": "main",
+          "id": "22222222-2222-4222-8222-222222222222",
+          "modified": "2026-10-08T09:00:00Z",
+          "age_s": 10800,
+          "cwd": "{{root}}/notes",
+          "tab_id": "w2:t1",
+          "excerpt": "user: draft the note\nassistant: May I overwrite notes.md?"
+        }
+      ]
+    },
+    {
+      "id": "none",
+      "label": "no project",
+      "dirty": 0,
+      "ahead": 0,
+      "behind": 0,
+      "commits": [],
+      "prs": [],
+      "tabs": [
+        {
+          "id": "w1:t2",
+          "label": "shell",
+          "workspace": "w1",
+          "state": "unknown",
+          "age_s": null,
+          "pinned": false
+        }
+      ],
+      "todos": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000003",
+          "description": "Book the dentist",
+          "domain": "personal",
+          "assignee": "cos",
+          "ask": false,
+          "status": "pending",
+          "annotations": [],
+          "links": [],
+          "ready": false,
+          "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000005",
+          "description": "Tune the retry limits",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "session: {{root}}/claude-main/projects/-work-alpha/55555555-5555-4555-8555-555555555555.jsonl",
+            "run: beta-2"
+          ],
+          "links": [],
+          "session_id": "55555555-5555-4555-8555-555555555555",
+          "ready": false,
+          "dispatched": true
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000006",
+          "description": "Old finished chore",
+          "assignee": "cto",
+          "ask": false,
+          "status": "completed",
+          "annotations": [],
+          "closed_at": "2026-10-08T10:00:00Z",
+          "links": [],
+          "ready": false,
+          "dispatched": false
+        }
+      ],
+      "sessions": []
+    }
+  ],
+  "profiles": [
+    {
+      "name": "main",
+      "kind": "claude",
+      "last_activity": "2026-10-08T11:50:00Z",
+      "sessions_in_window": 3
+    },
+    {
+      "name": "alias",
+      "kind": "claude",
+      "sessions_in_window": 0,
+      "same_as": "main"
+    },
+    {
+      "name": "codex",
+      "kind": "codex",
+      "last_activity": "2026-10-08T11:40:00Z",
+      "sessions_in_window": 1
+    }
+  ],
+  "unreadable": [
+    {
+      "source": "gh issue view",
+      "target": "https://github.com/example/gamma/issues/1",
+      "error": "gh issue view https://github.com/example/gamma/issues/1: exit status 127: no recording for gh issue_view_https---github.com-example-gamma-issues-1"
+    },
+    {
+      "source": "transcript",
+      "target": "helper",
+      "error": "the tab has no session ID"
+    }
+  ],
+  "judgments": [
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "label": "done",
+      "confidence": 1,
+      "verdict": "act",
+      "decided_by": "rule",
+      "rule": "pr_merged",
+      "reason": "pull request https://github.com/example/alpha/pull/7 is merged",
+      "annotation": "cto rule pr_merged done 1.00 act 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000002",
+      "gate": "todo_state",
+      "label": "open",
+      "confidence": 0.9,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto todo_state open 0.90 act HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000007",
+      "label": "done",
+      "confidence": 1,
+      "verdict": "act",
+      "decided_by": "rule",
+      "rule": "commit_on_default",
+      "reason": "commit {{sha_merged}} is on the default branch",
+      "annotation": "cto rule commit_on_default done 1.00 act 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000010",
+      "gate": "todo_state",
+      "label": "stale",
+      "confidence": 0.7,
+      "verdict": "escalate",
+      "decided_by": "gate",
+      "reason": "confidence 0.70 is below 0.80",
+      "hash": "HASH",
+      "annotation": "cto todo_state stale 0.70 escalate HASH8 2026-10-08"
+    },
+    {
+      "subject": "session",
+      "id": "11111111-1111-4111-8111-111111111111",
+      "gate": "session_activity",
+      "label": "implementing",
+      "confidence": 0.9,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto session_activity implementing 0.90 act HASH8 2026-10-08"
+    },
+    {
+      "subject": "session",
+      "id": "44444444-4444-4444-8444-444444444444",
+      "gate": "session_activity",
+      "label": "unknown",
+      "confidence": 0.9,
+      "verdict": "escalate",
+      "decided_by": "gate",
+      "reason": "the label is unknown",
+      "hash": "HASH",
+      "annotation": "cto session_activity unknown 0.90 escalate HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000004",
+      "label": "done",
+      "confidence": 1,
+      "verdict": "act",
+      "decided_by": "rule",
+      "rule": "issue_closed",
+      "reason": "issue https://github.com/example/beta/issues/9 is closed as completed",
+      "annotation": "cto rule issue_closed done 1.00 act 2026-10-08"
+    },
+    {
+      "subject": "session",
+      "id": "33333333-3333-4333-8333-333333333333",
+      "gate": "session_activity",
+      "label": "investigating",
+      "confidence": 0.65,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto session_activity investigating 0.65 act HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000008",
+      "gate": "todo_state",
+      "confidence": 0,
+      "verdict": "escalate",
+      "decided_by": "error",
+      "reason": "a source this todo cites is unreadable"
+    },
+    {
+      "subject": "session",
+      "id": "22222222-2222-4222-8222-222222222222",
+      "gate": "session_activity",
+      "label": "blocked",
+      "confidence": 0.75,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto session_activity blocked 0.75 act HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000005",
+      "gate": "todo_state",
+      "label": "done",
+      "confidence": 0.85,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto todo_state done 0.85 act HASH8 2026-10-08"
+    }
+  ]
+}

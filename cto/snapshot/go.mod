@@ -8,6 +8,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/gjson v1.20.0
 	github.com/zalando/go-keyring v0.2.8
+	golang.org/x/sync v0.23.0
 )
 
 require (

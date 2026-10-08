@@ -1,9 +1,15 @@
-// Command cto-snapshot gathers the facts a CTO sweep needs and prints them as
-// one JSON document.
+// Command cto-snapshot gathers the facts a CTO sweep needs, lets rules and
+// gates judge them, and prints one JSON document. It only reads: it never
+// writes to herdr, Taskwarrior, git, GitHub, a transcript or a vault.
+//
+//	cto-snapshot [--local-file PATH]         print the snapshot
+//	cto-snapshot reply [--local-file PATH]   judge an orchestrator reply on standard input
 package main
 
 import (
 	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"flag"
 	"fmt"
 	"io"
@@ -12,8 +18,11 @@ import (
 	"time"
 )
 
+// maxReplyBytes bounds the orchestrator reply the reply gate reads.
+const maxReplyBytes = 16 << 10
+
 func main() {
-	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr, time.Now()))
+	os.Exit(run(context.Background(), os.Args[1:], os.Stdin, os.Stdout, os.Stderr, time.Now()))
 }
 
 // defaultLocalFile is the CTO skill's local file under the user's home.
@@ -26,17 +35,55 @@ func defaultLocalFile() string {
 }
 
 // run is the whole program with its inputs explicit so tests can call it. It
-// returns the process exit code: 2 for a bad invocation or local file.
-func run(_ context.Context, args []string, _, stderr io.Writer, _ time.Time) int {
+// returns the process exit code: 0 once it prints a document, whatever it could
+// not read, and 2 for a bad invocation or a bad local file.
+func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, now time.Time) int {
+	reply := len(args) > 0 && args[0] == "reply"
+	if reply {
+		args = args[1:]
+	}
 	fs := flag.NewFlagSet("cto-snapshot", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	localFile := fs.String("local-file", defaultLocalFile(), "path of the CTO local file")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if _, err := loadConfig(*localFile); err != nil {
+	// The key leaves the environment before any source command can start.
+	key, keyErr := readAPIKey()
+	cfg, err := loadConfig(*localFile)
+	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2
 	}
+	logger, logFile, err := openGateLog(cfg.Gate.Log)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return 2
+	}
+	defer func() { _ = logFile.Close() }()
+	gate := newGate(cfg.Gate, cfg.Thresholds, key, keyErr, logger, now)
+
+	var doc any
+	if reply {
+		doc = judgeReply(ctx, gate, stdin)
+	} else {
+		doc = collect(ctx, cfg, gate, now)
+	}
+	if err := json.MarshalWrite(stdout, doc, json.Deterministic(true), jsontext.WithIndent("  ")); err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return 2
+	}
+	_, _ = fmt.Fprintln(stdout)
 	return 0
+}
+
+// judgeReply asks the orchestrator_reply gate what an orchestrator's chat reply
+// says about its tabs. An empty reply escalates without a call.
+func judgeReply(ctx context.Context, gate *Gate, stdin io.Reader) Judgment {
+	text, err := io.ReadAll(io.LimitReader(stdin, maxReplyBytes))
+	if err != nil || len(text) == 0 {
+		return Judgment{Subject: "reply", Gate: gateReply.Name, Verdict: verdictEscalate, DecidedBy: decidedByError,
+			Reason: "there is no reply text to judge"}
+	}
+	return gate.Judge(ctx, "reply", "", gateReply, map[string]string{"reply": string(text)})
 }

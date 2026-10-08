@@ -19,6 +19,9 @@ func TestMain(m *testing.M) {
 	if name := filepath.Base(os.Args[0]); slices.Contains(shimNames, name) {
 		os.Exit(replay(name, os.Args[1:]))
 	}
+	// A race-enabled shim would sleep one second at exit, once per command. The
+	// setting only reaches the shims this process starts.
+	_ = os.Setenv("GORACE", "atexit_sleep_ms=0")
 	os.Exit(m.Run())
 }
 

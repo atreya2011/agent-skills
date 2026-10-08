@@ -33,11 +33,17 @@ type fakeGate struct {
 	bodies  [][]byte
 	headers []http.Header
 	reply   func(n int, w http.ResponseWriter)
+	handler func(f *fakeGate, body []byte, w http.ResponseWriter)
 }
 
-func newFakeGate(t *testing.T, reply func(n int, w http.ResponseWriter)) *fakeGate {
+// newFakeGate starts a fake gate. reply answers by request number; a handler,
+// when given, answers by request content instead.
+func newFakeGate(t *testing.T, reply func(n int, w http.ResponseWriter), handler ...func(f *fakeGate, body []byte, w http.ResponseWriter)) *fakeGate {
 	t.Helper()
 	f := &fakeGate{reply: reply}
+	if len(handler) > 0 {
+		f.handler = handler[0]
+	}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		f.mu.Lock()
@@ -45,6 +51,10 @@ func newFakeGate(t *testing.T, reply func(n int, w http.ResponseWriter)) *fakeGa
 		f.headers = append(f.headers, r.Header.Clone())
 		n := len(f.bodies)
 		f.mu.Unlock()
+		if f.handler != nil {
+			f.handler(f, body, w)
+			return
+		}
 		f.reply(n, w)
 	}))
 	t.Cleanup(f.srv.Close)

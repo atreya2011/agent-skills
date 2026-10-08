@@ -2,12 +2,14 @@
 {"id":1,"uuid":"00000000-0000-4000-8000-000000000001","description":"Add the parser","project":"work","status":"pending","tags":["cto"],"entry":"20261001T000000Z","annotations":[{"entry":"20261002T000000Z","description":"pr: https://github.com/example/alpha/pull/7"}]},
 {"id":2,"uuid":"00000000-0000-4000-8000-000000000002","description":"Write the docs","project":"work","status":"pending","tags":["cto"],"due":"20261015T000000Z","annotations":[{"entry":"20261002T000000Z","description":"spec: https://github.com/example/alpha/issues/3"}]},
 {"id":3,"uuid":"00000000-0000-4000-8000-000000000003","description":"Book the dentist","project":"personal","status":"pending","tags":["cos"]},
-{"id":4,"uuid":"00000000-0000-4000-8000-000000000004","description":"Fix the beta flake","status":"pending","annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/beta/issues/9"}]},
+{"id":4,"uuid":"00000000-0000-4000-8000-000000000004","description":"Fix the beta flake","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/beta/issues/9"}]},
 {"id":5,"uuid":"00000000-0000-4000-8000-000000000005","description":"Tune the retry limits","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"session: {{root}}/claude-main/projects/-work-alpha/55555555-5555-4555-8555-555555555555.jsonl"},{"entry":"20261003T000000Z","description":"run: beta-2"}]},
 {"id":0,"uuid":"00000000-0000-4000-8000-000000000006","description":"Old finished chore","status":"completed","tags":["cto"],"end":"20261008T100000Z"},
 {"id":6,"uuid":"00000000-0000-4000-8000-000000000007","description":"Land the merged change","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/alpha/issues/4 commit: {{sha_merged}}"}]},
 {"id":7,"uuid":"00000000-0000-4000-8000-000000000008","description":"Check the gamma bug","status":"pending","tags":["cto","ask"],"annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/gamma/issues/1"}]},
 {"id":0,"uuid":"00000000-0000-4000-8000-000000000009","description":"Ancient finished chore","status":"completed","tags":["cto"],"end":"20260901T000000Z"},
 {"id":8,"uuid":"00000000-0000-4000-8000-000000000010","description":"Land the unmerged change","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/alpha/issues/4 commit: {{sha_unmerged}}"}]},
+{"id":9,"uuid":"00000000-0000-4000-8000-000000000012","description":"Land the other merged change","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"commit: {{sha_merged}}"},{"entry":"20261002T000000Z","description":"https://github.com/example/alpha/issues/6"}]},
+{"id":10,"uuid":"00000000-0000-4000-8000-000000000013","description":"Plan the offsite","status":"pending"},
 {"id":0,"uuid":"00000000-0000-4000-8000-000000000011","description":"Deleted item","status":"deleted","tags":["cto"]}
 ]

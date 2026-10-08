@@ -172,6 +172,32 @@
           ],
           "ready": false,
           "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000012",
+          "description": "Land the other merged change",
+          "assignee": "cto",
+          "ask": false,
+          "status": "pending",
+          "annotations": [
+            "commit: {{sha_merged}}",
+            "https://github.com/example/alpha/issues/6"
+          ],
+          "links": [
+            {
+              "kind": "commit",
+              "sha": "{{sha_merged}}",
+              "state": "on_default"
+            },
+            {
+              "kind": "issue",
+              "url": "https://github.com/example/alpha/issues/6",
+              "state": "CLOSED",
+              "state_reason": "COMPLETED"
+            }
+          ],
+          "ready": false,
+          "dispatched": false
         }
       ],
       "sessions": [
@@ -254,6 +280,7 @@
         {
           "uuid": "00000000-0000-4000-8000-000000000004",
           "description": "Fix the beta flake",
+          "assignee": "cto",
           "ask": false,
           "status": "pending",
           "annotations": [
@@ -407,6 +434,16 @@
           "links": [],
           "ready": false,
           "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000013",
+          "description": "Plan the offsite",
+          "ask": false,
+          "status": "pending",
+          "annotations": [],
+          "links": [],
+          "ready": false,
+          "dispatched": false
         }
       ],
       "sessions": []
@@ -470,13 +507,13 @@
     {
       "subject": "todo",
       "id": "00000000-0000-4000-8000-000000000007",
-      "label": "done",
-      "confidence": 1,
+      "gate": "todo_state",
+      "label": "open",
+      "confidence": 0.9,
       "verdict": "act",
-      "decided_by": "rule",
-      "rule": "commit_on_default",
-      "reason": "commit {{sha_merged}} is on the default branch",
-      "annotation": "cto rule commit_on_default done 1.00 act 2026-10-08"
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto todo_state open 0.90 act HASH8 2026-10-08"
     },
     {
       "subject": "todo",
@@ -489,6 +526,17 @@
       "reason": "confidence 0.70 is below 0.80",
       "hash": "HASH",
       "annotation": "cto todo_state stale 0.70 escalate HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000012",
+      "label": "done",
+      "confidence": 1,
+      "verdict": "act",
+      "decided_by": "rule",
+      "rule": "commit_on_default",
+      "reason": "commit {{sha_merged}} is on the default branch",
+      "annotation": "cto rule commit_on_default done 1.00 act 2026-10-08"
     },
     {
       "subject": "session",
@@ -565,6 +613,14 @@
       "decided_by": "gate",
       "hash": "HASH",
       "annotation": "cto todo_state done 0.85 act HASH8 2026-10-08"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000013",
+      "confidence": 0,
+      "verdict": "escalate",
+      "decided_by": "error",
+      "reason": "no assignee tag"
     }
   ]
 }

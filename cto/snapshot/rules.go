@@ -1,18 +1,34 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
-// judged reports whether the CTO judges a todo: it is open and is tagged for
+// open reports whether a todo is pending or waiting.
+func open(t Todo) bool {
+	return t.Status == "pending" || t.Status == "waiting"
+}
+
+// judged reports whether a todo gets a judgment: it is open and is tagged for
 // the CTO or not tagged yet. A +cos todo belongs to the CoS and is never
 // touched.
 func judged(t Todo) bool {
-	return (t.Assignee == "cto" || t.Assignee == "") && (t.Status == "pending" || t.Status == "waiting")
+	return open(t) && t.Assignee != "cos"
 }
 
 // ruleJudgment applies proof as CONTEXT.md defines it, with no model call: a
 // linked pull request is merged, a linked issue is closed as completed, or a
-// cited commit is on the default branch. It returns the first rule that fires.
+// cited commit is on the default branch. A rule fires only when no other cited
+// issue or pull request is open or unreadable, because either one means the
+// proof may not cover the whole todo; the todo then goes to the unreadable
+// escalation or the gate. It returns the first rule that fires.
 func ruleJudgment(t Todo, today string) (Judgment, bool) {
+	if slices.ContainsFunc(t.Links, func(l Link) bool {
+		return (l.Kind == "issue" || l.Kind == "pr") && (l.Unreadable || l.State == "OPEN")
+	}) {
+		return Judgment{}, false
+	}
 	for _, l := range t.Links {
 		var rule, why string
 		switch {

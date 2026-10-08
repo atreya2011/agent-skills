@@ -21,15 +21,17 @@ import (
 
 // Todo UUIDs of the recorded task export.
 const (
-	todoParser    = "00000000-0000-4000-8000-000000000001" // linked pull request is merged
-	todoDocs      = "00000000-0000-4000-8000-000000000002" // linked issue is open and ready
-	todoDentist   = "00000000-0000-4000-8000-000000000003" // +cos
-	todoFlake     = "00000000-0000-4000-8000-000000000004" // untagged, linked issue is closed
-	todoRetry     = "00000000-0000-4000-8000-000000000005" // cites a session
-	todoMerged    = "00000000-0000-4000-8000-000000000007" // cites a commit on the default branch
-	todoGamma     = "00000000-0000-4000-8000-000000000008" // its issue cannot be read
-	todoUnmerged  = "00000000-0000-4000-8000-000000000010" // cites a commit on a feature branch
-	wantGateCalls = 7
+	todoParser      = "00000000-0000-4000-8000-000000000001" // linked pull request is merged
+	todoDocs        = "00000000-0000-4000-8000-000000000002" // linked issue is open and ready
+	todoDentist     = "00000000-0000-4000-8000-000000000003" // +cos
+	todoFlake       = "00000000-0000-4000-8000-000000000004" // linked issue is closed
+	todoRetry       = "00000000-0000-4000-8000-000000000005" // cites a session
+	todoMerged      = "00000000-0000-4000-8000-000000000007" // commit on the default branch beside an open issue
+	todoGamma       = "00000000-0000-4000-8000-000000000008" // its issue cannot be read
+	todoUnmerged    = "00000000-0000-4000-8000-000000000010" // cites a commit on a feature branch
+	todoOtherMerged = "00000000-0000-4000-8000-000000000012" // commit on the default branch, issue closed
+	todoOffsite     = "00000000-0000-4000-8000-000000000013" // untagged
+	wantGateCalls   = 8
 )
 
 type scriptedAnswer struct {
@@ -41,6 +43,7 @@ type scriptedAnswer struct {
 // base world; rules decide the other todos and the CoS todo is not judged.
 var baseScript = map[string]scriptedAnswer{
 	"todo_state:" + todoDocs:          {"open", 0.9},
+	"todo_state:" + todoMerged:        {"open", 0.9},
 	"todo_state:" + todoRetry:         {"done", 0.85},
 	"todo_state:" + todoUnmerged:      {"stale", 0.7},
 	"session_activity:" + sessAlpha:   {"implementing", 0.9},
@@ -150,37 +153,63 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 
 	code, out, errOut := runTool(t, w, "")
 	require.Equal(t, 0, code, errOut)
-	want, err := os.ReadFile(filepath.Join("testdata", "base", "expected.json"))
-	require.NoError(t, err)
-	assert.JSONEq(t, normalize(string(want), w), normalize(out, w))
+	s := decode(t, out)
+	seen := strings.Join(f.seen(t), " ")
 
-	t.Run("rules decide without a gate call", func(t *testing.T) {
-		s := decode(t, out)
-		for id, rule := range map[string]string{todoParser: "pr_merged", todoFlake: "issue_closed", todoMerged: "commit_on_default"} {
-			j := s.judgment("todo", id)
-			assert.Equal(t, decidedByRule, j.DecidedBy, id)
-			assert.Equal(t, rule, j.Rule, id)
-			assert.Equal(t, verdictAct, j.Verdict, id)
-			assert.Equal(t, "done", j.Label, id)
-		}
-		assert.NotContains(t, strings.Join(f.seen(t), " "), todoParser)
-		assert.NotContains(t, strings.Join(f.seen(t), " "), todoFlake)
-		assert.NotContains(t, strings.Join(f.seen(t), " "), todoMerged)
-		assert.Len(t, f.seen(t), wantGateCalls, "the CoS todo, the completed todo and the rule-decided todos make no call")
-	})
-
-	t.Run("a todo that cites a session outside the window sends that session's excerpt", func(t *testing.T) {
-		f.mu.Lock()
-		defer f.mu.Unlock()
-		var retry []byte
-		for _, b := range f.bodies {
-			if bytes.Contains(b, []byte(todoRetry)) {
-				retry = b
+	tests := []struct {
+		name  string
+		check func(t *testing.T)
+	}{
+		{"the document equals the golden snapshot", func(t *testing.T) {
+			want, err := os.ReadFile(filepath.Join("testdata", "base", "expected.json"))
+			require.NoError(t, err)
+			assert.JSONEq(t, normalize(string(want), w), normalize(out, w))
+		}},
+		{"rules decide without a gate call", func(t *testing.T) {
+			for id, rule := range map[string]string{todoParser: "pr_merged", todoFlake: "issue_closed", todoOtherMerged: "commit_on_default"} {
+				j := s.judgment("todo", id)
+				assert.Equal(t, decidedByRule, j.DecidedBy, id)
+				assert.Equal(t, rule, j.Rule, id)
+				assert.Equal(t, verdictAct, j.Verdict, id)
+				assert.Equal(t, "done", j.Label, id)
+				assert.NotContains(t, seen, id)
 			}
-		}
-		require.NotNil(t, retry)
-		assert.Contains(t, string(retry), "Limits tuned to 5 attempts.")
-	})
+		}},
+		{"proof beside an open issue goes to the gate", func(t *testing.T) {
+			j := s.judgment("todo", todoMerged)
+			assert.Equal(t, decidedByGate, j.DecidedBy)
+			assert.Equal(t, "open", j.Label)
+			assert.Contains(t, seen, todoMerged)
+		}},
+		{"an untagged todo escalates without a rule or a call", func(t *testing.T) {
+			j := s.judgment("todo", todoOffsite)
+			assert.Equal(t, verdictEscalate, j.Verdict)
+			assert.Equal(t, "no assignee tag", j.Reason)
+			assert.NotContains(t, seen, todoOffsite)
+		}},
+		{"a cos todo gets no judgment", func(t *testing.T) {
+			assert.Empty(t, s.judgment("todo", todoDentist).Verdict)
+			assert.NotContains(t, seen, todoDentist)
+		}},
+		{"only gate-bound subjects make a call", func(t *testing.T) {
+			assert.Len(t, f.seen(t), wantGateCalls)
+		}},
+		{"a todo that cites a session outside the window sends that session's excerpt", func(t *testing.T) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			var retry []byte
+			for _, b := range f.bodies {
+				if bytes.Contains(b, []byte(todoRetry)) {
+					retry = b
+				}
+			}
+			require.NotNil(t, retry)
+			assert.Contains(t, string(retry), "Limits tuned to 5 attempts.")
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, tt.check)
+	}
 }
 
 func TestSnapshotReportsUnreadableSourcesAndCarriesOn(t *testing.T) {

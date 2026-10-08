@@ -13,7 +13,7 @@ func TestJudged(t *testing.T) {
 		want bool
 	}{
 		{"a pending cto todo", Todo{Assignee: "cto", Status: "pending"}, true},
-		{"an untagged todo, before the first-sweep split", Todo{Status: "pending"}, true},
+		{"an untagged todo, which escalates for want of a tag", Todo{Status: "pending"}, true},
 		{"a waiting cto todo", Todo{Assignee: "cto", Status: "waiting"}, true},
 		{"a cos todo is never touched", Todo{Assignee: "cos", Status: "pending"}, false},
 		{"a completed todo", Todo{Assignee: "cto", Status: "completed"}, false},
@@ -42,7 +42,10 @@ func TestRuleJudgment(t *testing.T) {
 		{"a commit on the default branch", []Link{{Kind: "commit", State: "on_default"}}, "commit_on_default"},
 		{"a commit off the default branch", []Link{{Kind: "commit", State: "not_on_default"}}, ""},
 		{"a commit that could not be checked", []Link{{Kind: "commit", State: "unchecked"}}, ""},
-		{"proof beside an unreadable link still counts", []Link{{Kind: "issue", Unreadable: true}, {Kind: "pr", State: "MERGED"}}, "pr_merged"},
+		{"proof beside an unreadable link does not count", []Link{{Kind: "issue", Unreadable: true}, {Kind: "pr", State: "MERGED"}}, ""},
+		{"proof beside an open issue does not count", []Link{{Kind: "issue", State: "OPEN"}, {Kind: "commit", State: "on_default"}}, ""},
+		{"proof beside an open pull request does not count", []Link{{Kind: "pr", State: "OPEN"}, {Kind: "issue", State: "CLOSED", StateReason: "COMPLETED"}}, ""},
+		{"proof beside another closed issue still counts", []Link{{Kind: "issue", State: "CLOSED", StateReason: "COMPLETED"}, {Kind: "pr", State: "MERGED"}}, "issue_closed"},
 		{"the first rule that fires wins", []Link{{Kind: "commit", State: "on_default"}, {Kind: "pr", State: "MERGED"}}, "commit_on_default"},
 	}
 	for _, tt := range tests {

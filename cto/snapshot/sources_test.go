@@ -84,7 +84,7 @@ func TestTodos(t *testing.T) {
 	for _, td := range todos {
 		byDesc[td.Description] = td
 	}
-	assert.Len(t, todos, 9, "open todos plus the one completed inside the window; deleted and old completed are dropped")
+	assert.Len(t, todos, 11, "open todos plus the one completed inside the window; deleted and old completed are dropped")
 	assert.NotContains(t, byDesc, "Ancient finished chore")
 	assert.NotContains(t, byDesc, "Deleted item")
 
@@ -100,7 +100,7 @@ func TestTodos(t *testing.T) {
 			Annotations: []string{"pr: https://github.com/example/alpha/pull/7"},
 			Links:       []Link{{Kind: "pr", URL: "https://github.com/example/alpha/pull/7"}}}},
 		{"Book the dentist", Todo{Domain: "personal", Assignee: "cos", Status: "pending", Annotations: []string{}, Links: []Link{}}},
-		{"Fix the beta flake", Todo{Status: "pending", Annotations: []string{"https://github.com/example/beta/issues/9"},
+		{"Fix the beta flake", Todo{Assignee: "cto", Status: "pending", Annotations: []string{"https://github.com/example/beta/issues/9"},
 			Links: []Link{{Kind: "issue", URL: "https://github.com/example/beta/issues/9"}}}},
 		{"Tune the retry limits", Todo{Assignee: "cto", Status: "pending", SessionID: sessOldUnbound, Dispatched: true,
 			Annotations: []string{
@@ -112,6 +112,11 @@ func TestTodos(t *testing.T) {
 			Annotations: []string{"https://github.com/example/alpha/issues/4 commit: " + w.ShaMerged},
 			Links: []Link{{Kind: "issue", URL: "https://github.com/example/alpha/issues/4"},
 				{Kind: "commit", SHA: w.ShaMerged, State: "unchecked"}}}},
+		{"Land the other merged change", Todo{Assignee: "cto", Status: "pending",
+			Annotations: []string{"commit: " + w.ShaMerged, "https://github.com/example/alpha/issues/6"},
+			Links: []Link{{Kind: "commit", SHA: w.ShaMerged, State: "unchecked"},
+				{Kind: "issue", URL: "https://github.com/example/alpha/issues/6"}}}},
+		{"Plan the offsite", Todo{Status: "pending", Annotations: []string{}, Links: []Link{}}},
 		{"Check the gamma bug", Todo{Assignee: "cto", Ask: true, Status: "pending",
 			Annotations: []string{"https://github.com/example/gamma/issues/1"},
 			Links:       []Link{{Kind: "issue", URL: "https://github.com/example/gamma/issues/1"}}}},

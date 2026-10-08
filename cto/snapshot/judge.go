@@ -57,7 +57,8 @@ type sessionState struct {
 }
 
 // judgeAll returns one judgment per judged todo and per session, in the order
-// of the projects. Rules decide first. A todo with an unreadable link source
+// of the projects. An untagged todo escalates, because it has no assignee yet.
+// Rules decide first. A todo with an unreadable link source
 // escalates without a gate call. Everything else goes to a gate, in parallel.
 // excerptFor returns the transcript excerpt of a session a todo cites.
 func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Time, excerptFor func(id string) string) []Judgment {
@@ -73,6 +74,10 @@ func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Tim
 		}
 		for _, t := range p.Todos {
 			if !judged(t) {
+				continue
+			}
+			if t.Assignee == "" {
+				fixed(Judgment{Subject: "todo", ID: t.UUID, Verdict: verdictEscalate, DecidedBy: decidedByError, Reason: "no assignee tag"})
 				continue
 			}
 			if j, ok := ruleJudgment(t, today); ok {

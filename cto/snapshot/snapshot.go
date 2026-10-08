@@ -289,14 +289,14 @@ type linkRef struct {
 	link int
 }
 
-// readLinks reads the state of every issue and pull request an open CTO todo
+// readLinks reads the state of every issue and pull request an open +cto todo
 // cites, then checks its cited commits against the project's default branch
 // and marks the todos that are ready to dispatch.
 func (c *collector) readLinks(ctx context.Context, projects []*Project) {
 	var refs []linkRef
 	for _, p := range projects {
 		for ti, t := range p.Todos {
-			if !judged(t) {
+			if t.Assignee != "cto" || !open(t) {
 				continue
 			}
 			for li, l := range t.Links {

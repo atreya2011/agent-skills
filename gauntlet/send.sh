@@ -31,17 +31,6 @@ if [[ "$prompt_result" == *agent_prompt_stalled* || "$composer" == *composer* ]]
   herdr agent send-keys "$target" Enter || blocked "enter failed"
 fi
 case "$(herdr agent get "$target")" in *working*|*running*) ;; *) blocked "not working after submit" ;; esac
-# Delivery proof: the seat is working and the tab shows this send's unique
-# token. The submitted prompt's own echo carries it; a reply is not required.
-# Cursor collapses the paste to "[Pasted text #N +M lines]" in the composer, so the
-# token appears in the transcript only once the agent echoes it. A seat that was
-# working holds the paste as a queued message until its current tool call ends,
-# so the echo can come much later. Both poll about 60 s, which stays inside the
-# caller's default 2-minute Bash timeout.
-if [[ "$kind" == cursor || "$status" == working ]]; then polls=120; else polls=10; fi
-for _ in $(seq 1 "$polls"); do
-  receipt=$(herdr agent read "$target" --lines 400) || blocked "receipt read failed"
-  grep -Fq "RECEIVED $token" <<<"$receipt" && exit 0
-  sleep 0.5
-done
-blocked "no receipt for $token"
+# Delivery proof: the seat is working and its screen shows this send's unique
+# token.
+"${BASH_SOURCE[0]%/*}/receipt.sh" "$target" "$token"

@@ -43,4 +43,4 @@ The same rule covers commit messages, pull-request text and issues: none may con
 
 ## Gauntlet tests
 
-`tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh` and `tests/gauntlet/send.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh` and the agent marker check of `gauntlet/send.sh`. Each runs without a local file or a herdr server, and CI runs them in the `gauntlet` job; the fixtures under `tests/gauntlet/` hold no machine values.
+`tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh`, `tests/gauntlet/send.test.sh` and `tests/gauntlet/receipt.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh`, the agent marker check of `gauntlet/send.sh` and `gauntlet/receipt.sh`. Each runs without a local file or a herdr server, except that `receipt.test.sh` skips without a herdr server, and CI runs them in the `gauntlet` job; the fixtures under `tests/gauntlet/` hold no machine values.

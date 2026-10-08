@@ -71,7 +71,7 @@ Send the seat's Clear command from the seat table with `herdr agent prompt <agen
 
 Read `herdr agent read <agent> --source visible`. If the composer still holds the command, send `herdr agent send-keys <agent> Enter` once. After `/new` a codex seat first asks "Where should the new conversation run?"; send Enter the same way to keep "Current checkout". Then read the screen every second for about 15 seconds until the earlier turns are gone and the composer is empty; otherwise stop with `SEAT BLOCKED <seat>`.
 
-After `/clear` a claude seat shows its header, the `/clear` line and an empty composer, and `herdr tab list` reports its tab idle. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. For a cursor seat, confirm live before use.
+After `/clear` a claude seat shows its header, the `/clear` line and an empty composer, and `herdr tab list` reports its tab idle. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. After `/clear` a cursor seat shows the Cursor Agent header, a tip line and an empty composer; cursor has no `/new`.
 
 Send the fresh rendered seat brief only after the composer is empty, applying the send receipt protocol above. The orchestrator never clears itself during a run.
 

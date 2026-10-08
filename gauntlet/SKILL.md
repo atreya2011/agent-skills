@@ -60,7 +60,7 @@ The orchestrator is the session running this skill and is never cleared during a
 | --- | --- | --- | --- | --- | --- |
 | claude | `--model <id>` | `--effort low\|medium\|high\|xhigh\|max` | `--dangerously-skip-permissions` | `/clear` | claude-opus-4-8, claude-fable-5-1, claude-sonnet-5 |
 | codex | `-m <id>` | `-c model_reasoning_effort=low\|medium\|high\|xhigh\|max\|ultra` | `--yolo` | `/new` | gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-6-astra |
-| cursor | `--model <id>` | suffix on the id: `-low`, `-medium`, `-high`, `-xhigh` | `--yolo` | confirm live before use | cursor-grok-4.5-high, cursor-grok-4.6-high, gpt-5.6-sol-high |
+| cursor | `--model <id>` | suffix on the id: `-low`, `-medium`, `-high`, `-xhigh` | `--yolo` | `/clear` | cursor-grok-4.5-high, cursor-grok-4.6-high, gpt-5.6-sol-high |
 
 gpt-5.5 stops at xhigh and gpt-5.6-luna at max. Every value comes from the CLI's own help or model list.
 

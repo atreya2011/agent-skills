@@ -125,7 +125,7 @@ Freeze scope and HEAD before each cycle. Keep valid load and stress tests intact
 
 Hand the cycle to [gauntlet-review](../gauntlet-review/SKILL.md) with the blind-trio panel. Let that flow own candidate order, review tools, admission, and the skip ruling.
 
-While the cycle has a major bug, send every admitted point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. Verify the fix, rerun the cap check, and start a fresh locked-HEAD cycle. The first cycle with no major bug closes the run as DIMINISHING RETURNS; carry its admitted points to stage 8 as review notes.
+While the cycle has a major bug, send every admitted check and point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. Verify the fix, rerun the cap check, and start a fresh locked-HEAD cycle. The first cycle with no major bug closes the run as DIMINISHING RETURNS; carry its admitted checks and points to stage 8 as review notes.
 
 ## 8. Deliver
 

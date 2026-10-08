@@ -51,11 +51,8 @@ KISS and YAGNI drive every phase: run the least process that closes the selected
 
 ## Seats
 
-A seat is a role in the run: `orchestrator`, `implementer`, and a pool of `reviewer-<name>` rows.
 The implementer is also the fixer: one seat and one tab for the whole run.
 The orchestrator is the session running this skill and is never cleared during a run.
-Each seat has a launch command: a CLI kind plus its arguments.
-Launch commands live in the seat table, never in the skill.
 
 ### CLI matrix
 
@@ -125,7 +122,7 @@ Freeze scope and HEAD before each cycle. Keep valid load and stress tests intact
 
 Hand the cycle to [gauntlet-review](../gauntlet-review/SKILL.md) with the blind panel. Let that flow own candidate order, review tools, admission, and the skip ruling.
 
-While the cycle has a major bug, send every admitted check and point to the implementer in one fix brief. First send its Clear command and confirm it idle with an empty context. Verify the fix, rerun the cap check, and start a fresh locked-HEAD cycle. The first cycle with no major bug closes the run as DIMINISHING RETURNS; carry its admitted checks and points to stage 8 as review notes.
+The Cycle and Close sections of [gauntlet-review](../gauntlet-review/SKILL.md) decide, from each cycle's admission list, whether to send a fix brief or to close the run as DIMINISHING RETURNS. After a fix, verify it, rerun the cap check, and start a fresh locked-HEAD cycle. The closing cycle's review notes go to stage 8.
 
 ## 8. Deliver
 

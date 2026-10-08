@@ -2,7 +2,7 @@
 
 Run the implementer as one or more `Agent`-tool subagents, each hosted
 in an ephemeral git worktree off the branch. Choose this engine when
-an in-session subagent starts faster than a tab and herdr is unavailable.
+an in-session subagent starts faster than a tab.
 
 ## 1. Decompose honestly
 
@@ -60,4 +60,4 @@ Prune stale entries (`git worktree prune`), delete the part-branches
 
 ## 6. Fix briefs
 
-Under this engine no implementer tab exists, so each fix brief from the review stage goes to a fresh `Agent`-tool subagent in a new host worktree on the branch, set up as in step 2 and removed as in step 5.
+Under this engine no implementer tab exists, so each fix brief, deletion round, and trim from the review stage goes to a fresh `Agent`-tool subagent in a new host worktree on the branch, set up as in step 2 and removed as in step 5.

@@ -30,7 +30,7 @@ At each run start, before sending any seat brief, the orchestrator MUST take two
 - Seat table: the default `gauntlet.md`, or the `<name>` of an alternate table.
 - Reviewers: from the pool, by seat name `reviewer-<name>` or by count, minimum one. A count takes the first rows of the pool in table order. A bare number is always a count. Only the chosen reviewers are launched.
 
-The orchestrator then runs `gauntlet/seats.sh [--table <name>] <reviewers>` once. It prints one line for the implementer and one for each chosen reviewer: seat, kind, args, and clear command, separated by tabs. The orchestrator is the session running this skill, so its row only has to exist; the orchestrator launches the implementer and the reviewers from those lines and records which table ran. A changed launch command applies to the next run.
+The orchestrator then runs `gauntlet/seats.sh [--table <name>] <reviewers>` once. It prints one line for the implementer and one for each chosen reviewer: seat, kind, args, and clear command, separated by tabs. The orchestrator is the session running this skill, so its row only has to exist; the orchestrator launches the reviewers, and with the tab engine the implementer, from those lines and records which table ran. A changed launch command applies to the next run.
 
 A missing file, or a missing orchestrator, implementer, or chosen reviewer, stops the run with `SEAT MISSING <seat>`. A reviewer count larger than the pool stops the run with `SEAT MISSING reviewer`.
 
@@ -51,7 +51,7 @@ KISS and YAGNI drive every phase: run the least process that closes the selected
 
 ## Seats
 
-The implementer is also the fixer: one seat and one tab for the whole run.
+The implementer is also the fixer: with the tab engine, one seat and one tab for the whole run.
 The orchestrator is the session running this skill and is never cleared during a run.
 
 ### CLI matrix

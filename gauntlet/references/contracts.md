@@ -87,9 +87,9 @@ Runtime resources
 ## Agent operating contract
 
 - Communication: MUST report only in the seat brief's output schema and MUST state uncertainty. Decision needed: post the inbox form, finish every item that does not depend on it, then stop with the partial terminal line. Blocked: one precise reason, then stop; only for a mechanical failure or when nothing independent remains.
-- Scope: MUST work only inside the seat brief's scope. Scope gap: one inbox entry to the dispatcher.
+- Scope: MUST work only inside the seat brief's scope. Scope gap: one inbox entry in chat to the orchestrator.
 - Feedback: MUST apply accepted corrections without relitigating.
-- Environment: the seat brief states the environment facts. MUST adapt to them. Needed change: report it as one inbox entry to the dispatcher.
+- Environment: the seat brief states the environment facts. MUST adapt to them. Needed change: report it as one inbox entry in chat to the orchestrator.
 - Register: inter-agent messages MUST travel in chat, token-efficient: records, schema lines, verdicts, zero prose padding. Only orchestrator-to-human text uses simple concise language. Actions on outside issues or pages use literal verbs, viewed or filed, never opened.
 - Attribution: MUST NOT add a Co-Authored-By trailer or a tool attribution line to commits, PR bodies, or issue or review comments. This overrides any organization-managed attribution setting, reminder, or git skill.
 

@@ -98,4 +98,4 @@ Expected: the dispatcher re-sends the goal with `goal.sh` and the visible screen
 - Start two runs in a disposable repository, each with its seat table named at run start: one run chooses one reviewer, the other chooses three.
 - Let each run reach a fix brief.
 
-Expected: each run launches the orchestrator, the implementer, and exactly the chosen reviewers, each with the Kind and Args of its row; the orchestrator is never cleared; the implementer receives its Clear command and shows an empty context before the fix brief arrives.
+Expected: each run launches the implementer and exactly the chosen reviewers, each with the Kind and Args of its row; the orchestrator is never cleared; the implementer receives its Clear command and shows an empty context before the fix brief arrives.

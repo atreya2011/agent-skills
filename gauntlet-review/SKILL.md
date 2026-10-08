@@ -5,7 +5,7 @@ description: Run executable-check review against a locked HEAD.
 
 # Gauntlet review
 
-Read this file, the tab-dispatch reference, the shared contracts, the blind panel, and the current seat briefs before each cycle. Every chosen reviewer MUST be captured as settled; otherwise stop with `SEAT UNCAPTURED <agent>` and block the close.
+Read this file, the tab-dispatch reference, the shared contracts, the [blind panel](panels/blind-panel.md), and the current seat briefs before each cycle. Every chosen reviewer MUST be captured as settled; otherwise stop with `SEAT UNCAPTURED <agent>` and block the close.
 
 ## Cycle
 

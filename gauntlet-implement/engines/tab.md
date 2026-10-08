@@ -18,7 +18,9 @@ for the full spawn-through-close lifecycle:
 6. Validate the schema and terminal line from
    [briefs/implementer.md](../briefs/implementer.md) before accepting the
    result.
-7. Keep the tab open for the run. The review stage clears it with its Clear command before each fix brief. Close it only at delivery, once capture, schema, and an independent runtime-cleanup check all pass.
+7. Close the tab per
+   [tab-dispatch.md](../../gauntlet/references/tab-dispatch.md) §Close tabs; the
+   review stage clears it before each fix brief.
 
 ## On a blocked start
 

@@ -87,8 +87,8 @@ Require digits such as `FIX DONE — [0-9]+`. Run `herdr agent wait` alongside i
 
 ## Close tabs
 
-Close a spawned tab with `herdr tab close <tab_id>`, taking the id from `herdr tab list`, only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab closes only at delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
+Close a spawned tab with `herdr tab close <tab_id>`, taking the id from `herdr tab list`, only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab stays open until delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
 
 ## Decisions
 
-`IMPLEMENTER PARTIAL` is a settled state for `watch.sh`, like done. Capture it, verify the committed items, return an entry with a missing field to the seat unfiled, and file a complete entry in the inbox file. Send the `DECISION <id>` brief through `send.sh` to the same tab without its Clear command; the seat needs its context to resume.
+`IMPLEMENTER PARTIAL` is a settled state for `watch.sh`, like done. Capture it, verify the committed items, return an entry with a missing field to the seat unfiled, and file a complete entry in the inbox file. Send the answer through `send.sh` as [contracts.md](contracts.md) §Inbox says.

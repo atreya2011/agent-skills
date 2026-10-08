@@ -63,4 +63,4 @@ branch returns under the cap.
 ## Report
 
 State the branch, base SHA, HEAD, changed-line count against the cap, and
-which engine ran. Hand a branch under the cap to the caller's next stage. With the tab engine, the implementer tab stays open; the review stage sends it every fix brief.
+which engine ran. Hand a branch under the cap to the caller's next stage. With the tab engine, close the implementer tab per [tab-dispatch.md](../gauntlet/references/tab-dispatch.md) §Close tabs; the review stage sends it every fix brief.

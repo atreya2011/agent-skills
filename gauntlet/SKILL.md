@@ -110,7 +110,7 @@ Select one approved implementation issue. Record the base SHA that contains the 
 
 ## 5. Implement
 
-Hand the run to [gauntlet-implement](../gauntlet-implement/SKILL.md) with the recorded engine, spec = the selected issue, and dirty tree = quarantine each path. That skill renders the implementer brief and sends it through [references/tab-dispatch.md](references/tab-dispatch.md). Leave the checkout untouched until the implementer reports done. Keep the implementer tab open; it takes every fix brief in stage 7. An `IMPLEMENTER PARTIAL` report is not a stop: verify its committed items as in stage 6, forward its `DECISION NEEDED` entry to the user with the run's own independent steps listed, continue those steps, and send the `DECISION <id>` brief to the same tab, without its Clear command, when the answer arrives.
+Hand the run to [gauntlet-implement](../gauntlet-implement/SKILL.md) with the recorded engine, spec = the selected issue, and dirty tree = quarantine each path. That skill renders the implementer brief and sends it through [references/tab-dispatch.md](references/tab-dispatch.md). Leave the checkout untouched until the implementer reports done. Close the implementer tab per [references/tab-dispatch.md](references/tab-dispatch.md) §Close tabs. An `IMPLEMENTER PARTIAL` report is not a stop: verify its committed items as in stage 6, forward its `DECISION NEEDED` entry to the user with the run's own independent steps listed, continue those steps, and send the answer as [references/contracts.md](references/contracts.md) §Inbox says when it arrives.
 
 ## 6. Verify
 

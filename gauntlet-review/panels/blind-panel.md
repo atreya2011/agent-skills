@@ -1,4 +1,4 @@
-# Blind-trio panel
+# Blind panel
 
 Spawn the reviewers chosen at run start using [../../gauntlet/references/tab-dispatch.md](../../gauntlet/references/tab-dispatch.md). Confirm every target is settled before prompting.
 

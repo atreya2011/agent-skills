@@ -63,7 +63,7 @@ Applies to Claude Code seats only, per the Session goal section of [SKILL.md](..
 
 Capture output through `watch.sh` immediately after the completion wait succeeds. The recent buffer truncates long messages, so capture immediately and isolate the final assistant message, excluding the seat brief, receipt, and earlier tab text. A truncated or missing capture reports `CAPTURE BLOCKED <source>` and stops.
 
-For the implementer, search for the runtime-valued terminal signal (`IMPLEMENTER DONE — [0-9]+` or `FIX DONE — [0-9]+`). For reviewers, locate the final assistant message from the completed turn. Use the longest matching assistant message.
+For the implementer, search for the runtime-valued terminal line: `IMPLEMENTER DONE — [0-9]+ commits?`, `IMPLEMENTER PARTIAL — [0-9]+ commits?`, `IMPLEMENTER BLOCKED — [^<]`, or `FIX DONE — [0-9]+ commits?`. Each pattern needs text that the seat brief's template leaves as a placeholder (`<N>`, `<reason>`), so it cannot match the template on the screen. For reviewers, locate the final assistant message from the completed turn. Use the longest matching assistant message.
 
 ## Clear a tab
 
@@ -83,7 +83,7 @@ For the implementer, confirm completion with a runtime-valued regex requiring:
 
     herdr pane wait-output <pane_id> --regex "<done regex>" --timeout <milliseconds>
 
-Require digits such as `FIX DONE — [0-9]+`. Run `herdr agent wait` alongside it for blocked or idle states; treat timeouts as outer bounds.
+Require digits, as in `FIX DONE — [0-9]+ commits?`: a pattern for `IMPLEMENTER DONE` alone matches the template text in the seat brief. Run `herdr agent wait` alongside it for blocked or idle states; treat timeouts as outer bounds.
 
 ## Close tabs
 

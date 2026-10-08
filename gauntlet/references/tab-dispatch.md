@@ -45,7 +45,7 @@ The `AGENT MESSAGE` prefix marks the sender as an agent. `send.sh` blocks a mess
 
 Use the `Fix` line for the implementer, for both its implementer brief and every fix brief, and the `Write your review` line for reviewers. Send that line and the full seat brief together through `send.sh`.
 
-Confirm delivery from the exact target receipt: `herdr agent read <agent>` MUST echo the exact `RECEIVED <token>`. Composer contents remain staged until submission. Resolve an updater menu or startup failure and retry once. After a second delivery failure, or a rejected paste, report `SEND BLOCKED <agent>` and stop.
+Confirm delivery from the exact target receipt: `herdr agent read <agent> --source visible` MUST show the exact `RECEIVED <token>`; herdr refuses a longer read while the seat works. Composer contents remain staged until submission. Resolve an updater menu or startup failure and retry once. After a second delivery failure, or a rejected paste, report `SEND BLOCKED <agent>` and stop.
 
 Report the implementer or the reviewer group as `running` after every target has its receipt and a confirmed working status. Validate the result directly when an agent reaches completion first.
 

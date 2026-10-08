@@ -69,6 +69,7 @@ gpt-5.5 stops at xhigh and gpt-5.6-luna at max. Every value comes from the CLI's
 - Read [references/contracts.md](references/contracts.md) before sending any seat brief; render the selected template from scratch each time, from current facts alone.
 - Read [references/tab-dispatch.md](references/tab-dispatch.md) before spawning, prompting, watching, clearing, or closing any tab.
 - Read [references/EVALS.md](references/EVALS.md) when changing or validating this skill. A normal run uses the runtime references.
+- Check any change to the gauntlet skills against [references/VISION.md](references/VISION.md), the acceptance policy.
 
 ## Decisions
 

@@ -11,5 +11,6 @@
 {"id":8,"uuid":"00000000-0000-4000-8000-000000000010","description":"Land the unmerged change","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"https://github.com/example/alpha/issues/4 commit: {{sha_unmerged}}"}]},
 {"id":9,"uuid":"00000000-0000-4000-8000-000000000012","description":"Land the other merged change","status":"pending","tags":["cto"],"annotations":[{"entry":"20261002T000000Z","description":"commit: {{sha_merged}}"},{"entry":"20261002T000000Z","description":"https://github.com/example/alpha/issues/6"}]},
 {"id":10,"uuid":"00000000-0000-4000-8000-000000000013","description":"Plan the offsite","status":"pending"},
+{"id":11,"uuid":"00000000-0000-4000-8000-000000000014","description":"Check the parser question","status":"pending","tags":["cto","ask"],"annotations":[{"entry":"20261003T000000Z","description":"ask: Is the parser work done? See https://github.com/example/alpha/pull/7 | suggested: done | cto todo_state done 0.70 escalate 1a2b3c4d 2026-10-03"}]},
 {"id":0,"uuid":"00000000-0000-4000-8000-000000000011","description":"Deleted item","status":"deleted","tags":["cto"]}
 ]

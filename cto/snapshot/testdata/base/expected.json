@@ -443,6 +443,19 @@
           "links": [],
           "ready": false,
           "dispatched": false
+        },
+        {
+          "uuid": "00000000-0000-4000-8000-000000000014",
+          "description": "Check the parser question",
+          "assignee": "cto",
+          "ask": true,
+          "status": "pending",
+          "annotations": [
+            "ask: Is the parser work done? See https://github.com/example/alpha/pull/7 | suggested: done | cto todo_state done 0.70 escalate HASH8 2026-10-03"
+          ],
+          "links": [],
+          "ready": false,
+          "dispatched": false
         }
       ],
       "sessions": []
@@ -620,6 +633,17 @@
       "verdict": "escalate",
       "decided_by": "error",
       "reason": "no assignee tag"
+    },
+    {
+      "subject": "todo",
+      "id": "00000000-0000-4000-8000-000000000014",
+      "gate": "todo_state",
+      "label": "open",
+      "confidence": 0.9,
+      "verdict": "act",
+      "decided_by": "gate",
+      "hash": "HASH",
+      "annotation": "cto todo_state open 0.90 act HASH8 2026-10-08"
     }
   ]
 }

@@ -106,7 +106,7 @@ func TestTodos(t *testing.T) {
 	for _, td := range todos {
 		byDesc[td.Description] = td
 	}
-	assert.Len(t, todos, 11, "open todos plus the one completed inside the window; deleted and old completed are dropped")
+	assert.Len(t, todos, 12, "open todos plus the one completed inside the window; deleted and old completed are dropped")
 	assert.NotContains(t, byDesc, "Ancient finished chore")
 	assert.NotContains(t, byDesc, "Deleted item")
 
@@ -138,6 +138,8 @@ func TestTodos(t *testing.T) {
 			Annotations: []string{"commit: " + w.ShaMerged, "https://github.com/example/alpha/issues/6"},
 			Links: []Link{{Kind: "commit", SHA: w.ShaMerged, State: "unchecked"},
 				{Kind: "issue", URL: "https://github.com/example/alpha/issues/6"}}}},
+		{"Check the parser question", Todo{Assignee: "cto", Ask: true, Status: "pending", Links: []Link{},
+			Annotations: []string{"ask: Is the parser work done? See https://github.com/example/alpha/pull/7 | suggested: done | cto todo_state done 0.70 escalate 1a2b3c4d 2026-10-03"}}},
 		{"Plan the offsite", Todo{Status: "pending", Annotations: []string{}, Links: []Link{}}},
 		{"Check the gamma bug", Todo{Assignee: "cto", Ask: true, Status: "pending",
 			Annotations: []string{"https://github.com/example/gamma/issues/1"},

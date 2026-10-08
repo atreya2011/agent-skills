@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"slices"
-	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -57,13 +56,10 @@ type sessionState struct {
 	Excerpt  string `json:"excerpt"`
 }
 
-// gateAnnotations drops the annotations the CTO wrote itself: a pending
-// question ("ask:") and a recorded verdict ("cto "). The gate must judge the
-// todo from the facts, not from its own earlier output.
+// gateAnnotations drops the annotations the CTO wrote itself. The gate must
+// judge the todo from the facts, not from its own earlier output.
 func gateAnnotations(all []string) []string {
-	return slices.DeleteFunc(slices.Clone(all), func(a string) bool {
-		return strings.HasPrefix(a, "ask:") || strings.HasPrefix(a, "cto ")
-	})
+	return slices.DeleteFunc(slices.Clone(all), ownAnnotation)
 }
 
 // judgeAll returns one judgment per judged todo and per session, in the order

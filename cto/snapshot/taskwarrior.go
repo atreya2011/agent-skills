@@ -61,6 +61,14 @@ func (r runner) todos(ctx context.Context, now time.Time, window time.Duration) 
 	return todos, nil
 }
 
+// ownAnnotation reports whether the CTO wrote an annotation itself: a pending
+// question ("ask:") or a recorded verdict ("cto "). Such an annotation can name
+// a pull request, a commit or a session without citing it as a source, so the
+// link scans and the gate input skip it.
+func ownAnnotation(a string) bool {
+	return strings.HasPrefix(a, "ask:") || strings.HasPrefix(a, "cto ")
+}
+
 // parseTodo maps one export item to a Todo and extracts the links its text and
 // annotations cite.
 func parseTodo(it taskItem, closedAt string) Todo {
@@ -81,6 +89,9 @@ func parseTodo(it taskItem, closedAt string) Todo {
 	texts := []string{it.Description}
 	for _, a := range it.Annotations {
 		t.Annotations = append(t.Annotations, a.Description)
+		if ownAnnotation(a.Description) {
+			continue
+		}
 		texts = append(texts, a.Description)
 		if strings.HasPrefix(a.Description, "run:") {
 			t.Dispatched = true

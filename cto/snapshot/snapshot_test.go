@@ -31,7 +31,8 @@ const (
 	todoUnmerged    = "00000000-0000-4000-8000-000000000010" // cites a commit on a feature branch
 	todoOtherMerged = "00000000-0000-4000-8000-000000000012" // commit on the default branch, issue closed
 	todoOffsite     = "00000000-0000-4000-8000-000000000013" // untagged
-	wantGateCalls   = 8
+	todoQuestion    = "00000000-0000-4000-8000-000000000014" // its own question names a merged pull request
+	wantGateCalls   = 9
 )
 
 type scriptedAnswer struct {
@@ -44,6 +45,7 @@ type scriptedAnswer struct {
 var baseScript = map[string]scriptedAnswer{
 	"todo_state:" + todoDocs:          {"open", 0.9},
 	"todo_state:" + todoMerged:        {"open", 0.9},
+	"todo_state:" + todoQuestion:      {"open", 0.9},
 	"todo_state:" + todoRetry:         {"done", 0.85},
 	"todo_state:" + todoUnmerged:      {"stale", 0.7},
 	"session_activity:" + sessAlpha:   {"implementing", 0.9},
@@ -137,6 +139,17 @@ func decode(t *testing.T, out string) Snapshot {
 	return s
 }
 
+func (s Snapshot) todo(id string) Todo {
+	for _, p := range s.Projects {
+		for _, t := range p.Todos {
+			if t.UUID == id {
+				return t
+			}
+		}
+	}
+	return Todo{}
+}
+
 func (s Snapshot) judgment(subject, id string) Judgment {
 	for _, j := range s.Judgments {
 		if j.Subject == subject && j.ID == id {
@@ -180,6 +193,13 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 			assert.Equal(t, decidedByGate, j.DecidedBy)
 			assert.Equal(t, "open", j.Label)
 			assert.Contains(t, seen, todoMerged)
+		}},
+		{"a question that names a merged pull request never becomes proof", func(t *testing.T) {
+			assert.Empty(t, s.todo(todoQuestion).Links)
+			j := s.judgment("todo", todoQuestion)
+			assert.Equal(t, decidedByGate, j.DecidedBy)
+			assert.Empty(t, j.Rule)
+			assert.Contains(t, seen, todoQuestion)
 		}},
 		{"an untagged todo escalates without a rule or a call", func(t *testing.T) {
 			j := s.judgment("todo", todoOffsite)

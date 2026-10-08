@@ -2,6 +2,8 @@
 
 Do this once, when the local file has an Import section. The section names the previous tracker's agent. The CTO talks to the tracker by chat only and never edits its files.
 
+Steps 1 to 4 take the lists. After step 4, write `Import lists taken: <date>` into the Import section. When that line already exists, skip steps 1 to 4 and run only steps 5 and 6.
+
 1. Send the tracker one message through `herdr agent prompt <target> --wait --timeout 120000`. Ask for three lists: every open todo it tracks with its sources, every standing ruling word for word, and every pending wiki-edit proposal with its page and claim.
 2. Read the reply with `herdr agent read <target> --source recent-unwrapped --lines 200`.
 3. Compare the todo list with `task export`. Add each missing todo with `task add`. Annotate a todo that exists but lacks a source the tracker cites.

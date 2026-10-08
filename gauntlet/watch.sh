@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${@:?usage: watch.sh TARGET...}"
+: "${@:?usage: watch.sh AGENT...}"
 targets=("$@")
 for target in "${targets[@]}"; do
   while ! herdr agent wait "$target" --until "done" --until idle --until blocked --timeout 300000 >/dev/null; do

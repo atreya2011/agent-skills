@@ -2,15 +2,15 @@
 
 Use this file for herdr tab and agent spawn, seat brief delivery, receipt, watch, capture, clear, and close. Read shared contracts and role templates from [contracts.md](contracts.md) and each stage's `briefs/` directory. At each run start or resume, read the current [SKILL.md](../SKILL.md) and this file.
 
-Seat brief delivery goes through `gauntlet/send.sh`: clear the composer with Escape only when the seat is idle or done (skipped for Codex, which exits on Escape when its composer is empty, and for a working or blocked seat, where Escape interrupts the turn or dismisses the dialog), paste, verify content, submit once, and confirm working. Claude and Cursor can stage and need one Enter; Codex submits directly. On failure print `SEND BLOCKED <target> <reason>`. Waiting and capture go through `gauntlet/watch.sh`; `CAPTURE BLOCKED` stays for read failures.
+Seat brief delivery goes through `gauntlet/send.sh`: clear the composer with Escape only when the seat is idle or done (skipped for Codex, which exits on Escape when its composer is empty, and for a working or blocked seat, where Escape interrupts the turn or dismisses the dialog), paste, verify content, submit once, and confirm working. Claude and Cursor can stage and need one Enter; Codex submits directly. On failure print `SEND BLOCKED <agent> <reason>`. Waiting and capture go through `gauntlet/watch.sh`; `CAPTURE BLOCKED` stays for read failures.
 
 ## Spawn tabs
 
-Create a tab in the current workspace. Keep each tab unsplit. Label every tab by seat. Rename the controlling tab `orchestrator`. A pane id is looked up only where a herdr command requires one.
+Create a tab in the current workspace. Keep each tab unsplit. Label every tab by seat. Name each agent `<seat>-<issue>`, such as `implementer-5`, because herdr agent names are unique per server; that name is `<agent>` in every herdr command and script below. Rename the controlling tab `orchestrator`. A pane id is looked up only where a herdr command requires one.
 
     herdr tab create --workspace <ws> --cwd <repo> --label <seat> --no-focus
     -> result.root_pane.pane_id
-    herdr agent start <seat> --kind <Kind> --pane <pane_id> -- <Args>
+    herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>
 
 Kind and Args come from the seat's row in the seat table; see the Local file section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only.
 
@@ -24,7 +24,7 @@ A nonzero render exit MUST be reported as `RENDER BLOCKED <template>` and MUST s
 Select one implementation issue for the run. Record its branch, base SHA, hard cap, and current changed-line count. Keep every seat brief, review range, fix wave, and delivery action scoped to that issue.
 The seat brief is the tab's scope contract; deliver it in the tab's prompt. The repo's drift-guard scope serves the staged spec contract alone.
 
-Confirm the agent has settled before prompting: `herdr tab list` shows the seat's tab with its `agent_status`, or use `herdr agent wait <seat> --until idle`. Treat a raw shell prompt as not yet a valid target.
+Confirm the agent has settled before prompting: `herdr tab list` shows the seat's tab with its `agent_status`, or use `herdr agent wait <agent> --until idle`. Treat a raw shell prompt as not yet a valid target.
 
 Handle launch blockers before sending a seat brief:
 
@@ -45,7 +45,7 @@ The `AGENT MESSAGE` prefix marks the sender as an agent. `send.sh` blocks a mess
 
 Use the `Fix` line for the implementer, for both its implementer brief and every fix brief, and the `Write your review` line for reviewers. Send that line and the full seat brief together through `send.sh`.
 
-Confirm delivery from the exact target receipt: `herdr agent read <seat>` MUST echo the exact `RECEIVED <token>`. Composer contents remain staged until submission. Resolve an updater menu or startup failure and retry once. After a second delivery failure, or a rejected paste, report `SEND BLOCKED <seat>` and stop.
+Confirm delivery from the exact target receipt: `herdr agent read <agent>` MUST echo the exact `RECEIVED <token>`. Composer contents remain staged until submission. Resolve an updater menu or startup failure and retry once. After a second delivery failure, or a rejected paste, report `SEND BLOCKED <agent>` and stop.
 
 Report the implementer or the reviewer group as `running` after every target has its receipt and a confirmed working status. Validate the result directly when an agent reaches completion first.
 
@@ -53,11 +53,11 @@ Report the implementer or the reviewer group as `running` after every target has
 
 Applies to Claude Code seats only, per the Session goal section of [SKILL.md](../SKILL.md). `send.sh` cannot carry a slash command: it requires the first line to start with `AGENT MESSAGE`. After the seat acknowledges its kickoff, send the goal through `gauntlet/goal.sh` with the condition on stdin:
 
-    gauntlet/goal.sh <seat> <<'EOF'
+    gauntlet/goal.sh <agent> <<'EOF'
     <condition>
     EOF
 
-`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <seat>` and exits 1. On a seat restart, follow the restart step in the Session goal section of [SKILL.md](../SKILL.md).
+`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <agent>` and exits 1. On a seat restart, follow the restart step in the Session goal section of [SKILL.md](../SKILL.md).
 
 ## Capture results
 
@@ -67,11 +67,11 @@ For the implementer, search for the runtime-valued terminal signal (`IMPLEMENTER
 
 ## Clear a tab
 
-Send the seat's Clear command from the seat table with `herdr agent prompt <seat> "<Clear>"`, without `--wait`. The command is local, so the seat never works: `--wait` returns `agent_prompt_stalled` for a claude seat, and `--until idle` times out for a codex seat, which ends `done`. Read `herdr agent read <seat> --source visible` until the earlier turns are gone, then confirm the empty composer.
+Send the seat's Clear command from the seat table with `herdr agent prompt <agent> "<Clear>"`, without `--wait`. The command is local, so the seat never works: `--wait` returns `agent_prompt_stalled` for a claude seat, and `--until idle` times out for a codex seat, which ends `done`. Read `herdr agent read <agent> --source visible` until the earlier turns are gone, then confirm the empty composer.
 
 After `/clear` a claude seat shows its header, the `/clear` line and an empty composer. After `/new` a codex seat shows its header, a welcome line and the empty composer `› Ask Codex to do anything`, and `herdr tab list` reports its tab `done`. For a cursor seat, confirm live before use.
 
-If the command remains staged, send `herdr agent send-keys <seat> Enter` once and check again. Send the fresh rendered seat brief only after the composer is empty, applying the send receipt protocol above. The orchestrator never clears itself during a run.
+If the command remains staged, send `herdr agent send-keys <agent> Enter` once and check again. Send the fresh rendered seat brief only after the composer is empty, applying the send receipt protocol above. The orchestrator never clears itself during a run.
 
 ## Watch completion
 

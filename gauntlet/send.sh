@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-target=${1:?usage: send.sh TARGET}
+target=${1:?usage: send.sh AGENT}
 message=$(mktemp)
 trap 'rm -f "$message"' EXIT
 blocked() { echo "SEND BLOCKED $target $1" >&2; exit 1; }

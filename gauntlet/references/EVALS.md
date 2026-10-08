@@ -91,7 +91,7 @@ Expected: the commits and the PR body carry neither line, the orchestrator or de
 - Restart an orchestrator seat mid-run after its goal is armed.
 - Send the same condition through `goal.sh` to a codex seat.
 
-Expected: the dispatcher re-sends the goal with `goal.sh` and the visible screen shows `/goal active`, the seat re-arms its watchers, and `goal.sh` to the codex seat prints `GOAL BLOCKED <seat>` and sends nothing.
+Expected: the dispatcher re-sends the goal with `goal.sh` and the visible screen shows `/goal active`, the seat re-arms its watchers, and `goal.sh` to the codex seat prints `GOAL BLOCKED <agent>` and sends nothing.
 
 ## 12. Seat table and implementer clear
 

@@ -12,7 +12,7 @@ Create a tab in the current workspace. Keep each tab unsplit. Label every tab by
     -> result.root_pane.pane_id
     herdr agent start <seat> --kind <Kind> --pane <pane_id> -- <Args>
 
-Kind and Args come from the seat's row in the seat table; see the Seats section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Launch a wrapper with `herdr pane run <pane_id> "<wrapper command>"` and automatic agent detection, then address it by seat name afterward.
+Kind and Args come from the seat's row in the seat table; see the Local file section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Launch a wrapper with `herdr pane run <pane_id> "<wrapper command>"` and automatic agent detection, then address it by seat name afterward.
 
 Use a read-only allowlist where supported.
 

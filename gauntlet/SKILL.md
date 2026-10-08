@@ -6,6 +6,36 @@ disable-model-invocation: true
 
 # Gauntlet
 
+## Local file
+
+`~/.agents/local/gauntlet.md` holds the seat table: the launch command of every seat in a run. The skill text names seats only and never holds a launch command.
+
+The table has one row per seat and four columns:
+
+| Seat | Kind | Args | Clear |
+| --- | --- | --- | --- |
+| orchestrator | claude | `--model <id> --effort <level>` | `/clear` |
+| implementer | codex | `<hands-off flag> -m <id> -c model_reasoning_effort=<level>` | `/new` |
+| reviewer-<name> | claude | `--model <id> --effort <level> <hands-off flag>` | `/clear` |
+
+- Seat is `orchestrator`, `implementer`, or `reviewer-<name>`. The `reviewer-<name>` rows form the reviewer pool; the table may hold any number of them.
+- Kind is a row of the CLI matrix below, and the herdr agent kind.
+- Args is the text after `--` in the launch command.
+- Clear is the command that resets that agent's context.
+
+The file holds one table. An alternate table is `~/.agents/local/gauntlet-<name>.md` with the same shape.
+
+At each run start, before any dispatch, the orchestrator MUST take two settings from the run's kickoff when it states them, and otherwise MUST ask the user:
+
+- Seat table: the default `gauntlet.md`, or the `<name>` of an alternate table.
+- Reviewers: from the pool, by name or by count, minimum one. A count takes the first rows of the pool in table order. Only the chosen reviewers are launched.
+
+The orchestrator then runs `gauntlet/seats.sh [--table <name>] <reviewers>` once. It prints one line per chosen seat in launch order: seat, kind, args, and clear command, separated by tabs. The orchestrator launches the seats from those lines and records which table ran. A changed launch command applies to the next run.
+
+A missing file, or a missing orchestrator, implementer, or chosen reviewer, stops the run with `SEAT MISSING <seat>`. A reviewer count larger than the pool stops the run with `SEAT MISSING reviewer`.
+
+## Purpose
+
 MUST take one approved implementation issue from facts to a merge-ready PR: a draft from the first verified push, marked ready for review when the run converges. Facts control every transition.
 KISS and YAGNI drive every phase: run the least process that closes the selected issue. Add mechanism, abstraction, or scope only when a demonstrated failure demands it. When two compliant options exist, take the simpler one. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil. Agents communicate in chat only; repo files carry only the deliverable itself.
 
@@ -27,23 +57,6 @@ The orchestrator is the session running this skill and is never cleared during a
 Each seat has a launch command: a CLI kind plus its arguments.
 Launch commands live in the seat table, never in the skill.
 
-### Local file
-
-The seat table is the local file `~/.agents/local/gauntlet.md`.
-An alternate table is `~/.agents/local/gauntlet-<name>.md` with the same shape, named at run start.
-The table has one row per seat with four columns: Seat, Kind, Args, Clear.
-Kind is a row of the CLI matrix. Args is the text after `--` in the launch command. Clear is the command that resets that agent's context.
-
-| Seat | Kind | Args | Clear |
-| --- | --- | --- | --- |
-| orchestrator | claude | `--model <id> --effort <level>` | `/clear` |
-| implementer | codex | `<hands-off flag> -m <id> -c model_reasoning_effort=<level>` | `/new` |
-| reviewer-<name> | claude | `--model <id> --effort <level> <hands-off flag>` | `/clear` |
-
-The orchestrator reads the chosen table once per run and records which table ran.
-A missing file, or a missing orchestrator, implementer, or chosen reviewer, stops the run with `SEAT MISSING <seat>`.
-A reviewer count larger than the pool stops the run with `SEAT MISSING reviewer`.
-
 ### CLI matrix
 
 | Kind | Model flag | Effort flag | Hands-off flag | Clear | Known model ids |
@@ -63,8 +76,6 @@ gpt-5.5 stops at xhigh and gpt-5.6-luna at max. Every value comes from the CLI's
 ## Decisions
 
 Nobody waits idle on a decision. The orchestrator reports a decision it cannot make as `DECISION NEEDED <id>` in the inbox form from [references/contracts.md](references/contracts.md), files it in the inbox file under the section of who acts next, continues every step that does not depend on it, and resumes the dependent step on `DECISION <id>`. At run start it reads the inbox file and acts on every entry under `## For agents` that names this run. When an answer is applied it deletes the entry. When the dispatcher records a decision that removes a class of work, the orchestrator applies it at once to every open run, branch, and queued ticket. Uppercase failure words stay for mechanical stops.
-
-At each run start, before any dispatch, the orchestrator MUST take two settings from the run's kickoff when it states them, and otherwise MUST ask the user. First: which seat table runs this run, default `gauntlet.md`. Second: which reviewers from the pool, by name or by count, minimum one. The engine is `tab` unless the user names `subagent-worktrees` in the same answer.
 
 ## Session goal
 

@@ -1,0 +1,7 @@
+{"id":"cli:tab:list","result":{"type":"tab_list","tabs":[
+{"agent_status":"idle","focused":false,"label":"orchestrator","number":1,"pane_count":1,"tab_id":"w1:t1","workspace_id":"w1"},
+{"agent_status":"unknown","focused":false,"label":"shell","number":2,"pane_count":1,"tab_id":"w1:t2","workspace_id":"w1"},
+{"agent_status":"blocked","focused":false,"label":"keep-me","number":1,"pane_count":1,"tab_id":"w2:t1","workspace_id":"w2"},
+{"agent_status":"working","focused":true,"label":"impl","number":1,"pane_count":1,"tab_id":"w3:t1","workspace_id":"w3"},
+{"agent_status":"done","focused":false,"label":"helper","number":2,"pane_count":1,"tab_id":"w3:t2","workspace_id":"w3"}
+]}}

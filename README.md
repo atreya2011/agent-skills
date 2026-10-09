@@ -6,6 +6,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 
 - `adversarial-refactor-pipeline`: Run an explicit chat-only refactor pipeline through herdr tabs with one implementer, a mixed-model review panel, repeated review rounds, deletion-contract reconciliation, and a pull request.
 - `be-concise`: Answer concisely in plain language without unnecessary code details.
+- `cto`: Run the CTO in one herdr tab: rebuild the picture of every session, todo and pull request from sources, close todos on proof, put judgment calls to the user in one batch, and write a brief. A Go snapshot tool gathers the facts.
 - `find-unknowns`: Map unknown unknowns before work by exploring the codebase and domain in parallel, teaching the findings, and writing a persistent map under docs/unknowns.
 - `gauntlet`: Take one approved issue from facts through blind adversarial review to a merge-ready pull request, with its seats read from a seat table in the local file.
 - `gauntlet-deliver`: Deliver a converged gauntlet branch as a pull request marked ready for review, with the review notes of the closing cycle.
@@ -22,7 +23,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 
 ## Local files
 
-A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `gauntlet`, `herdr-orchestrator`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.
+A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cto`, `gauntlet`, `herdr-orchestrator`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.
 
 ## Portability check
 

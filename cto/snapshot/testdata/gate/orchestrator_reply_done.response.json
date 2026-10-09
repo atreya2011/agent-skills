@@ -1,0 +1,19 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "orchestrator_reply": {
+      "type": "choice",
+      "choice": "done",
+      "confidence": 1.0,
+      "probabilities": {
+        "done": 1.0,
+        "not_done": 0.0,
+        "unclear": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 384,
+    "output_tokens": 43
+  }
+}

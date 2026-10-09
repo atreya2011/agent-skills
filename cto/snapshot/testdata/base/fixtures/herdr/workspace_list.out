@@ -1,0 +1,5 @@
+{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[
+{"active_tab_id":"w1:t1","agent_status":"idle","focused":false,"label":"alpha","number":1,"pane_count":2,"tab_count":2,"workspace_id":"w1"},
+{"active_tab_id":"w2:t1","agent_status":"blocked","focused":false,"label":"notes","number":2,"pane_count":1,"tab_count":1,"workspace_id":"w2"},
+{"active_tab_id":"w3:t1","agent_status":"working","focused":true,"label":"beta","number":3,"pane_count":2,"tab_count":2,"workspace_id":"w3","worktree":{"repo_name":"beta"}}
+]}}

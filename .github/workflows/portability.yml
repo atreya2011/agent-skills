@@ -22,3 +22,13 @@ jobs:
       - run: tests/gauntlet/close-decision.test.sh
       - run: tests/gauntlet/send.test.sh
       - run: tests/gauntlet/receipt.test.sh
+
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cto/snapshot/go.mod
+      - run: go test ./...
+        working-directory: cto/snapshot

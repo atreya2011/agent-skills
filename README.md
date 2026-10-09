@@ -11,6 +11,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `gauntlet-deliver`: Deliver a converged gauntlet branch as a pull request marked ready for review, with the review notes of the closing cycle.
 - `gauntlet-implement`: Stage and implement one approved issue into committed, cap-checked code on its own branch, through the implementer tab or parallel subagents in git worktrees.
 - `gauntlet-review`: Run blind review cycles against a locked HEAD with executable checks and review points until a cycle has no major bug.
+- `herdr-chat`: Talk to another agent through its herdr tab, by chat only: find the tab, send one short message, read the reply.
 - `herdr-orchestrator`: Survey all Claude and Codex tabs across herdr workspaces, report activity and blockers, locate tabs, or resume dead sessions.
 - `implement-issue`: Implement a GitHub issue end-to-end through a draft pull request, including commits, push, adversarial review, fixes, and PR updates.
 - `major-refactor`: Run an explicit managed program for a large or irreversible codebase change, with audits, a committed manifest, risk-ordered waves, subagents, and approval gates.

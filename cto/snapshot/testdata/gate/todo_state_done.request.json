@@ -1,0 +1,27 @@
+{
+  "state": {
+    "id": "t2",
+    "today": "2026-10-08",
+    "description": "Tune the retry limits",
+    "domain": "work",
+    "annotations": [
+      "session: a transcript of the tuning work"
+    ],
+    "links": [],
+    "project_tabs": [],
+    "transcript_excerpt": "user: tune the retry limits\nassistant: Limits tuned to 5 attempts. Tests pass and the change is merged to main."
+  },
+  "model": "jev-latest",
+  "questions": {
+    "todo_state": {
+      "type": "choice",
+      "instructions": "A todo is tracked in Taskwarrior. Compare it with the facts in the state: its text and annotations, the linked pull requests, issues and commits, the tabs of its project and the transcript excerpt. Judge only from the state. Which label describes the todo now?",
+      "criteria": {
+        "done": "The facts show the work is finished.",
+        "open": "The work is still to do or in progress, and the todo text still matches it.",
+        "stale": "The todo text no longer matches the facts: scope, links or status changed and the text needs a rewrite.",
+        "unknown": "The facts do not decide between the other labels."
+      }
+    }
+  }
+}

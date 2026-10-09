@@ -1,0 +1,17 @@
+{
+  "state": {
+    "reply": "All merged. The tabs can be closed."
+  },
+  "model": "jev-latest",
+  "questions": {
+    "orchestrator_reply": {
+      "type": "choice",
+      "instructions": "The CTO asked an orchestrator whether its tabs are still needed. What does the reply in the state say?",
+      "criteria": {
+        "done": "The reply explicitly says its work is finished and its tabs can be closed.",
+        "not_done": "The reply says work continues or the tabs are still needed.",
+        "unclear": "The reply does not clearly say either."
+      }
+    }
+  }
+}

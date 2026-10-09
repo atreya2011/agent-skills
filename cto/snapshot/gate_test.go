@@ -139,25 +139,71 @@ func TestJudgeVerdicts(t *testing.T) {
 	}
 }
 
-func TestJudgeReplaysSyntheticResponses(t *testing.T) {
+// recordedCase is one synthetic state and the real gate response it drew.
+// testdata/gate/<name>.request.json is the request the tool sent for the state
+// and <name>.response.json is the reply of the live API, both saved once with
+// the recording script kept outside the repository.
+type recordedCase struct {
+	name  string
+	def   gateDef
+	state any
+}
+
+var recordedCases = []recordedCase{
+	{"todo_state_open", gateTodoState, todoState{
+		ID: "t1", Today: "2026-10-08", Description: "Write the docs", Domain: "work",
+		Annotations: []string{"spec: https://github.com/example/alpha/issues/3"},
+		Links:       []Link{{Kind: "issue", URL: "https://github.com/example/alpha/issues/3", State: "OPEN", Labels: []string{"ready-for-agent"}}},
+		ProjectTabs: []tabBrief{{Label: "orchestrator", Agent: "claude", State: "idle", AgeS: new(600)}},
+	}},
+	{"todo_state_done", gateTodoState, todoState{
+		ID: "t2", Today: "2026-10-08", Description: "Tune the retry limits", Domain: "work",
+		Annotations: []string{"session: a transcript of the tuning work"},
+		Links:       []Link{},
+		ProjectTabs: []tabBrief{},
+		Transcript:  "user: tune the retry limits\nassistant: Limits tuned to 5 attempts. Tests pass and the change is merged to main.",
+	}},
+	{"session_activity_implementing", gateSession, sessionState{
+		ID: "s1", Profile: "main", Project: "alpha", AgeS: 600, TabState: "idle",
+		Excerpt: "user: please add the parser\nassistant: Writing the parser now.\nassistant: I edited parser.go and added parser_test.go.",
+	}},
+	{"orchestrator_reply_done", gateReply, map[string]string{"reply": "All merged. The tabs can be closed."}},
+	{"orchestrator_reply_not_done", gateReply, map[string]string{"reply": "Still reviewing the diff. Do not close anything yet."}},
+}
+
+func TestJudgeReplaysRecordedResponses(t *testing.T) {
 	tests := []struct {
-		file  string
-		def   gateDef
-		label string
-		want  string
+		name       string
+		label      string
+		confidence float64
+		verdict    string
 	}{
-		{"todo_state_done.json", gateTodoState, "done", verdictAct},
-		{"session_activity_implementing.json", gateSession, "implementing", verdictAct},
+		{"todo_state_open", "open", 0.92, verdictAct},
+		{"todo_state_done", "done", 0.97, verdictAct},
+		{"session_activity_implementing", "implementing", 0.98, verdictAct},
+		{"orchestrator_reply_done", "done", 1, verdictAct},
+		{"orchestrator_reply_not_done", "not_done", 0.98, verdictAct},
+	}
+	byName := map[string]recordedCase{}
+	for _, c := range recordedCases {
+		byName[c.name] = c
 	}
 	for _, tt := range tests {
-		t.Run(tt.file, func(t *testing.T) {
-			body, err := os.ReadFile(filepath.Join("testdata", "gate", tt.file))
+		t.Run(tt.name, func(t *testing.T) {
+			c := byName[tt.name]
+			response, err := os.ReadFile(filepath.Join("testdata", "gate", tt.name+".response.json"))
 			require.NoError(t, err)
-			f := newFakeGate(t, serve(200, string(body)))
+			request, err := os.ReadFile(filepath.Join("testdata", "gate", tt.name+".request.json"))
+			require.NoError(t, err)
+			f := newFakeGate(t, serve(200, string(response)))
 			g, _ := testGate(t, f.srv.URL)
-			j := g.Judge(t.Context(), "todo", "t1", tt.def, "state")
+
+			j := g.Judge(t.Context(), "todo", "t1", c.def, c.state)
 			assert.Equal(t, tt.label, j.Label)
-			assert.Equal(t, tt.want, j.Verdict)
+			assert.InDelta(t, tt.confidence, j.Confidence, 1e-9)
+			assert.Equal(t, tt.verdict, j.Verdict, j.Reason)
+			require.Equal(t, 1, f.requests())
+			assert.JSONEq(t, string(request), string(f.bodies[0]), "the tool still sends the request that was recorded")
 		})
 	}
 }

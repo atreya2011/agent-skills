@@ -1,0 +1,25 @@
+{
+  "state": {
+    "id": "s1",
+    "profile": "main",
+    "project": "alpha",
+    "age_s": 600,
+    "tab_state": "idle",
+    "excerpt": "user: please add the parser\nassistant: Writing the parser now.\nassistant: I edited parser.go and added parser_test.go."
+  },
+  "model": "jev-latest",
+  "questions": {
+    "session_activity": {
+      "type": "choice",
+      "instructions": "What is this agent session doing? Judge only from the end of its transcript in the state.",
+      "criteria": {
+        "blocked": "Waiting for a user decision, an approval or missing input.",
+        "chatting": "Talking with the user with no task in progress.",
+        "implementing": "Writing or changing code, tests or documents.",
+        "investigating": "Reading, searching or diagnosing without changing files.",
+        "reviewing": "Reviewing code, a diff or a pull request.",
+        "unknown": "The excerpt does not show the activity."
+      }
+    }
+  }
+}

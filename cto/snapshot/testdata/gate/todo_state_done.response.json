@@ -1,0 +1,20 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "todo_state": {
+      "type": "choice",
+      "choice": "done",
+      "confidence": 0.97,
+      "probabilities": {
+        "done": 0.98,
+        "open": 0.01,
+        "stale": 0.01,
+        "unknown": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 548,
+    "output_tokens": 47
+  }
+}

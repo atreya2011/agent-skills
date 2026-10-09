@@ -1,0 +1,42 @@
+{
+  "state": {
+    "id": "t1",
+    "today": "2026-10-08",
+    "description": "Write the docs",
+    "domain": "work",
+    "annotations": [
+      "spec: https://github.com/example/alpha/issues/3"
+    ],
+    "links": [
+      {
+        "kind": "issue",
+        "url": "https://github.com/example/alpha/issues/3",
+        "state": "OPEN",
+        "labels": [
+          "ready-for-agent"
+        ]
+      }
+    ],
+    "project_tabs": [
+      {
+        "label": "orchestrator",
+        "agent": "claude",
+        "state": "idle",
+        "age_s": 600
+      }
+    ]
+  },
+  "model": "jev-latest",
+  "questions": {
+    "todo_state": {
+      "type": "choice",
+      "instructions": "A todo is tracked in Taskwarrior. Compare it with the facts in the state: its text and annotations, the linked pull requests, issues and commits, the tabs of its project and the transcript excerpt. Judge only from the state. Which label describes the todo now?",
+      "criteria": {
+        "done": "The facts show the work is finished.",
+        "open": "The work is still to do or in progress, and the todo text still matches it.",
+        "stale": "The todo text no longer matches the facts: scope, links or status changed and the text needs a rewrite.",
+        "unknown": "The facts do not decide between the other labels."
+      }
+    }
+  }
+}

@@ -204,10 +204,6 @@ func TestGitFacts(t *testing.T) {
 		assert.Equal(t, "feat/x", d.Branch)
 		assert.Equal(t, "origin/main", d.DefaultBranch)
 		assert.Equal(t, 1, d.Dirty, "one untracked file")
-		require.Len(t, d.Commits, 2, "the log follows the default branch, not the current branch")
-		assert.Equal(t, "add the parser", d.Commits[0].Subject)
-		assert.Equal(t, w.ShaMerged, d.Commits[0].Hash)
-		assert.Equal(t, "2026-10-07T10:00:00+00:00", d.Commits[0].Time)
 	})
 
 	t.Run("details of a checkout with an ssh origin and no origin HEAD", func(t *testing.T) {
@@ -215,7 +211,6 @@ func TestGitFacts(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "example/beta", d.Slug)
 		assert.Empty(t, d.DefaultBranch)
-		assert.Len(t, d.Commits, 1)
 	})
 
 	t.Run("a path that is not a repository fails", func(t *testing.T) {
@@ -260,8 +255,8 @@ func TestGitHubFacts(t *testing.T) {
 	prs, err := r.pullRequests(t.Context(), "example/alpha")
 	require.NoError(t, err)
 	assert.Equal(t, []PR{
-		{Number: 7, Title: "Add the parser", State: "MERGED", Branch: "feat/parser", MergedAt: "2026-10-08T09:00:00Z", UpdatedAt: "2026-10-08T09:00:00Z", URL: "https://github.com/example/alpha/pull/7"},
-		{Number: 8, Title: "Draft the docs", State: "OPEN", Branch: "feat/y", Draft: true, UpdatedAt: "2026-10-08T10:30:00Z", URL: "https://github.com/example/alpha/pull/8"},
+		{Number: 7, Title: "Add the parser", State: "MERGED", Branch: "feat/parser", MergedAt: time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC), URL: "https://github.com/example/alpha/pull/7"},
+		{Number: 8, Title: "Draft the docs", State: "OPEN", Branch: "feat/y", Draft: true, URL: "https://github.com/example/alpha/pull/8"},
 	}, prs)
 	_, err = r.pullRequests(t.Context(), "example/missing")
 	require.ErrorContains(t, err, "no recording")
@@ -273,7 +268,7 @@ func TestGitHubFacts(t *testing.T) {
 		wantErr string
 	}{
 		{"a merged pull request", Link{Kind: "pr", URL: "https://github.com/example/alpha/pull/7"},
-			Link{Kind: "pr", URL: "https://github.com/example/alpha/pull/7", State: "MERGED", MergedAt: "2026-10-08T09:00:00Z"}, ""},
+			Link{Kind: "pr", URL: "https://github.com/example/alpha/pull/7", State: "MERGED"}, ""},
 		{"an open issue with a label", Link{Kind: "issue", URL: "https://github.com/example/alpha/issues/3"},
 			Link{Kind: "issue", URL: "https://github.com/example/alpha/issues/3", State: "OPEN", Labels: []string{"ready-for-agent"}}, ""},
 		{"an issue closed as completed", Link{Kind: "issue", URL: "https://github.com/example/beta/issues/9"},

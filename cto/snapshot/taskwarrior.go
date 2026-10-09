@@ -74,7 +74,10 @@ func ownAnnotation(a string) bool {
 func parseTodo(it taskItem, closedAt string) Todo {
 	t := Todo{
 		UUID: it.UUID, Description: it.Description, Domain: it.Project, Status: it.Status,
-		Due: it.Due, ClosedAt: closedAt, Annotations: []string{}, Links: []Link{},
+		ClosedAt: closedAt, Annotations: []string{}, Links: []Link{},
+	}
+	if due, err := time.Parse(taskTimeLayout, it.Due); err == nil {
+		t.Due = due.UTC()
 	}
 	for _, tag := range it.Tags {
 		switch tag {

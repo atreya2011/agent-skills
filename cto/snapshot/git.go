@@ -22,7 +22,6 @@ type gitDetails struct {
 	Dirty         int
 	Ahead         int
 	Behind        int
-	Commits       []Commit
 }
 
 // gitRoot returns the main checkout of the repository that contains cwd, so
@@ -79,17 +78,6 @@ func (r runner) gitDetails(ctx context.Context, root string) (gitDetails, error)
 	}
 	if out, _, err := r.output(ctx, root, r.cmds.Git, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
 		d.DefaultBranch = strings.TrimSpace(string(out))
-	}
-	ref := "HEAD"
-	if d.DefaultBranch != "" {
-		ref = d.DefaultBranch
-	}
-	if out, _, err := r.output(ctx, root, r.cmds.Git, "log", "-n", "5", "--format=%H%x1f%cI%x1f%s", ref); err == nil {
-		for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-			if parts := strings.Split(line, "\x1f"); len(parts) == 3 {
-				d.Commits = append(d.Commits, Commit{Hash: parts[0], Time: parts[1], Subject: parts[2]})
-			}
-		}
 	}
 	return d, nil
 }

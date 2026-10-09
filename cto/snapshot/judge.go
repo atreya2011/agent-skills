@@ -39,7 +39,7 @@ type todoState struct {
 	Today       string     `json:"today"`
 	Description string     `json:"description"`
 	Domain      string     `json:"domain,omitempty"`
-	Due         string     `json:"due,omitempty"`
+	Due         time.Time  `json:"due,omitzero"`
 	Annotations []string   `json:"annotations"`
 	Links       []Link     `json:"links"`
 	ProjectTabs []tabBrief `json:"project_tabs"`

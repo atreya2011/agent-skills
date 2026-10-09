@@ -32,18 +32,6 @@
       "ahead": 0,
       "behind": 0,
       "default_branch": "origin/main",
-      "commits": [
-        {
-          "hash": "{{sha_merged}}",
-          "time": "2026-10-07T10:00:00+00:00",
-          "subject": "add the parser"
-        },
-        {
-          "hash": "{{sha}}",
-          "time": "2026-10-07T10:00:00+00:00",
-          "subject": "add the skeleton"
-        }
-      ],
       "prs": [
         {
           "number": 7,
@@ -52,7 +40,6 @@
           "branch": "feat/parser",
           "draft": false,
           "merged_at": "2026-10-08T09:00:00Z",
-          "updated_at": "2026-10-08T09:00:00Z",
           "url": "https://github.com/example/alpha/pull/7"
         },
         {
@@ -61,7 +48,6 @@
           "state": "OPEN",
           "branch": "feat/y",
           "draft": true,
-          "updated_at": "2026-10-08T10:30:00Z",
           "url": "https://github.com/example/alpha/pull/8"
         }
       ],
@@ -94,8 +80,7 @@
             {
               "kind": "pr",
               "url": "https://github.com/example/alpha/pull/7",
-              "state": "MERGED",
-              "merged_at": "2026-10-08T09:00:00Z"
+              "state": "MERGED"
             }
           ],
           "ready": false,
@@ -113,7 +98,7 @@
             "ask: Is the docs todo done? | suggested: done | cto todo_state done 0.70 escalate HASH8 2026-10-03",
             "cto todo_state open 0.90 act HASH8 2026-10-04"
           ],
-          "due": "20261015T000000Z",
+          "due": "2026-10-15T00:00:00Z",
           "links": [
             {
               "kind": "issue",
@@ -234,13 +219,6 @@
       "dirty": 0,
       "ahead": 0,
       "behind": 0,
-      "commits": [
-        {
-          "hash": "{{sha}}",
-          "time": "2026-10-07T10:00:00+00:00",
-          "subject": "first"
-        }
-      ],
       "prs": [
         {
           "number": 2,
@@ -248,7 +226,6 @@
           "state": "OPEN",
           "branch": "feat/retry",
           "draft": false,
-          "updated_at": "2026-10-08T11:00:00Z",
           "url": "https://github.com/example/beta/pull/2"
         }
       ],
@@ -315,7 +292,6 @@
       "dirty": 0,
       "ahead": 0,
       "behind": 0,
-      "commits": [],
       "prs": [],
       "tabs": [],
       "todos": [
@@ -347,7 +323,6 @@
       "dirty": 0,
       "ahead": 0,
       "behind": 0,
-      "commits": [],
       "prs": [],
       "tabs": [
         {
@@ -382,7 +357,6 @@
       "dirty": 0,
       "ahead": 0,
       "behind": 0,
-      "commits": [],
       "prs": [],
       "tabs": [
         {

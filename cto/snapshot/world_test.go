@@ -63,7 +63,6 @@ func newWorld(t *testing.T, gateURL string) *world {
 		"GIT_CONFIG_GLOBAL": os.DevNull, "GIT_CONFIG_SYSTEM": os.DevNull,
 		"GIT_AUTHOR_NAME": "Tester", "GIT_AUTHOR_EMAIL": "tester",
 		"GIT_COMMITTER_NAME": "Tester", "GIT_COMMITTER_EMAIL": "tester",
-		"GIT_AUTHOR_DATE": "2026-10-07T10:00:00Z", "GIT_COMMITTER_DATE": "2026-10-07T10:00:00Z",
 	} {
 		t.Setenv(k, v)
 	}

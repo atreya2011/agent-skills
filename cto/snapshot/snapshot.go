@@ -205,7 +205,7 @@ func (c *collector) groupProjects(ctx context.Context, tabs []Tab, sessions []Se
 		if p, ok := byID[id]; ok {
 			return p
 		}
-		p := &Project{ID: id, Label: label, Commits: []Commit{}, PRs: []PR{}, Tabs: []Tab{}, Todos: []Todo{}, Sessions: []Session{}}
+		p := &Project{ID: id, Label: label, PRs: []PR{}, Tabs: []Tab{}, Todos: []Todo{}, Sessions: []Session{}}
 		byID[id] = p
 		return p
 	}
@@ -222,9 +222,6 @@ func (c *collector) groupProjects(ctx context.Context, tabs []Tab, sessions []Se
 		p.slug = d.Slug
 		p.Root, p.Branch, p.DefaultBranch = root, d.Branch, d.DefaultBranch
 		p.Dirty, p.Ahead, p.Behind = d.Dirty, d.Ahead, d.Behind
-		if len(d.Commits) > 0 {
-			p.Commits = d.Commits
-		}
 		projectOf[cwd] = id
 	}
 	none := func() *Project { return get(noProject, "no project") }

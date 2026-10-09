@@ -30,7 +30,6 @@ type Project struct {
 	Ahead         int       `json:"ahead"`
 	Behind        int       `json:"behind"`
 	DefaultBranch string    `json:"default_branch,omitempty"`
-	Commits       []Commit  `json:"commits"`
 	PRs           []PR      `json:"prs"`
 	Tabs          []Tab     `json:"tabs"`
 	Todos         []Todo    `json:"todos"`

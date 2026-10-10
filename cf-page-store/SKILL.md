@@ -28,7 +28,7 @@ Run these steps in order. Cloudflare commands run once during install; never run
 
 1. Ask the user to create a Zero Trust organization on Cloudflare's free plan in the dashboard. Cloudflare asks for a payment method, but the free plan charges nothing. Record the full team domain. Open Workers & Pages once in the dashboard so Cloudflare registers the `workers.dev` subdomain before deployment.
 
-2. Ask the user to create one API token with Workers Scripts Edit, D1 Edit, Access Apps and Policies Edit, and Access Service Tokens Edit. Store it without printing it:
+2. Ask the user to create one API token with Workers Admin, D1 Write, Access: Apps and Policies Write, Access: Service Tokens Write. The first deploy creates a new Worker and needs Workers Admin; Workers Editor updates only existing Workers. Store it without printing it:
 
    ```sh
    # Linux
@@ -103,10 +103,10 @@ Run these steps in order. Cloudflare commands run once during install; never run
    unset service_token service_token_id service_token_secret
    ```
 
-5. Create the Access application and its two policies. Replace the email placeholder with the user's email. Then render the returned audience into the deploy config and deploy again.
+5. Create the Access application and its two policies. Replace the email placeholder with the user's Cloudflare account email. A Sign in with Apple account uses its Apple private relay address. Then render the returned audience into the deploy config and deploy again.
 
    ```sh
-   export USER_EMAIL='<user-email>'
+   export USER_EMAIL='<cloudflare-account-email>'
    application=$(printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" |
      curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
        --request POST \

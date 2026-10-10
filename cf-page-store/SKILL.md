@@ -67,13 +67,11 @@ Run these steps in order. Cloudflare commands run once during install; never run
      --arg audience "$AUDIENCE_TAG" \
      --arg databaseName "$DATABASE_NAME" \
      --arg databaseId "$D1_DATABASE_ID" \
-     --arg migrations "$PWD/migrations" \
      --arg assets "$PWD/assets" \
      '.name = $name | .main = $entrypoint | .account_id = $account |
       .vars.ACCESS_TEAM_DOMAIN = $team | .vars.ACCESS_AUDIENCE = $audience |
       .d1_databases[0].database_name = $databaseName |
       .d1_databases[0].database_id = $databaseId |
-      .d1_databases[0].migrations_dir = $migrations |
       .assets.directory = $assets' \
      wrangler.template.jsonc >"$DEPLOY_CONFIG"
    phone-page assets "$PWD/assets"

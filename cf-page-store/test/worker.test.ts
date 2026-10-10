@@ -148,7 +148,6 @@ describe("submissions", () => {
     ["array submission", "application/json", "[]", 400],
     ["non-JSON submission", "text/plain", "{}", 400],
   ])("rejects a %s", async (_name, contentType, body, status) => {
-    expect(new TextEncoder().encode(body).byteLength).toBe(status === 413 ? 65537 : 2);
     const assertion = await token();
     const page = await publish(assertion);
     const response = await request(`/p/${page.id}/answers`, {

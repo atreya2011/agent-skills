@@ -13,8 +13,7 @@
     {
       "binding": "DB",
       "database_name": "<database-name>",
-      "database_id": "<d1-database-id>",
-      "migrations_dir": "<migrations-directory>"
+      "database_id": "<d1-database-id>"
     }
   ],
   "assets": {

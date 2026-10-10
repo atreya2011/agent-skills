@@ -19,7 +19,6 @@ const pageHeaders = {
   "Referrer-Policy": "no-referrer",
 };
 
-let keySetIssuer = "";
 let keySet: ReturnType<typeof createRemoteJWKSet> | undefined;
 
 const app = new Hono<{ Bindings: Env }>();
@@ -31,10 +30,7 @@ app.use("*", async (c, next) => {
   }
 
   try {
-    if (!keySet || keySetIssuer !== c.env.ACCESS_TEAM_DOMAIN) {
-      keySetIssuer = c.env.ACCESS_TEAM_DOMAIN;
-      keySet = createRemoteJWKSet(new URL(`${keySetIssuer}/cdn-cgi/access/certs`));
-    }
+    keySet ??= createRemoteJWKSet(new URL(`${c.env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`));
     await jwtVerify(token, keySet, {
       issuer: c.env.ACCESS_TEAM_DOMAIN,
       audience: c.env.ACCESS_AUDIENCE,

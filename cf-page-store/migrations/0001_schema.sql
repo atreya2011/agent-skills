@@ -6,7 +6,7 @@ CREATE TABLE pages (
 );
 
 CREATE TABLE submissions (
-  page_id TEXT PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
+  page_id TEXT PRIMARY KEY REFERENCES pages(id),
   body TEXT NOT NULL,
   submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

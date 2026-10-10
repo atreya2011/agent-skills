@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cf-page-store-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "https://access.invalid",
+    "ACCESS_AUDIENCE": "test-audience"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cf-page-store-test",
+      "database_id": "local",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "assets": {
+    "directory": "test/assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}

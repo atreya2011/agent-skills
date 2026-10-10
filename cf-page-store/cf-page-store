@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+local_file="$HOME/.agents/local/cf-page-store.md"
+cleanup_path=""
+
+cleanup() {
+  [[ -z "$cleanup_path" ]] || rm -f -- "$cleanup_path"
+}
+trap cleanup EXIT
+
+die() {
+  printf 'cf-page-store: %s\n' "$1" >&2
+  exit 1
+}
+
+usage() {
+  printf 'usage: cf-page-store {publish <file>|answers <id>}\n' >&2
+  exit 2
+}
+
+keyring_value() {
+  local account=$1 value
+  case "$(uname -s)" in
+    Linux)
+      command -v secret-tool >/dev/null || die "secret-tool is required"
+      value=$(secret-tool lookup service cf-page-store username "$account") || die "keyring entry not found: $account"
+      ;;
+    Darwin)
+      command -v security >/dev/null || die "security is required"
+      value=$(security find-generic-password -s cf-page-store -a "$account" -w) || die "keyring entry not found: $account"
+      ;;
+    *) die "only Linux and macOS are supported" ;;
+  esac
+  [[ -n "$value" ]] || die "keyring entry is empty: $account"
+  printf '%s' "$value"
+}
+
+store_address() {
+  local address
+  [[ -f "$local_file" ]] || die "local file not found: $local_file"
+  address=$(sed -n 's/^Store address: //p' "$local_file")
+  [[ -n "$address" && "$address" != *$'\n'* ]] || die "local file must contain one Store address entry"
+  printf '%s' "${address%/}"
+}
+
+request() {
+  local method=$1 url=$2 output=$3 client_id client_secret
+  shift 3
+  client_id=$(keyring_value service-token-id)
+  client_secret=$(keyring_value service-token-secret)
+  printf '%s\n' \
+    "CF-Access-Client-Id: $client_id" \
+    "CF-Access-Client-Secret: $client_secret" |
+    curl -sS -o "$output" -w '%{http_code}' \
+      --request "$method" \
+      --header @- \
+      "$@" "$url"
+}
+
+[[ $# -ge 1 ]] || usage
+command=$1
+shift
+address=$(store_address)
+cleanup_path=$(mktemp "${TMPDIR:-/tmp}/cf-page-store.XXXXXX")
+
+case "$command" in
+  publish)
+    [[ $# -eq 1 && -f "$1" ]] || usage
+    status=$(request POST "$address/api/pages" "$cleanup_path" \
+      --header 'Content-Type: text/html' --data-binary "@$1") || die "request failed"
+    [[ "$status" == 201 ]] || die "publish failed with HTTP $status"
+    cat "$cleanup_path"
+    printf '\n'
+    ;;
+  answers)
+    [[ $# -eq 1 ]] || usage
+    status=$(request GET "$address/p/$1/answers" "$cleanup_path") || die "request failed"
+    case "$status" in
+      200)
+        cat "$cleanup_path"
+        printf '\n'
+        ;;
+      404) exit 3 ;;
+      *) die "answers failed with HTTP $status" ;;
+    esac
+    ;;
+  *) usage ;;
+esac

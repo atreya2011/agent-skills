@@ -163,6 +163,9 @@ The private service that publishes pages, serves their assets and keeps their la
 **Store command**:
 The command phone-page calls to publish a page or read its latest submission.
 
+**Service token**:
+A Cloudflare Access credential that lets the store command open only this store without an interactive login.
+
 **Asset manifest**:
 The versioned list of page assets, source addresses and checksums that a store serves from its own origin.
 

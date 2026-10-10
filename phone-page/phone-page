@@ -53,14 +53,11 @@ validate_spec() {
 }
 
 render() {
-  local spec=$1 canonical escaped page_template
+  local spec=$1
   [[ -f "$spec" ]] || die "question spec does not exist: $spec"
   validate_spec "$spec"
-  canonical=$(jq -c . "$spec")
-  escaped=${canonical//</\\u003c}
-  page_template=$(<"$template")
-  jq -nr --arg template "$page_template" --arg spec "$escaped" \
-    '$template | split("__PHONE_PAGE_SPEC__") | join($spec)'
+  jq -jc . "$spec" | jq -Rrs --rawfile template "$template" \
+    'gsub("<"; "\\u003c") as $spec | $template | split("__PHONE_PAGE_SPEC__") | join($spec)'
 }
 
 store() {
@@ -97,8 +94,9 @@ case "$command" in
     ;;
   ask)
     [[ $# -eq 1 ]] || usage
-    rendered=$(mktemp "${TMPDIR:-/tmp}/phone-page.XXXXXX.html")
-    cleanup_path=$rendered
+    rendered_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page.XXXXXX")
+    cleanup_path=$rendered_dir
+    rendered="$rendered_dir/page.html"
     render "$1" >"$rendered"
     store publish "$rendered"
     ;;

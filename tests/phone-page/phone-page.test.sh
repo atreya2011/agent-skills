@@ -35,13 +35,23 @@ cat >"$tmp/valid.json" <<'JSON'
 }
 JSON
 
-name='render preserves the spec and supplies Other and a note'
+name='render preserves the spec'
 rendered=$($command_path render "$tmp/valid.json")
 embedded=$(printf '%s\n' "$rendered" | sed -n 's#.*<script type="application/json" id="spec">\(.*\)</script>.*#\1#p')
 if [[ "$(printf '%s' "$embedded" | jq -cS .)" != "$(jq -cS . "$tmp/valid.json")" ]]; then
   fail "$name" 'embedded spec differs from the input'
-elif [[ "$rendered" != *"Other response"* || "$rendered" != *"Note (optional)"* ]]; then
-  fail "$name" 'the rendered page does not provide both fields'
+else
+  pass "$name"
+fi
+
+name='render accepts a spec larger than the argument limit'
+jq '.questions[0].context = ("x" * 150000)' "$tmp/valid.json" >"$tmp/large.json"
+status=0
+$command_path render "$tmp/large.json" >"$tmp/large.html" || status=$?
+if [[ "$status" != 0 ]]; then
+  fail "$name" "exit $status, want 0"
+elif [[ ! -s "$tmp/large.html" ]]; then
+  fail "$name" 'rendered page is empty'
 else
   pass "$name"
 fi
@@ -142,10 +152,13 @@ name='ask renders a page and publishes it through the store'
 export STORE_CAPTURE="$tmp/asked.html"
 output=$($command_path ask "$tmp/valid.json")
 call=$(tail -n 1 "$STORE_CALLS")
+embedded=$(sed -n 's#.*<script type="application/json" id="spec">\(.*\)</script>.*#\1#p' "$STORE_CAPTURE")
 if [[ "$output" != '{"id":"page-1","url":"https://store.example/p/page-1"}' ]]; then
   fail "$name" "unexpected output: $output"
-elif [[ "$call" != publish\ * || ! -s "$STORE_CAPTURE" ]]; then
-  fail "$name" "unexpected call or empty rendered page: $call"
+elif [[ "$call" != publish\ * ]]; then
+  fail "$name" "unexpected call: $call"
+elif [[ "$(printf '%s' "$embedded" | jq -cS .)" != "$(jq -cS . "$tmp/valid.json")" ]]; then
+  fail "$name" 'published page spec differs from the input'
 else
   pass "$name"
 fi

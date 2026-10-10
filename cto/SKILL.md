@@ -60,11 +60,11 @@ The API key is never in this file. The tool reads `TYPESAFE_API_KEY` from the en
 4. Create the CTO tab: `herdr workspace create --cwd <directory> --label cto --no-focus`. Take the root pane ID from the reply, run the launch command there with `herdr pane run <pane> "<launch command>"`, then `herdr agent rename <pane> cto`.
 5. Add the crontab entries below, then work through `references/checklist.md`.
 
-The crontab addresses the tab by its agent name. `PATH` must include the directory of `herdr`. The first line sweeps at the interval during waking hours. The second resets at the reset time. Each waits for the tab to settle, then sends only when it is `idle` or `done`. A `blocked` tab gets nothing, because a blocked tab is already waiting on the user. After `/clear` the reset sends Enter once, because the command can stay staged in the composer; on an empty composer the Enter does nothing.
+The crontab addresses the tab by its agent name. `PATH` must include the directory of `herdr`. The first line sweeps at the interval during waking hours. The second resets at the reset time. Each waits for the tab to settle, then sends only when it is `idle` or `done`. A `blocked` tab gets nothing, because a blocked tab is already waiting on the user. After `/clear` the reset sends Enter once, because the command can stay staged in the composer; on an empty composer the Enter does nothing. Before each message the line presses `ctrl+s`, which sets aside any draft the user left in the input box; Claude puts the draft back after the message is sent.
 
 ```
-*/<interval in minutes> <first hour>-<last hour> * * * herdr agent wait cto --timeout 120000; herdr agent get cto | grep -Eq '"agent_status":"(idle|done)"' && herdr agent prompt cto "AGENT MESSAGE (cron). Run the cto skill: sweep."
-0 <reset hour> * * * herdr agent wait cto --timeout 600000; herdr agent get cto | grep -Eq '"agent_status":"(idle|done)"' && herdr agent prompt cto "/clear" && herdr agent send-keys cto Enter && sleep 5 && herdr agent prompt cto "AGENT MESSAGE (cron). Run the cto skill: sweep."
+*/<interval in minutes> <first hour>-<last hour> * * * herdr agent wait cto --timeout 120000; herdr agent get cto | grep -Eq '"agent_status":"(idle|done)"' && herdr agent send-keys cto ctrl+s && herdr agent prompt cto "AGENT MESSAGE (cron). Run the cto skill: sweep."
+0 <reset hour> * * * herdr agent wait cto --timeout 600000; herdr agent get cto | grep -Eq '"agent_status":"(idle|done)"' && herdr agent send-keys cto ctrl+s && herdr agent prompt cto "/clear" && herdr agent send-keys cto Enter && sleep 5 && herdr agent send-keys cto ctrl+s && herdr agent prompt cto "AGENT MESSAGE (cron). Run the cto skill: sweep."
 ```
 
 ## Sweep
@@ -103,7 +103,7 @@ The tool leaves the `ask:` and `cto ` annotations out of the gate's input, so an
 
 Do this for each workspace that is not pinned and whose state is `idle` or `done`. herdr's `done` is the same state as `idle`, not yet seen, so treat the two alike. A workspace's orchestrator is its tab labeled `orchestrator`. A workspace with no such tab is reported with its state and left alone. A pinned tab or workspace is never questioned, and a pinned tab is never closed, even inside an unpinned workspace.
 
-1. Send the orchestrator a chat message: `herdr agent prompt <target> --wait --timeout 120000 "AGENT MESSAGE (cto, not a human). Are your tabs still needed? Reply done only if your work is finished and every tab can close. If you finished any of these todos, name them: <the project's open +cto todos>."`
+1. If the orchestrator is a `claude` agent, set aside any draft the user left in its input box with `herdr agent send-keys <target> ctrl+s`; Claude puts the draft back after the message is sent. Then send the orchestrator a chat message: `herdr agent prompt <target> --wait --timeout 120000 "AGENT MESSAGE (cto, not a human). Are your tabs still needed? Reply done only if your work is finished and every tab can close. If you finished any of these todos, name them: <the project's open +cto todos>."`
 2. Read the reply with `herdr agent read <target> --source recent-unwrapped --lines 60` and pipe the final message into `bin/cto-snapshot reply`.
 3. If the verdict is `act` and the label is `done`, the orchestrator has said done. That is proof: close the todos it named and annotate them with the printed `annotation`, then close each tab of the workspace that is `idle` or `done` and not pinned, with `herdr tab close <tab_id>`, the orchestrator's last. If a pinned tab remains, the workspace stays open and is reported.
 4. A timeout, a `blocked` state or any other verdict is "not done". Report the workspace with its state and age in Needs you. Close nothing.

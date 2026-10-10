@@ -79,7 +79,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   expect(assetsDirectory).toBeTruthy();
   const externalRequests = [];
   let latestSubmission;
-  let postedSubmission;
+  const postedSubmissions = [];
 
   await page.route('**/*', async (route) => {
     const request = route.request();
@@ -120,8 +120,8 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     }
 
     if (url.href === `${pageUrl}/answers` && request.method() === 'POST') {
-      postedSubmission = request.postDataJSON();
-      latestSubmission = postedSubmission;
+      latestSubmission = request.postDataJSON();
+      postedSubmissions.push(latestSubmission);
       await route.fulfill({ status: 204 });
       return;
     }
@@ -132,11 +132,19 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await page.goto(pageUrl);
   await expect(page.getByRole('heading', { level: 1, name: spec.title })).toBeVisible();
 
+  const questionCards = page.locator('.question-card');
+  await expect(questionCards).toHaveCount(spec.questions.length);
+  for (let index = 0; index < spec.questions.length; index += 1) {
+    await expect(questionCards.nth(index).getByLabel('Other', { exact: true })).toBeVisible();
+    await expect(questionCards.nth(index).getByLabel('Note (optional)')).toBeVisible();
+  }
+
   const routeQuestion = page.locator('[data-question-id="route"]');
   await routeQuestion.getByLabel('Other', { exact: true }).check();
   await expect(routeQuestion.getByLabel('Other response')).toBeVisible();
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByRole('alert')).toContainText('Write the Other response');
+  expect(postedSubmissions).toHaveLength(0);
 
   await routeQuestion.getByLabel('Other response').fill('Use the staged route.');
   const deliveryQuestion = page.locator('[data-question-id="delivery"]');
@@ -154,8 +162,33 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await expect(checksQuestion.getByLabel('Behavior', { exact: true })).toBeChecked();
   await expect(checksQuestion.getByLabel('Access', { exact: true })).toBeChecked();
 
+  await deliveryQuestion.getByRole('button', { name: 'Skip this question' }).click();
+  await checksQuestion.getByRole('button', { name: 'Skip this question' }).click();
+  const laterQuestion = page.locator('[data-question-id="later"]');
+  await laterQuestion.getByRole('button', { name: 'Skip this question' }).click();
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByText('Reply done in the chat')).toBeVisible();
+  expect(postedSubmissions).toHaveLength(1);
+  expect(postedSubmissions[0].answers[0]).toMatchObject({
+    id: 'route',
+    choices: [],
+    other: 'Use the staged route.'
+  });
+
+  await page.reload();
+  await expect(page.getByText('Latest submission:')).toBeVisible();
+  await expect(routeQuestion.getByLabel('Other', { exact: true })).toBeChecked();
+  await expect(routeQuestion.getByLabel('Other response')).toHaveValue('Use the staged route.');
+  await deliveryQuestion.getByLabel('Ship', { exact: true }).check();
+  await deliveryQuestion.getByLabel('Note (optional)').fill('Send the result in the current thread.');
+  await checksQuestion.getByLabel('Behavior', { exact: true }).check();
+  await checksQuestion.getByLabel('Access', { exact: true }).check();
+  await laterQuestion.getByRole('button', { name: 'Skip this question' }).click();
+  await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByText('Reply done in the chat')).toBeVisible();
+
+  expect(postedSubmissions).toHaveLength(2);
+  const postedSubmission = postedSubmissions[1];
   expect(postedSubmission.submittedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   expect(postedSubmission.answers).toEqual([
     {

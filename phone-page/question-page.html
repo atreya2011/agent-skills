@@ -106,9 +106,9 @@
     function readDraft() {
       try {
         const value = window.localStorage.getItem(storageKey);
-        return value ? JSON.parse(value) : {};
+        return value ? JSON.parse(value) : null;
       } catch {
-        return {};
+        return null;
       }
     }
 
@@ -312,7 +312,6 @@
     }
 
     function showLatest(submission) {
-      if (!submission?.submittedAt) return;
       const time = document.createElement('time');
       time.dateTime = submission.submittedAt;
       time.textContent = new Date(submission.submittedAt).toLocaleString();
@@ -323,20 +322,37 @@
     async function loadLatest() {
       try {
         const response = await fetch(answersUrl(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-        if (response.status === 404) return;
+        if (response.status === 404) return null;
         if (!response.ok) throw new Error(`request failed with ${response.status}`);
-        showLatest(await response.json());
+        const submission = await response.json();
+        showLatest(submission);
+        return submission;
       } catch {
         reply.textContent = 'The latest submission could not be checked. Your unsent answers are still here.';
+        return null;
       }
     }
 
-    const draft = readDraft();
-    spec.questions.forEach((question, index) => {
-      questionsRoot.append(renderQuestion(question, index, draft[question.id] ?? {}));
-    });
-    if (window.lucide) window.lucide.createIcons();
-    loadLatest();
+    function submissionDraft(submission) {
+      return Object.fromEntries(submission.answers.map((answer) => [answer.id, {
+        choices: answer.choices,
+        otherSelected: Boolean(answer.other),
+        other: answer.other,
+        note: answer.note
+      }]));
+    }
+
+    async function initialize() {
+      const localDraft = readDraft();
+      const submission = await loadLatest();
+      const draft = localDraft ?? (submission ? submissionDraft(submission) : {});
+      spec.questions.forEach((question, index) => {
+        questionsRoot.append(renderQuestion(question, index, draft[question.id] ?? {}));
+      });
+      window.lucide.createIcons();
+    }
+
+    initialize();
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();

@@ -5,3 +5,7 @@ cto/bin/
 tests/phone-page/node_modules/
 tests/phone-page/playwright-report/
 tests/phone-page/test-results/
+
+# cf-page-store dependencies and downloaded deployment assets are generated locally.
+cf-page-store/node_modules/
+cf-page-store/assets/

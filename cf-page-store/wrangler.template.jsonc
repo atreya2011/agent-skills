@@ -1,0 +1,25 @@
+{
+  "name": "<worker-name>",
+  "main": "<worker-entrypoint>",
+  "compatibility_date": "2026-10-10",
+  "account_id": "<cloudflare-account-id>",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "<team-domain>",
+    "ACCESS_AUDIENCE": "<audience-tag>"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "<database-name>",
+      "database_id": "<d1-database-id>",
+      "migrations_dir": "<migrations-directory>"
+    }
+  ],
+  "assets": {
+    "directory": "<asset-directory>",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}

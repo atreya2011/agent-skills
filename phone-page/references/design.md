@@ -10,6 +10,7 @@ Every phone page uses this dark system. A read page and a question page should f
 - Muted text: `#a3a9a0`.
 - Line: `#2c3029`.
 - Lime: `#9fe870`, with `#0e0f0c` text on lime controls.
+- Error: `#ffb4ab`.
 - Headlines: Figtree at weight 900. Body: Inter at weights 400, 500 and 600.
 - Cards have a 24 px radius. Buttons and compact labels are pills.
 - Every foreground and background pair has at least 4.5:1 contrast. Muted text on a card is the lowest pair, at 7.2:1.
@@ -43,3 +44,16 @@ The primary action is a lime pill. Put submission errors next to the action and 
 ## Assets
 
 Load scripts and fonts only from `/assets/<name>`, using the names in `../assets.json`. A page must not request a remote stylesheet, script, font, image, analytics endpoint or API. Inline page-specific CSS is allowed by the store's content policy.
+
+Start a read page with these asset declarations:
+
+```html
+<style>
+  @font-face { font-family: Figtree; font-style: normal; font-weight: 900; font-display: swap; src: url('/assets/figtree-900.woff2') format('woff2'); }
+  @font-face { font-family: Inter; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/inter-400.woff2') format('woff2'); }
+  @font-face { font-family: Inter; font-style: normal; font-weight: 500; font-display: swap; src: url('/assets/inter-500.woff2') format('woff2'); }
+  @font-face { font-family: Inter; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/inter-600.woff2') format('woff2'); }
+</style>
+<script src="/assets/tailwind-browser.js"></script>
+<script src="/assets/lucide.min.js"></script>
+```

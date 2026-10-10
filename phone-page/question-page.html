@@ -7,7 +7,6 @@
   <link rel="icon" href="data:,">
   <title>Questions</title>
   <style>
-    @font-face { font-family: Figtree; font-style: normal; font-weight: 700; font-display: swap; src: url('/assets/figtree-700.woff2') format('woff2'); }
     @font-face { font-family: Figtree; font-style: normal; font-weight: 900; font-display: swap; src: url('/assets/figtree-900.woff2') format('woff2'); }
     @font-face { font-family: Inter; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/inter-400.woff2') format('woff2'); }
     @font-face { font-family: Inter; font-style: normal; font-weight: 500; font-display: swap; src: url('/assets/inter-500.woff2') format('woff2'); }
@@ -35,23 +34,23 @@
     h2 { margin: 0; font-size: clamp(1.5rem, 7vw, 2.1rem); line-height: 1.08; }
     .context { margin: 12px 0 0; color: #a3a9a0; line-height: 1.55; }
     .options { display: grid; gap: 10px; margin: 22px 0 0; }
-    .option { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; min-height: 58px; padding: 14px; border: 1px solid #2c3029; border-radius: 18px; background: #11130f; cursor: pointer; }
-    .option:hover { border-color: #65705d; }
+    .option { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; min-height: 58px; padding: 14px; border: 1px solid #2c3029; border-radius: 18px; background: #0e0f0c; cursor: pointer; }
+    .option:hover { border-color: #a3a9a0; }
     .option:has(input:checked) { border-color: #9fe870; box-shadow: 0 0 0 1px #9fe870; }
     .option input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: #9fe870; }
     .option-copy { min-width: 0; }
     .option-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .option-label { font-weight: 600; }
     .option-description { display: block; margin-top: 5px; color: #a3a9a0; font-size: .875rem; line-height: 1.45; }
-    .chip { padding: 3px 8px; border-radius: 999px; color: #0e0f0c; background: #9fe870; font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+    .chip { padding: 3px 8px; border-radius: 999px; color: #0e0f0c; background: #9fe870; font-size: .68rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
     .other-input, .note-field { margin-top: 14px; }
     .field-label { display: block; margin: 0 0 7px; color: #e8ebe6; font-size: .875rem; font-weight: 600; }
-    input[type="text"], textarea { display: block; width: 100%; border: 1px solid #50564a; border-radius: 14px; padding: 12px 14px; color: #e8ebe6; background: #0e0f0c; }
+    input[type="text"], textarea { display: block; width: 100%; border: 1px solid #a3a9a0; border-radius: 14px; padding: 12px 14px; color: #e8ebe6; background: #0e0f0c; }
     textarea { min-height: 88px; resize: vertical; }
     input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid #9fe870; outline-offset: 3px; }
     .skip { min-height: 44px; margin-top: 10px; padding: 8px 2px; border: 0; color: #a3a9a0; background: transparent; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
     .actions { display: grid; gap: 12px; margin-top: 24px; }
-    .submit { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 52px; width: 100%; border: 0; border-radius: 999px; padding: 13px 20px; color: #0e0f0c; background: #9fe870; font-weight: 700; cursor: pointer; }
+    .submit { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 52px; width: 100%; border: 0; border-radius: 999px; padding: 13px 20px; color: #0e0f0c; background: #9fe870; font-weight: 600; cursor: pointer; }
     .submit:disabled { cursor: wait; opacity: .7; }
     .submit svg { width: 19px; }
     .error { margin: 0; color: #ffb4ab; line-height: 1.5; }
@@ -62,10 +61,9 @@
       .actions { grid-template-columns: minmax(220px, 320px); justify-content: end; }
     }
   </style>
-  <script src="/assets/tailwind-browser.js"></script>
-  <script src="/assets/lucide.js"></script>
+  <script src="/assets/lucide.min.js"></script>
 </head>
-<body class="antialiased">
+<body>
   <main>
     <header class="masthead">
       <p class="eyebrow">Your call</p>

@@ -72,6 +72,6 @@ The page adds Other and a note to every question. Questions may be skipped. The 
 
 The configured store command accepts `publish <file>` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `answers <id>` and prints the latest submission JSON, or exits 3 when none exists. Any other failure is nonzero.
 
-The published page can make authenticated `GET` and `POST` requests to its own URL plus `/answers`, and can load the manifest files at its own origin under `/assets/<name>`. A posted submission is a JSON object no larger than 64 KiB and replaces the prior submission. Only the user after login, and the store command, can reach any route.
+The published page can make authenticated `GET` and `POST` requests to its own URL plus `/answers`, and can load the manifest files at its own origin under `/assets/<name>`. `GET <page URL>/answers` returns HTTP 404 when no submission exists. The store's content policy allows inline `script` and `style` elements on pages. A posted submission is a JSON object no larger than 64 KiB and replaces the prior submission. Only the user after login, and the store command, can reach any route.
 
 After publishing, reply in one line that says what the page contains and what the user should do, followed by its link. After the user replies `done`, run `phone-page answers <id>` and continue from that submission.

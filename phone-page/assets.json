@@ -6,14 +6,9 @@
       "sha256": "a60c785630a06196808cbe79e6f7bdb4abcc8f4421a47b56f29338fc84805e3b"
     },
     {
-      "name": "lucide.js",
-      "url": "https://cdn.jsdelivr.net/npm/lucide@1.54.0/dist/umd/lucide.js",
-      "sha256": "72d99578935bc41eec4ef4acdbe2fe63815ccf25e5d6ca3b71d44f1e8df34a0a"
-    },
-    {
-      "name": "figtree-700.woff2",
-      "url": "https://cdn.jsdelivr.net/npm/@fontsource/figtree@5.3.0/files/figtree-latin-700-normal.woff2",
-      "sha256": "7ec4f08d09f91d349917dd6592f6aaae66d8fe1bbd58fa24707961e79236616e"
+      "name": "lucide.min.js",
+      "url": "https://cdn.jsdelivr.net/npm/lucide@1.54.0/dist/umd/lucide.min.js",
+      "sha256": "0317cd85e86e59189cbc4b94cd0912ed248d0c923967ac2243389d90647e92c4"
     },
     {
       "name": "figtree-900.woff2",

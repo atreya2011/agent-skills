@@ -38,7 +38,14 @@
     .header { color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; }
     .count { color: #a3a9a0; font-size: .75rem; }
     h2 { margin: 0; font-size: clamp(1.5rem, 7vw, 2.1rem); line-height: 1.08; }
-    .context { margin: 12px 0 0; color: #a3a9a0; line-height: 1.55; }
+    .context { margin: 12px 0 0; padding-left: 22px; color: #a3a9a0; font-size: 17px; line-height: 1.55; }
+    .context li + li { margin-top: 8px; }
+    .flow { display: grid; gap: 0; margin: 20px 0 0; padding: 0; list-style: none; }
+    .flow-step { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; font-size: 17px; line-height: 1.55; }
+    .flow-step:not(:last-child) { padding-bottom: 18px; }
+    .flow-step:not(:last-child)::after { position: absolute; top: 34px; bottom: 0; left: 16px; width: 1px; background: #2c3029; content: ''; }
+    .flow-number { display: grid; position: relative; z-index: 1; place-items: center; width: 34px; height: 34px; border: 1px solid #9fe870; border-radius: 50%; color: #0e0f0c; background: #9fe870; font-size: .875rem; font-weight: 600; }
+    .flow-copy { padding-top: 3px; color: #a3a9a0; }
     .options { display: grid; gap: 10px; margin: 22px 0 0; }
     .option { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; min-height: 58px; padding: 14px; border: 1px solid #2c3029; border-radius: 18px; background: #0e0f0c; cursor: pointer; }
     .option:hover { border-color: #a3a9a0; }
@@ -220,10 +227,33 @@
       card.append(legend);
 
       if (question.context) {
-        const context = document.createElement('p');
+        const context = document.createElement('ul');
         context.className = 'context';
-        context.textContent = question.context;
+        question.context.forEach((item) => {
+          const bullet = document.createElement('li');
+          bullet.textContent = item;
+          context.append(bullet);
+        });
         card.append(context);
+      }
+
+      if (question.flow) {
+        const flow = document.createElement('ol');
+        flow.className = 'flow';
+        question.flow.forEach((item, stepIndex) => {
+          const step = document.createElement('li');
+          step.className = 'flow-step';
+          const number = document.createElement('span');
+          number.className = 'flow-number';
+          number.setAttribute('aria-hidden', 'true');
+          number.textContent = String(stepIndex + 1);
+          const copy = document.createElement('span');
+          copy.className = 'flow-copy';
+          copy.textContent = item;
+          step.append(number, copy);
+          flow.append(step);
+        });
+        card.append(flow);
       }
 
       const options = document.createElement('div');

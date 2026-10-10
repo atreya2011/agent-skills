@@ -24,7 +24,8 @@ cat >"$tmp/valid.json" <<'JSON'
       "id": "route",
       "header": "Route",
       "question": "Which route should this take?",
-      "context": "The direct route changes the least.",
+      "context": ["Take the direct route.", "It changes the least."],
+      "flow": ["Make the change.", "Verify it."],
       "multiSelect": false,
       "options": [
         {"label": "Direct", "description": "Use the existing path.", "recommended": true},
@@ -45,7 +46,7 @@ else
 fi
 
 name='render accepts a spec larger than the argument limit'
-jq '.questions[0].context = ("x" * 150000)' "$tmp/valid.json" >"$tmp/large.json"
+jq '.questions[0].context[0] = ("x" * 150000)' "$tmp/valid.json" >"$tmp/large.json"
 status=0
 $command_path render "$tmp/large.json" >"$tmp/large.html" || status=$?
 if [[ "$status" != 0 ]]; then
@@ -78,6 +79,13 @@ case_names=(
   'duplicate option labels'
   'two recommended options'
   'recommended option not first'
+  'string context'
+  'empty context'
+  'empty context item'
+  'non-string context item'
+  'one flow step'
+  'empty flow item'
+  'non-string flow item'
 )
 case_filters=(
   '.questions = []'
@@ -89,6 +97,13 @@ case_filters=(
   '.questions[0].options[1].label = .questions[0].options[0].label'
   '.questions[0].options[1].recommended = true'
   '.questions[0].options[0].recommended = false | .questions[0].options[1].recommended = true'
+  '.questions[0].context = "old shape"'
+  '.questions[0].context = []'
+  '.questions[0].context = [""]'
+  '.questions[0].context = [1]'
+  '.questions[0].flow = ["Only step"]'
+  '.questions[0].flow = ["First", ""]'
+  '.questions[0].flow = ["First", 2]'
 )
 case_reasons=(
   'questions must contain 1 to 10 items'
@@ -100,6 +115,13 @@ case_reasons=(
   'option labels must be unique within each question'
   'a question may recommend at most one option'
   'the recommended option must be first'
+  'question context must contain 1 or more non-empty strings'
+  'question context must contain 1 or more non-empty strings'
+  'question context must contain 1 or more non-empty strings'
+  'question context must contain 1 or more non-empty strings'
+  'question flow must contain 2 or more non-empty strings'
+  'question flow must contain 2 or more non-empty strings'
+  'question flow must contain 2 or more non-empty strings'
 )
 
 for index in "${!case_names[@]}"; do

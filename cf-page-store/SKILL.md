@@ -84,10 +84,11 @@ Run these steps in order. Cloudflare commands run once during install; never run
 4. Create the service token, retain its rule id for step 5, and store only its client id and secret in the keyring:
 
    ```sh
-   service_token=$(curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/service_tokens" \
-     --request POST \
-     --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-     --json '{"name":"cf-page-store","duration":"forever"}')
+   service_token=$(printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" |
+     curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/service_tokens" \
+       --request POST \
+       --header @- \
+       --json '{"name":"cf-page-store","duration":"forever"}')
    export SERVICE_TOKEN_RULE_ID="$(jq -er '.result.id' <<<"$service_token")"
    service_token_id="$(jq -er '.result.client_id' <<<"$service_token")"
    service_token_secret="$(jq -er '.result.client_secret' <<<"$service_token")"
@@ -97,8 +98,8 @@ Run these steps in order. Cloudflare commands run once during install; never run
        printf '%s' "$service_token_secret" | secret-tool store --label='cf-page-store service token secret' service cf-page-store username service-token-secret
        ;;
      Darwin)
-       security add-generic-password -U -s cf-page-store -a service-token-id -w "$service_token_id"
-       security add-generic-password -U -s cf-page-store -a service-token-secret -w "$service_token_secret"
+       printf 'add-generic-password -U -s cf-page-store -a service-token-id -w %q\n' "$service_token_id" | security -i
+       printf 'add-generic-password -U -s cf-page-store -a service-token-secret -w %q\n' "$service_token_secret" | security -i
        ;;
    esac
    unset service_token service_token_id service_token_secret
@@ -108,25 +109,28 @@ Run these steps in order. Cloudflare commands run once during install; never run
 
    ```sh
    export USER_EMAIL='<user-email>'
-   application=$(curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
-     --request POST \
-     --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-     --json "$(jq -nc --arg domain "${STORE_ADDRESS#https://}" \
-       '{name:"cf-page-store",domain:$domain,type:"self_hosted",session_duration:"24h"}')")
+   application=$(printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" |
+     curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
+       --request POST \
+       --header @- \
+       --json "$(jq -nc --arg domain "${STORE_ADDRESS#https://}" \
+         '{name:"cf-page-store",domain:$domain,type:"self_hosted",session_duration:"24h"}')")
    export ACCESS_APPLICATION_ID="$(jq -er '.result.id' <<<"$application")"
    export AUDIENCE_TAG="$(jq -er '.result.aud' <<<"$application")"
    unset application
 
-   curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps/$ACCESS_APPLICATION_ID/policies" \
-     --request POST \
-     --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-     --json "$(jq -nc --arg email "$USER_EMAIL" \
-       '{name:"allow user",decision:"allow",precedence:1,include:[{email:{email:$email}}]}')" >/dev/null
-   curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps/$ACCESS_APPLICATION_ID/policies" \
-     --request POST \
-     --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-     --json "$(jq -nc --arg token "$SERVICE_TOKEN_RULE_ID" \
-       '{name:"allow store command",decision:"non_identity",precedence:2,include:[{service_token:{token_id:$token}}]}')" >/dev/null
+   printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" |
+     curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps/$ACCESS_APPLICATION_ID/policies" \
+       --request POST \
+       --header @- \
+       --json "$(jq -nc --arg email "$USER_EMAIL" \
+         '{name:"allow user",decision:"allow",precedence:1,include:[{email:{email:$email}}]}')" >/dev/null
+   printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" |
+     curl -fsS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps/$ACCESS_APPLICATION_ID/policies" \
+       --request POST \
+       --header @- \
+       --json "$(jq -nc --arg token "$SERVICE_TOKEN_RULE_ID" \
+         '{name:"allow store command",decision:"non_identity",precedence:2,include:[{service_token:{token_id:$token}}]}')" >/dev/null
 
    jq --arg audience "$AUDIENCE_TAG" '.vars.ACCESS_AUDIENCE = $audience' \
      "$DEPLOY_CONFIG" >"$DEPLOY_CONFIG.new"

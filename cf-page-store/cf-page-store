@@ -49,11 +49,13 @@ request() {
   shift 3
   client_id=$(keyring_value service-token-id)
   client_secret=$(keyring_value service-token-secret)
-  curl -sS -o "$output" -w '%{http_code}' \
-    --request "$method" \
-    --header "CF-Access-Client-Id: $client_id" \
-    --header "CF-Access-Client-Secret: $client_secret" \
-    "$@" "$url"
+  printf '%s\n' \
+    "CF-Access-Client-Id: $client_id" \
+    "CF-Access-Client-Secret: $client_secret" |
+    curl -sS -o "$output" -w '%{http_code}' \
+      --request "$method" \
+      --header @- \
+      "$@" "$url"
 }
 
 [[ $# -ge 1 ]] || usage
@@ -66,14 +68,14 @@ case "$command" in
   publish)
     [[ $# -eq 1 && -f "$1" ]] || usage
     status=$(request POST "$address/api/pages" "$cleanup_path" \
-      --header 'Content-Type: text/html' --data-binary "@$1")
+      --header 'Content-Type: text/html' --data-binary "@$1") || die "request failed"
     [[ "$status" == 201 ]] || die "publish failed with HTTP $status"
     cat "$cleanup_path"
     printf '\n'
     ;;
   answers)
     [[ $# -eq 1 ]] || usage
-    status=$(request GET "$address/p/$1/answers" "$cleanup_path")
+    status=$(request GET "$address/p/$1/answers" "$cleanup_path") || die "request failed"
     case "$status" in
       200)
         cat "$cleanup_path"

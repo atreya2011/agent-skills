@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
 template="$script_dir/question-page.html"
 manifest="$script_dir/assets.json"
 local_file=${PHONE_PAGE_LOCAL_FILE:-"$HOME/.agents/local/phone-page.md"}

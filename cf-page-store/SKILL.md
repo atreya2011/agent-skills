@@ -26,7 +26,7 @@ The OS keyring holds three generic-password entries under service `cf-page-store
 
 Run these steps in order. Cloudflare commands run once during install; never run them in continuous integration.
 
-1. Ask the user to create a Zero Trust organization on Cloudflare's free plan in the dashboard. Cloudflare asks for a payment method, but the free plan charges nothing. Record the full team domain.
+1. Ask the user to create a Zero Trust organization on Cloudflare's free plan in the dashboard. Cloudflare asks for a payment method, but the free plan charges nothing. Record the full team domain. Open Workers & Pages once in the dashboard so Cloudflare registers the `workers.dev` subdomain before deployment.
 
 2. Ask the user to create one API token with Workers Scripts Edit, D1 Edit, Access Apps and Policies Edit, and Access Service Tokens Edit. Store it without printing it:
 

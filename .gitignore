@@ -1,2 +1,7 @@
 # The snapshot binary is built at install time.
 cto/bin/
+
+# Browser-test dependencies and failure artifacts are generated locally.
+tests/phone-page/node_modules/
+tests/phone-page/playwright-report/
+tests/phone-page/test-results/

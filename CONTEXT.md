@@ -140,6 +140,32 @@ llm-wiki's nightly load of new sources into a vault.
 **Wiki ruling**:
 A page correction appended with llm-wiki's `rule` command.
 
+### Pages
+
+**Page**:
+A private HTML document published through a store and opened from a link.
+
+**Read page**:
+A page that presents flows, diagrams, plans or status without collecting answers.
+
+**Question page**:
+A page that presents every question to the user as tappable options and posts one submission.
+
+**Question spec**:
+The validated JSON input from which phone-page renders a question page.
+
+**Submission**:
+The latest set of answers posted by a question page. A new submission replaces the previous one.
+
+**Store**:
+The private service that publishes pages, serves their assets and keeps their latest submissions.
+
+**Store command**:
+The command phone-page calls to publish a page or read its latest submission.
+
+**Asset manifest**:
+The versioned list of page assets, source addresses and checksums that a store serves from its own origin.
+
 ### Output
 
 **Snapshot**:

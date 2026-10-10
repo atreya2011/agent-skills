@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+template="$script_dir/question-page.html"
+manifest="$script_dir/assets.json"
+local_file=${PHONE_PAGE_LOCAL_FILE:-"$HOME/.agents/local/phone-page.md"}
+cleanup_path=""
+
+cleanup() {
+  [[ -z "$cleanup_path" ]] || rm -rf -- "$cleanup_path"
+}
+trap cleanup EXIT
+
+die() {
+  printf 'phone-page: %s\n' "$1" >&2
+  exit 1
+}
+
+usage() {
+  printf 'usage: phone-page {publish <file>|ask <spec>|render <spec>|answers <id>|assets <directory>}\n' >&2
+  exit 2
+}
+
+validate_spec() {
+  local spec=$1 reason
+  jq -e . "$spec" >/dev/null 2>&1 || die "question spec is not valid JSON"
+  reason=$(jq -r '
+    if type != "object" then "question spec must be an object"
+    elif (.title | type) != "string" then "title must be a string"
+    elif (.questions | type) != "array" then "questions must be an array"
+    elif (.questions | length) < 1 or (.questions | length) > 10 then "questions must contain 1 to 10 items"
+    elif any(.questions[]; type != "object") then "every question must be an object"
+    elif any(.questions[]; (.id | type) != "string") then "every question id must be a string"
+    elif ([.questions[].id] | length) != ([.questions[].id] | unique | length) then "question ids must be unique"
+    elif any(.questions[]; (.header | type) != "string" or (.header | length) < 1 or (.header | length) > 12) then "every header must contain 1 to 12 characters"
+    elif any(.questions[]; (.question | type) != "string") then "every question must be a string"
+    elif any(.questions[]; has("context") and (.context | type) != "string") then "question context must be a string"
+    elif any(.questions[]; (.multiSelect | type) != "boolean") then "multiSelect must be a boolean"
+    elif any(.questions[]; (.options | type) != "array") then "every question must have an options array"
+    elif any(.questions[]; (.options | length) < 2 or (.options | length) > 6) then "every question must contain 2 to 6 options"
+    elif any(.questions[].options[]; type != "object") then "every option must be an object"
+    elif any(.questions[].options[]; (.label | type) != "string") then "every option label must be a string"
+    elif any(.questions[].options[]; (.description | type) != "string") then "every option description must be a string"
+    elif any(.questions[].options[]; has("recommended") and (.recommended | type) != "boolean") then "recommended must be a boolean"
+    elif any(.questions[]; ([.options[].label] | length) != ([.options[].label] | unique | length)) then "option labels must be unique within each question"
+    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) > 1) then "a question may recommend at most one option"
+    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) == 1 and (.options[0].recommended // false) != true) then "the recommended option must be first"
+    else ""
+    end
+  ' "$spec")
+  [[ -z "$reason" ]] || die "$reason"
+}
+
+render() {
+  local spec=$1
+  [[ -f "$spec" ]] || die "question spec does not exist: $spec"
+  validate_spec "$spec"
+  jq -jc . "$spec" | jq -Rrs --rawfile template "$template" \
+    'gsub("<"; "\\u003c") as $spec | $template | split("__PHONE_PAGE_SPEC__") | join($spec)'
+}
+
+store() {
+  local store_command
+  [[ -f "$local_file" ]] || die "local file not found: $local_file"
+  store_command=$(<"$local_file")
+  [[ -n "$store_command" && "$store_command" != *$'\n'* ]] || die "local file must contain exactly one store command"
+  "$store_command" "$@"
+}
+
+download_assets() {
+  local destination=$1 download_dir name url expected actual
+  download_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page-assets.XXXXXX")
+  cleanup_path=$download_dir
+  while IFS=$'\t' read -r name url expected; do
+    curl -fsSL "$url" -o "$download_dir/$name"
+    actual=$(openssl dgst -sha256 "$download_dir/$name" | awk '{print $NF}')
+    [[ "$actual" == "$expected" ]] || die "checksum mismatch for $name"
+  done < <(jq -r '.assets[] | [.name, .url, .sha256] | @tsv' "$manifest")
+  mkdir -p -- "$destination"
+  while IFS= read -r name; do
+    install -m 0644 "$download_dir/$name" "$destination/$name"
+  done < <(jq -r '.assets[].name' "$manifest")
+}
+
+[[ $# -ge 1 ]] || usage
+command=$1
+shift
+
+case "$command" in
+  publish)
+    [[ $# -eq 1 && -f "$1" ]] || usage
+    store publish "$1"
+    ;;
+  ask)
+    [[ $# -eq 1 ]] || usage
+    rendered_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page.XXXXXX")
+    cleanup_path=$rendered_dir
+    rendered="$rendered_dir/page.html"
+    render "$1" >"$rendered"
+    store publish "$rendered"
+    ;;
+  render)
+    [[ $# -eq 1 ]] || usage
+    render "$1"
+    ;;
+  answers)
+    [[ $# -eq 1 ]] || usage
+    store answers "$1"
+    ;;
+  assets)
+    [[ $# -eq 1 ]] || usage
+    download_assets "$1"
+    ;;
+  *) usage ;;
+esac

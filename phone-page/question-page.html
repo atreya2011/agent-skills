@@ -13,9 +13,14 @@
     @font-face { font-family: Inter; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/inter-600.woff2') format('woff2'); }
     :root { color-scheme: dark; font-family: Inter, sans-serif; background: #0e0f0c; color: #e8ebe6; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; min-height: 100vh; background: #0e0f0c; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; padding-top: calc(44px + env(safe-area-inset-top)); background: #0e0f0c; }
     button, input, textarea { font: inherit; }
     button, input, textarea, label { -webkit-tap-highlight-color: transparent; }
+    .progress { position: fixed; z-index: 2; top: 0; left: 0; width: 100%; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-bottom: 1px solid #2c3029; background: #0e0f0c; }
+    .progress-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; width: min(100%, 720px); margin: 0 auto; }
+    .progress-track { height: 4px; overflow: hidden; border-radius: 999px; background: #2c3029; }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: #9fe870; transition: width 160ms ease-out; }
+    .progress-count { color: #a3a9a0; font-size: .75rem; white-space: nowrap; }
     main { width: min(100%, 752px); margin: 0 auto; padding: 40px 16px calc(128px + env(safe-area-inset-bottom)); }
     .masthead { margin: 0 0 32px; }
     .eyebrow { margin: 0 0 10px; color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
@@ -56,18 +61,28 @@
     .submit svg { width: 19px; }
     .error { margin: 0; color: #ffb4ab; line-height: 1.5; }
     .reply { margin: 4px 0 0; color: #a3a9a0; text-align: center; }
-    .toast { position: fixed; z-index: 1; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 14px 18px; border: 1px solid #2c3029; border-radius: 16px; color: #e8ebe6; background: #191b16; box-shadow: 0 8px 32px rgb(0 0 0 / 40%); transform: translateX(-50%); }
+    .toast { position: fixed; z-index: 1; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); left: 16px; display: flex; align-items: center; gap: 10px; width: auto; max-width: none; padding: 14px 18px; border: 1px solid #9fe870; border-radius: 16px; color: #e8ebe6; background: #1f3a14; box-shadow: 0 8px 32px rgb(0 0 0 / 40%); }
     .toast svg { flex: 0 0 auto; width: 20px; color: #9fe870; }
+    .toast.error-toast { border-color: #ffb4ab; background: #3f1611; }
     .toast.error-toast svg { color: #ffb4ab; }
     @media (min-width: 720px) {
       main { padding-top: 72px; }
       .question-card { padding: 32px; }
       .actions { grid-template-columns: minmax(220px, 320px); justify-content: end; }
+      .toast { right: 24px; left: auto; width: max-content; max-width: 420px; }
     }
   </style>
   <script src="/assets/lucide.min.js"></script>
 </head>
 <body>
+  <div class="progress">
+    <div class="progress-inner">
+      <div class="progress-track" id="progress-track" role="progressbar" aria-labelledby="progress-count" aria-valuemin="0">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <span class="progress-count" id="progress-count"></span>
+    </div>
+  </div>
   <main>
     <header class="masthead">
       <p class="eyebrow">Your call</p>
@@ -102,11 +117,16 @@
     const latest = document.getElementById('latest');
     const latestText = document.getElementById('latest-text');
     const toast = document.getElementById('toast');
+    const progressTrack = document.getElementById('progress-track');
+    const progressFill = document.getElementById('progress-fill');
+    const progressCount = document.getElementById('progress-count');
     const storageKey = `phone-page:${window.location.pathname}`;
     let toastTimer;
 
     document.title = spec.title;
     document.getElementById('page-title').textContent = spec.title;
+    progressTrack.setAttribute('aria-valuemax', spec.questions.length);
+    progressCount.textContent = `0 of ${spec.questions.length} answered`;
 
     function readDraft() {
       try {
@@ -181,6 +201,7 @@
       const card = document.createElement('fieldset');
       card.className = 'question-card';
       card.dataset.questionId = question.id;
+      card.dataset.skipped = String(draft.skipped ?? false);
 
       const legend = document.createElement('legend');
       const meta = document.createElement('div');
@@ -266,6 +287,7 @@
         card.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((input) => { input.checked = false; });
         otherText.value = '';
         otherField.hidden = true;
+        card.dataset.skipped = 'true';
         saveDraft();
       });
 
@@ -275,8 +297,12 @@
         if (otherToggle.checked) otherText.focus();
       });
       card.querySelectorAll('input, textarea').forEach((input) => {
-        input.addEventListener('input', saveDraft);
+        input.addEventListener('input', () => {
+          if (input !== note) card.dataset.skipped = 'false';
+          saveDraft();
+        });
         input.addEventListener('change', () => {
+          if (input !== note) card.dataset.skipped = 'false';
           otherField.hidden = !otherToggle.checked;
           saveDraft();
         });
@@ -291,6 +317,7 @@
         const otherSelected = card.querySelector('[data-other-toggle]').checked;
         const other = card.querySelector('.other-input input').value;
         const note = card.querySelector('textarea').value;
+        const skipped = card.dataset.skipped === 'true';
         return {
           id: question.id,
           header: question.header,
@@ -298,22 +325,35 @@
           choices,
           other: otherSelected ? other.trim() : '',
           note: note.trim(),
-          otherSelected
+          otherSelected,
+          skipped
         };
       });
     }
 
+    function updateProgress(answers = collectAnswers()) {
+      const answered = answers.filter((answer) => answer.choices.length > 0 || (answer.otherSelected && answer.other) || answer.skipped).length;
+      const label = `${answered} of ${spec.questions.length} answered`;
+      progressTrack.setAttribute('aria-valuenow', answered);
+      progressTrack.setAttribute('aria-valuetext', label);
+      progressFill.style.width = `${(answered / spec.questions.length) * 100}%`;
+      progressCount.textContent = label;
+    }
+
     function saveDraft() {
+      const answers = collectAnswers();
       const value = {};
-      collectAnswers().forEach((answer) => {
+      answers.forEach((answer) => {
         value[answer.id] = {
           choices: answer.choices,
           otherSelected: answer.otherSelected,
           other: questionsRoot.querySelector(`[data-question-id="${CSS.escape(answer.id)}"] .other-input input`).value,
-          note: answer.note
+          note: answer.note,
+          skipped: answer.skipped
         };
       });
       writeDraft(value);
+      updateProgress(answers);
     }
 
     function showLatest(submission) {
@@ -374,6 +414,7 @@
       spec.questions.forEach((question, index) => {
         questionsRoot.append(renderQuestion(question, index, draft[question.id] ?? {}));
       });
+      updateProgress();
       window.lucide.createIcons();
     }
 
@@ -397,7 +438,7 @@
 
       const submission = {
         submittedAt: new Date().toISOString(),
-        answers: answers.map(({ otherSelected, ...answer }) => answer)
+        answers: answers.map(({ otherSelected, skipped, ...answer }) => answer)
       };
       submit.disabled = true;
       try {

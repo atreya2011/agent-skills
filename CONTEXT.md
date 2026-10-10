@@ -84,7 +84,7 @@ The agent a todo is tagged to, `+cos` or `+cto`.
 _Avoid_: owner, holder, desk
 
 **Handoff**:
-Retagging a todo to a different assignee.
+Assigning an unassigned todo to an agent, or retagging it to a different assignee.
 _Avoid_: transfer, migrate, reassign
 
 **Import**:

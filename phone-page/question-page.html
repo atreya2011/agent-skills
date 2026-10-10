@@ -16,7 +16,7 @@
     body { margin: 0; min-width: 320px; min-height: 100vh; background: #0e0f0c; }
     button, input, textarea { font: inherit; }
     button, input, textarea, label { -webkit-tap-highlight-color: transparent; }
-    main { width: min(100%, 752px); margin: 0 auto; padding: 40px 16px 64px; }
+    main { width: min(100%, 752px); margin: 0 auto; padding: 40px 16px calc(128px + env(safe-area-inset-bottom)); }
     .masthead { margin: 0 0 32px; }
     .eyebrow { margin: 0 0 10px; color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
     h1, h2 { font-family: Figtree, sans-serif; font-weight: 900; letter-spacing: -.03em; }
@@ -56,7 +56,7 @@
     .submit svg { width: 19px; }
     .error { margin: 0; color: #ffb4ab; line-height: 1.5; }
     .reply { margin: 4px 0 0; color: #a3a9a0; text-align: center; }
-    .toast { position: fixed; z-index: 1; left: 50%; top: calc(20px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 14px 18px; border: 1px solid #2c3029; border-radius: 16px; color: #e8ebe6; background: #191b16; box-shadow: 0 8px 32px rgb(0 0 0 / 40%); transform: translateX(-50%); }
+    .toast { position: fixed; z-index: 1; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 14px 18px; border: 1px solid #2c3029; border-radius: 16px; color: #e8ebe6; background: #191b16; box-shadow: 0 8px 32px rgb(0 0 0 / 40%); transform: translateX(-50%); }
     .toast svg { flex: 0 0 auto; width: 20px; color: #9fe870; }
     .toast.error-toast svg { color: #ffb4ab; }
     @media (min-width: 720px) {

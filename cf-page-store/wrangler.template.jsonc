@@ -9,6 +9,9 @@
     "ACCESS_TEAM_DOMAIN": "<team-domain>",
     "ACCESS_AUDIENCE": "<audience-tag>"
   },
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",

@@ -1,10 +1,14 @@
-import { applyD1Migrations } from "cloudflare:test";
+import {
+  applyD1Migrations,
+  createScheduledController,
+} from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
 import type { D1Migration } from "@cloudflare/vitest-pool-workers";
 import { setupNetwork } from "@msw/cloudflare";
 import { HttpResponse, http } from "msw";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import worker from "../src/index";
 
 declare global {
   namespace Cloudflare {
@@ -156,6 +160,44 @@ describe("submissions", () => {
       body,
     }, assertion);
     expect(response.status).toBe(status);
+  });
+});
+
+describe("scheduled cleanup", () => {
+  it("deletes only pages whose last submission is more than three days old", async () => {
+    const assertion = await token();
+    const expired = await publish(assertion);
+    const recent = await publish(assertion);
+    const unanswered = await publish(assertion);
+
+    for (const page of [expired, recent]) {
+      const response = await request(`/p/${page.id}/answers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }, assertion);
+      expect(response.status).toBe(204);
+    }
+    await env.DB.batch([
+      env.DB.prepare("UPDATE submissions SET submitted_at = datetime('now', '-4 days') WHERE page_id = ?")
+        .bind(expired.id),
+      env.DB.prepare("UPDATE submissions SET submitted_at = datetime('now', '-1 day') WHERE page_id = ?")
+        .bind(recent.id),
+    ]);
+
+    await worker.scheduled(createScheduledController(), env);
+    expect(await env.DB.prepare("SELECT page_id FROM submissions WHERE page_id = ?")
+      .bind(expired.id)
+      .first()).toBeNull();
+
+    for (const [page, pageStatus, answerStatus] of [
+      [expired, 404, 404],
+      [recent, 200, 200],
+      [unanswered, 200, 404],
+    ] as const) {
+      expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(pageStatus);
+      expect((await request(`/p/${page.id}/answers`, {}, assertion)).status).toBe(answerStatus);
+    }
   });
 });
 

@@ -167,6 +167,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await expect(deliveryQuestion.getByLabel('Note (optional)')).toHaveValue('Send the result in the current thread.');
   await expect(checksQuestion.getByLabel('Behavior', { exact: true })).toBeChecked();
   await expect(checksQuestion.getByLabel('Access', { exact: true })).toBeChecked();
+  await expect(page.getByText('3 of 4 answered')).toBeVisible();
 
   await deliveryQuestion.getByRole('button', { name: 'Skip this question' }).click();
   await checksQuestion.getByRole('button', { name: 'Skip this question' }).click();

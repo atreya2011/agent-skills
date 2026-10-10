@@ -79,6 +79,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   expect(assetsDirectory).toBeTruthy();
   const externalRequests = [];
   let latestSubmission;
+  let failNextSubmission = false;
   const postedSubmissions = [];
 
   await page.route('**/*', async (route) => {
@@ -120,6 +121,11 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     }
 
     if (url.href === `${pageUrl}/answers` && request.method() === 'POST') {
+      if (failNextSubmission) {
+        failNextSubmission = false;
+        await route.fulfill({ status: 503 });
+        return;
+      }
       latestSubmission = request.postDataJSON();
       postedSubmissions.push(latestSubmission);
       await route.fulfill({ status: 204 });
@@ -167,6 +173,8 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   const laterQuestion = page.locator('[data-question-id="later"]');
   await laterQuestion.getByRole('button', { name: 'Skip this question' }).click();
   await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByRole('status')).toHaveText('Answers sent');
+  await expect(page.getByRole('status').locator('.lucide-check-circle-2')).toBeVisible();
   await expect(page.getByText('Reply done in the chat')).toBeVisible();
   expect(postedSubmissions).toHaveLength(1);
   expect(postedSubmissions[0].answers[0]).toMatchObject({
@@ -174,6 +182,13 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     choices: [],
     other: 'Use the staged route.'
   });
+
+  failNextSubmission = true;
+  await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByRole('alert')).toHaveText('The answers were not sent. Check the connection and submit again.');
+  await expect(page.getByRole('alert').locator('.lucide-circle-alert')).toBeVisible();
+  await expect(page.locator('#form-error')).toBeHidden();
+  expect(postedSubmissions).toHaveLength(1);
 
   await page.reload();
   await expect(page.getByText('Latest submission:')).toBeVisible();
@@ -185,6 +200,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await checksQuestion.getByLabel('Access', { exact: true }).check();
   await laterQuestion.getByRole('button', { name: 'Skip this question' }).click();
   await page.getByRole('button', { name: 'Submit answers' }).click();
+  await expect(page.getByRole('status')).toHaveText('Answers sent');
   await expect(page.getByText('Reply done in the chat')).toBeVisible();
 
   expect(postedSubmissions).toHaveLength(2);

@@ -25,7 +25,7 @@
     h1 { margin: 0; color: #9fe870; font-size: clamp(2.5rem, 12vw, 4.75rem); line-height: .95; }
     .intro { max-width: 560px; margin: 18px 0 0; color: #a3a9a0; font-size: 1rem; line-height: 1.6; }
     .latest { display: flex; gap: 10px; align-items: center; margin: 20px 0 0; padding: 12px 16px; border: 1px solid #2c3029; border-radius: 999px; color: #e8ebe6; background: #191b16; font-size: .875rem; }
-    .latest[hidden], .other-input[hidden], .error[hidden] { display: none; }
+    .latest[hidden], .other-input[hidden], .error[hidden], .toast[hidden] { display: none; }
     .latest svg { width: 18px; color: #9fe870; }
     .questions { display: grid; gap: 16px; }
     .question-card { min-width: 0; margin: 0; padding: 24px; border: 1px solid #2c3029; border-radius: 24px; background: #191b16; }
@@ -56,6 +56,9 @@
     .submit svg { width: 19px; }
     .error { margin: 0; color: #ffb4ab; line-height: 1.5; }
     .reply { margin: 4px 0 0; color: #a3a9a0; text-align: center; }
+    .toast { position: fixed; z-index: 1; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 14px 18px; border: 1px solid #2c3029; border-radius: 16px; color: #e8ebe6; background: #191b16; box-shadow: 0 8px 32px rgb(0 0 0 / 40%); transform: translateX(-50%); }
+    .toast svg { flex: 0 0 auto; width: 20px; color: #9fe870; }
+    .toast.error-toast svg { color: #ffb4ab; }
     @media (min-width: 720px) {
       main { padding-top: 72px; }
       .question-card { padding: 32px; }
@@ -87,6 +90,7 @@
       </div>
     </form>
   </main>
+  <div class="toast" id="toast" hidden></div>
   <script type="application/json" id="spec">__PHONE_PAGE_SPEC__</script>
   <script>
     const spec = JSON.parse(document.getElementById('spec').textContent);
@@ -97,7 +101,9 @@
     const reply = document.getElementById('reply');
     const latest = document.getElementById('latest');
     const latestText = document.getElementById('latest-text');
+    const toast = document.getElementById('toast');
     const storageKey = `phone-page:${window.location.pathname}`;
+    let toastTimer;
 
     document.title = spec.title;
     document.getElementById('page-title').textContent = spec.title;
@@ -318,6 +324,26 @@
       latest.hidden = false;
     }
 
+    function hideToast() {
+      window.clearTimeout(toastTimer);
+      toast.hidden = true;
+    }
+
+    function showToast(message, type) {
+      hideToast();
+      toast.classList.toggle('error-toast', type === 'error');
+      toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+      const icon = document.createElement('i');
+      icon.dataset.lucide = type === 'error' ? 'circle-alert' : 'check-circle-2';
+      icon.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.textContent = message;
+      toast.replaceChildren(icon, text);
+      toast.hidden = false;
+      window.lucide.createIcons();
+      toastTimer = window.setTimeout(() => { toast.hidden = true; }, 4000);
+    }
+
     async function loadLatest() {
       try {
         const response = await fetch(answersUrl(), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
@@ -355,6 +381,7 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      hideToast();
       error.hidden = true;
       reply.textContent = '';
       const answers = collectAnswers();
@@ -384,10 +411,9 @@
         removeDraft();
         showLatest(submission);
         reply.textContent = 'Reply done in the chat';
+        showToast('Answers sent', 'success');
       } catch {
-        error.textContent = 'The answers were not sent. Check the connection and submit again.';
-        error.hidden = false;
-        error.focus();
+        showToast('The answers were not sent. Check the connection and submit again.', 'error');
       } finally {
         submit.disabled = false;
       }

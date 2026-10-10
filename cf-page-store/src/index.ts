@@ -131,4 +131,24 @@ app.get("/assets/:name", async (c) => {
   return c.env.ASSETS.fetch(new URL(`/${c.req.param("name")}`, c.req.url));
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller: ScheduledController, env: Env) {
+    const expired = await env.DB.prepare(
+      "SELECT page_id FROM submissions WHERE submitted_at < datetime('now', '-3 days')",
+    ).all<{ page_id: string }>();
+    if (expired.results.length === 0) {
+      return;
+    }
+
+    const pageIds = JSON.stringify(expired.results.map(({ page_id }) => page_id));
+    await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM submissions WHERE page_id IN (SELECT value FROM json_each(?)) AND submitted_at < datetime('now', '-3 days')",
+      ).bind(pageIds),
+      env.DB.prepare(
+        "DELETE FROM pages WHERE id IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM submissions WHERE page_id = pages.id)",
+      ).bind(pageIds),
+    ]);
+  },
+} satisfies ExportedHandler<Env>;

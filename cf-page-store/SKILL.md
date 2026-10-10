@@ -6,6 +6,7 @@ description: Run one private Cloudflare store for phone-page pages and their lat
 # Cloudflare page store
 
 Use `cf-page-store publish <file>` and `cf-page-store answers <id>` as phone-page's store command. The Worker requires a valid Cloudflare Access token on every route, including assets.
+Answered pages are deleted three days after their last submission.
 
 ## Local file
 

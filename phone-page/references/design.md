@@ -27,7 +27,7 @@ Use Lucide icons only when they identify meaning. Pair every icon with visible t
 
 ### Card
 
-A card groups one decision, fact or outcome. Give it a short heading, a complete explanation and, when useful, a small status chip. Use the lime outline only for the current or selected card.
+A card groups one decision, fact or outcome. Give it a short heading and bullet content, plus a small status chip when useful. Use the lime outline only for the current or selected card.
 
 ### Step flow
 

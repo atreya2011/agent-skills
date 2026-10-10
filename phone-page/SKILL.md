@@ -7,6 +7,8 @@ description: Publish designed read pages and tappable question pages for replies
 
 Use a page when a reply to the user needs more than two sentences, a diagram, a table or any question. A chat reply that points to a page has at most two sentences plus the link, with no code block, table or list. Put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
 
+For read pages and question pages, open with the bottom line, then give the reasons. Write all content as bullets. When the content is a process or sequence, show it as a flow diagram: use a step flow on a read page or the question spec's `flow` field on a question page. Content text is 17 px.
+
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.
 
 ## Local file
@@ -38,8 +40,6 @@ page-store
 `publish`, `ask` and `answers` preserve the store command's output and exit status.
 
 ## Question spec
-
-For read pages and question pages, open with the bottom line, then give the reasons. Write all content as bullets. When the content is a process or sequence, show it as a flow diagram: use a step flow on a read page or the question spec's `flow` field on a question page. Content text is 17 px.
 
 Write one JSON object with a string `title` and 1 to 10 questions. Every question has a unique string `id`, a `header` of 1 to 12 characters, a string `question`, an optional `context` array of 1 or more non-empty strings, an optional `flow` array of 2 or more non-empty strings, a Boolean `multiSelect`, and 2 to 6 options. The first context bullet states the bottom line; any remaining bullets give the reasons. Every option has a unique string `label`, a string `description`, and may set Boolean `recommended`; at most one option is recommended, and it must be first.
 

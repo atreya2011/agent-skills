@@ -14,5 +14,10 @@
       "database_id": "local",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "assets": {
+    "directory": "test/assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
 }

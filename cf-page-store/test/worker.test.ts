@@ -10,6 +10,7 @@ declare global {
   namespace Cloudflare {
     interface Env {
       DB: D1Database;
+      ASSETS: Fetcher;
       ACCESS_TEAM_DOMAIN: string;
       ACCESS_AUDIENCE: string;
       TEST_MIGRATIONS: D1Migration[];
@@ -98,6 +99,14 @@ describe("pages", () => {
       body,
     }, await token());
     expect(response.status).toBe(status);
+  });
+});
+
+describe("assets", () => {
+  it("serves a manifest asset through the assets binding", async () => {
+    const response = await request("/assets/tailwind-browser.js", {}, await token());
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("test asset\n");
   });
 });
 

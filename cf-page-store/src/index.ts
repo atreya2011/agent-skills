@@ -132,7 +132,7 @@ app.get("/assets/:name", async (c) => {
   if (!assetNames.has(c.req.param("name"))) {
     return c.body(null, 404);
   }
-  return c.env.ASSETS.fetch(c.req.raw);
+  return c.env.ASSETS.fetch(new URL(`/${c.req.param("name")}`, c.req.url));
 });
 
 export default app;

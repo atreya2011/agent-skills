@@ -19,7 +19,15 @@ const spec = {
       id: 'route',
       header: 'Route',
       question: 'Which route should the work take?',
-      context: 'The direct route is ready, but another route can be written in full.',
+      context: [
+        'Take the direct route.',
+        'It is ready without another dependency.'
+      ],
+      flow: [
+        'Choose the route.',
+        'Run the checks.',
+        'Deliver the result.'
+      ],
       multiSelect: false,
       options: [
         { label: 'Direct', description: 'Use the ready route with no added dependency.', recommended: true },
@@ -135,6 +143,8 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     await route.fulfill({ status: 404, body: 'not found' });
   });
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(page.viewportSize()).toEqual({ width: 390, height: 844 });
   await page.goto(pageUrl);
   await expect(page.getByRole('heading', { level: 1, name: spec.title })).toBeVisible();
 
@@ -146,6 +156,20 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   }
 
   const routeQuestion = page.locator('[data-question-id="route"]');
+  await expect(routeQuestion.locator('.context')).toHaveRole('list');
+  await expect(routeQuestion.locator('.context li')).toHaveText(spec.questions[0].context);
+  await expect(routeQuestion.locator('.flow')).toHaveRole('list');
+  await expect(routeQuestion.locator('.flow-copy')).toHaveText(spec.questions[0].flow);
+  await expect(routeQuestion.locator('.flow-number')).toHaveText(['1', '2', '3']);
+  await expect(routeQuestion.locator('.context + .flow')).toBeVisible();
+  await expect(routeQuestion.locator('.flow + .options')).toBeVisible();
+  expect(await routeQuestion.locator('.context li').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
+  expect(await routeQuestion.locator('.flow-copy').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
+  expect(await routeQuestion.locator('.flow-step').evaluateAll((steps) => steps.map((step) => getComputedStyle(step, '::after').content))).toEqual([
+    '""',
+    '""',
+    'none'
+  ]);
   await routeQuestion.getByLabel('Other', { exact: true }).check();
   await expect(routeQuestion.getByLabel('Other response')).toBeVisible();
   await page.getByRole('button', { name: 'Submit answers' }).click();

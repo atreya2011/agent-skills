@@ -19,7 +19,7 @@ Use one column with a 16 px gutter on a phone. Keep that column centered and no 
 
 ## Content
 
-Open with one short eyebrow, one headline and one sentence that says what the page is for. Each card or step explains one item in one to three full sentences. Do not use fragments. Split longer content into more cards, a short list, or a step flow.
+Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write all content as bullets at 17 px. When the content is a process or sequence, show it as a flow diagram: use the question spec's `flow` field on a question page or a step flow on a read page.
 
 Use Lucide icons only when they identify meaning. Pair every icon with visible text or an accessible name. Do not use an icon as decoration between paragraphs.
 
@@ -31,7 +31,7 @@ A card groups one decision, fact or outcome. Give it a short heading, a complete
 
 ### Step flow
 
-Draw a process as a vertical icon stepper. Each step has a numbered or semantic icon, a title and one to three full sentences. Use a line between steps; never put a flow in a code block.
+Draw a process as a vertical stepper. Each step has a numbered or semantic icon and bullet content at 17 px. Use a line between steps; never put a flow in a code block.
 
 ### Options
 

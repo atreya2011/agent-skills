@@ -54,7 +54,7 @@ app.post("/api/pages", async (c) => {
   }
 
   const tabId = c.req.header("X-Herdr-Tab-Id");
-  if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[1-9][0-9]*$/.test(tabId)) {
+  if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/.test(tabId)) {
     return c.body(null, 400);
   }
 

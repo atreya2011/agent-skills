@@ -182,6 +182,6 @@ When both the secret and the page's asking tab are present, each stored submissi
 - `cf-page-store publish <file> [tab-id]` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
 - `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
 
-The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and a positive decimal tab number. Invalid values return HTTP 400.
+The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and one or more ASCII letters or digits. Invalid values return HTTP 400.
 
 Both commands read the service-token id and secret from the OS keyring and never print either value.

@@ -69,7 +69,7 @@ case "$command" in
     [[ ( $# -eq 1 || $# -eq 2 ) && -f "$1" ]] || usage
     headers=()
     if [[ $# -eq 2 ]]; then
-      [[ "$2" =~ ^w[A-Za-z0-9]+:t[1-9][0-9]*$ ]] || die "invalid herdr tab id"
+      [[ "$2" =~ ^w[A-Za-z0-9]+:t[A-Za-z0-9]+$ ]] || die "invalid herdr tab id"
       headers+=(--header "X-Herdr-Tab-Id: $2")
     fi
     status=$(request POST "$address/api/pages" "$cleanup_path" \

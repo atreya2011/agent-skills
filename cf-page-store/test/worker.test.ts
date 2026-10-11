@@ -83,7 +83,7 @@ describe("pages", () => {
     }
   });
 
-  it.each([undefined, "wTEST:t1", "wTEST2:t12"])("stores optional asking tab %s and submits without a webhook secret", async (tabId) => {
+  it.each([undefined, "wTEST:t1", "wTEST2:t12", "wTEST:t0", "w2J:t1A", "w2H:tR"])("stores optional asking tab %s and submits without a webhook secret", async (tabId) => {
     const assertion = await token();
     const page = await publish(assertion, tabId);
     expect(await env.DB.prepare("SELECT herdr_tab_id FROM pages WHERE id = ?")
@@ -98,7 +98,7 @@ describe("pages", () => {
       .bind(page.id).first()).toEqual({ body: '{"choice":"submitted"}' });
   });
 
-  it.each(["", "wTEST", "wTEST:t0", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing a page", async (tabId) => {
+  it.each(["", "wTEST", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing a page", async (tabId) => {
     const before = await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first();
     const response = await request("/api/pages", {
       method: "POST",

@@ -24,6 +24,8 @@ Use one column with a 16 px gutter on a phone. Keep that column centered and no 
 
 Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the question spec's `flow` field on a question page or draw the same chart on a read page.
 
+- A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
+
 Use Lucide icons only when they identify meaning. Pair every icon with visible text or an accessible name. Do not use an icon as decoration between paragraphs.
 
 ## Components

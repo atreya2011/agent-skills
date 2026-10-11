@@ -9,6 +9,8 @@ Use a page when a reply to the user needs more than two sentences, a diagram, a 
 
 For read pages and question pages, open with the bottom line, then give the reasons. Write each bullet and sub-bullet as one sentence. Put numbered points in nested sub-bullets, never as numbering in bullet text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: draw the chart on a read page or use the question spec's `flow` field on a question page. Content text is 17 px.
 
+- A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
+
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.
 
 - Before writing any page, use `git ls-files` in the current repository to find files named `glossary.md` at any path, ignoring letter case, and read any matches.

@@ -23,5 +23,21 @@
     "directory": "<asset-directory>",
     "binding": "ASSETS",
     "run_worker_first": true
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "EVENTS",
+        "class_name": "PageEvents"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "PageEvents"
+      ]
+    }
+  ]
 }

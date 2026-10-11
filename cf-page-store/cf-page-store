@@ -15,7 +15,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: cf-page-store {publish <file>|answers <id>}\n' >&2
+  printf 'usage: cf-page-store {publish <file> [tab-id]|answers <id>|listen}\n' >&2
   exit 2
 }
 
@@ -66,12 +66,25 @@ cleanup_path=$(mktemp "${TMPDIR:-/tmp}/cf-page-store.XXXXXX")
 
 case "$command" in
   publish)
-    [[ $# -eq 1 && -f "$1" ]] || usage
+    [[ ( $# -eq 1 || $# -eq 2 ) && -f "$1" ]] || usage
+    headers=()
+    if [[ $# -eq 2 ]]; then
+      [[ "$2" =~ ^w[A-Za-z0-9]+:t[A-Za-z0-9]+$ ]] || die "invalid herdr tab id"
+      headers+=(--header "X-Herdr-Tab-Id: $2")
+    fi
     status=$(request POST "$address/api/pages" "$cleanup_path" \
-      --header 'Content-Type: text/html' --data-binary "@$1") || die "request failed"
+      --header 'Content-Type: text/html' "${headers[@]}" --data-binary "@$1") || die "request failed"
     [[ "$status" == 201 ]] || die "publish failed with HTTP $status"
     cat "$cleanup_path"
     printf '\n'
+    ;;
+  listen)
+    [[ $# -eq 0 ]] || usage
+    script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+    script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
+    client_id=$(keyring_value service-token-id)
+    client_secret=$(keyring_value service-token-secret)
+    printf '%s\n' "$client_id" "$client_secret" | node "$script_dir/listen.mjs" "$address"
     ;;
   answers)
     [[ $# -eq 1 ]] || usage

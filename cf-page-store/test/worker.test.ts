@@ -1,22 +1,26 @@
 import {
   applyD1Migrations,
+  createExecutionContext,
   createScheduledController,
+  evictDurableObject,
+  runInDurableObject,
+  waitOnExecutionContext,
 } from "cloudflare:test";
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import type { D1Migration } from "@cloudflare/vitest-pool-workers";
-import { setupNetwork } from "@msw/cloudflare";
-import { HttpResponse, http } from "msw";
-import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import worker from "../src/index";
+import { importPKCS8, SignJWT, type CryptoKey } from "jose";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import worker, { type PageEvents } from "../src/index";
 
 declare global {
   namespace Cloudflare {
     interface Env {
       DB: D1Database;
+      EVENTS: DurableObjectNamespace<PageEvents>;
       ASSETS: Fetcher;
       ACCESS_TEAM_DOMAIN: string;
       ACCESS_AUDIENCE: string;
+      TEST_SIGNING_KEY: string;
       TEST_MIGRATIONS: D1Migration[];
     }
 
@@ -26,7 +30,6 @@ declare global {
   }
 }
 
-const network = setupNetwork();
 const pageHeaders = {
   "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   "cache-control": "no-store",
@@ -53,13 +56,16 @@ async function request(path: string, init: RequestInit = {}, assertion?: string)
   if (assertion) {
     headers.set("Cf-Access-Jwt-Assertion", assertion);
   }
-  return exports.default.fetch(`https://store.invalid${path}`, { ...init, headers });
+  const context = createExecutionContext();
+  const response = await worker.fetch(new Request(`https://store.invalid${path}`, { ...init, headers }), env, context);
+  await waitOnExecutionContext(context);
+  return response;
 }
 
-async function publish(assertion: string) {
+async function publish(assertion: string, tabId?: string) {
   const response = await request("/api/pages", {
     method: "POST",
-    headers: { "Content-Type": "text/html" },
+    headers: { "Content-Type": "text/html", ...(tabId === undefined ? {} : { "X-Herdr-Tab-Id": tabId }) },
     body: html,
   }, assertion);
   expect(response.status).toBe(201);
@@ -67,17 +73,9 @@ async function publish(assertion: string) {
 }
 
 beforeAll(async () => {
-  const pair = await generateKeyPair("RS256");
-  privateKey = pair.privateKey;
-  const publicKey = await exportJWK(pair.publicKey);
-  network.use(http.get(`${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, () => HttpResponse.json({
-    keys: [{ ...publicKey, alg: "RS256", kid: "test-key", use: "sig" }],
-  })));
-  network.enable();
+  privateKey = await importPKCS8(env.TEST_SIGNING_KEY, "RS256");
   await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 });
-
-afterAll(() => network.disable());
 
 describe("pages", () => {
   it("publishes and opens a page with the required headers", async () => {
@@ -91,6 +89,32 @@ describe("pages", () => {
     for (const [name, value] of Object.entries(pageHeaders)) {
       expect(response.headers.get(name)).toBe(value);
     }
+  });
+
+  it.each([undefined, "wTEST:t1", "wTEST2:t12", "wTEST:t0", "w2J:t1A", "w2H:tR"])("stores optional asking tab %s and submits without a listener", async (tabId) => {
+    const assertion = await token();
+    const page = await publish(assertion, tabId);
+    expect(await env.DB.prepare("SELECT herdr_tab_id FROM pages WHERE id = ?")
+      .bind(page.id).first()).toEqual({ herdr_tab_id: tabId ?? null });
+    const response = await request(`/p/${page.id}/answers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: '{"choice":"submitted"}',
+    }, assertion);
+    expect(response.status).toBe(204);
+    expect(await env.DB.prepare("SELECT body FROM submissions WHERE page_id = ?")
+      .bind(page.id).first()).toEqual({ body: '{"choice":"submitted"}' });
+  });
+
+  it.each(["", "wTEST", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing a page", async (tabId) => {
+    const before = await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first();
+    const response = await request("/api/pages", {
+      method: "POST",
+      headers: { "Content-Type": "text/html", "X-Herdr-Tab-Id": tabId },
+      body: html,
+    }, await token());
+    expect(response.status).toBe(400);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first()).toEqual(before);
   });
 
   it.each([
@@ -213,5 +237,115 @@ describe("unknown pages", () => {
       body: method === "POST" ? "{}" : undefined,
     }, await token());
     expect(response.status).toBe(404);
+  });
+});
+
+
+describe("answer events", () => {
+  const sockets: WebSocket[] = [];
+  const events = () => env.EVENTS.getByName("listener");
+
+  beforeEach(async () => {
+    await runInDurableObject(events(), (_instance, state) => {
+      state.storage.sql.exec("DELETE FROM events");
+    });
+  });
+
+  afterEach(() => {
+    for (const socket of sockets.splice(0)) {
+      socket.close(1000);
+    }
+  });
+
+  async function connect(assertion: string) {
+    const response = await request("/api/events", { headers: { Upgrade: "websocket" } }, assertion);
+    expect(response.status).toBe(101);
+    expect(response.webSocket).not.toBeNull();
+    const socket = response.webSocket!;
+    socket.accept();
+    sockets.push(socket);
+    return socket;
+  }
+
+  function receive(socket: WebSocket) {
+    return new Promise<{ id: string; page_id: string; tab_id: string }>((resolve) => {
+      socket.addEventListener("message", (message) => resolve(JSON.parse(message.data as string)), { once: true });
+    });
+  }
+
+  async function storedEvents() {
+    return runInDurableObject(events(), (_instance, state) =>
+      state.storage.sql.exec("SELECT id, page_id, tab_id FROM events ORDER BY rowid").toArray());
+  }
+
+  it.each(["connected", "offline"])("delivers %s submissions, replays unacked events after hibernation, and deletes acknowledged events", async (mode) => {
+    const assertion = await token();
+    const page = await publish(assertion, "wTEST:tR");
+    const first = mode === "connected" ? await connect(assertion) : undefined;
+    const received = first ? receive(first) : undefined;
+    const response = await request(`/p/${page.id}/answers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: '{"choice":"submitted"}',
+    }, assertion);
+    expect(response.status).toBe(204);
+    const saved = await storedEvents();
+    expect(saved).toHaveLength(1);
+    const event = saved[0];
+    expect(event).toEqual({ id: expect.any(String), page_id: page.id, tab_id: "wTEST:tR" });
+    expect(event.id).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/);
+    if (received) {
+      expect(await received).toEqual(event);
+    }
+    expect(await (await request(`/p/${page.id}/answers`, {}, assertion)).json()).toEqual({ choice: "submitted" });
+
+    await evictDurableObject(events());
+    const second = await connect(assertion);
+    expect(await receive(second)).toEqual(event);
+    second.send(JSON.stringify({ ack: event.id }));
+    await expect.poll(storedEvents).toEqual([]);
+    const third = await connect(assertion);
+    expect(third.readyState).toBe(WebSocket.OPEN);
+    expect(await storedEvents()).toEqual([]);
+  });
+
+  it.each([1, 2])("broadcasts each submission to %s connected sockets", async (count) => {
+    const assertion = await token();
+    const page = await publish(assertion, "wTEST:tA");
+    const listeners = await Promise.all(Array.from({ length: count }, () => connect(assertion)));
+    const received = listeners.map(receive);
+    for (const choice of ["first", "second"]) {
+      const messages = choice === "first" ? received : listeners.map(receive);
+      expect((await request(`/p/${page.id}/answers`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ choice }),
+      }, assertion)).status).toBe(204);
+      const delivered = await Promise.all(messages);
+      expect(new Set(delivered.map((event) => event.id)).size).toBe(1);
+      for (const event of delivered) {
+        expect(event).toEqual({ id: expect.any(String), page_id: page.id, tab_id: "wTEST:tA" });
+      }
+    }
+    expect(await storedEvents()).toHaveLength(2);
+  });
+
+  it.each([undefined])("does not queue an event without an asking tab", async (tabId) => {
+    const assertion = await token();
+    const page = await publish(assertion, tabId);
+    expect((await request(`/p/${page.id}/answers`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+    }, assertion)).status).toBe(204);
+    expect(await storedEvents()).toEqual([]);
+  });
+
+  it.each([
+    ["missing token", undefined, "websocket", 403],
+    ["expired token", { expired: true }, "websocket", 403],
+    ["wrong audience", { audience: "wrong-audience" }, "websocket", 403],
+    ["no upgrade", {}, undefined, 426],
+  ] as const)("rejects an event connection with %s", async (_name, options, upgrade, status) => {
+    const response = await request("/api/events", {
+      headers: upgrade ? { Upgrade: upgrade } : {},
+    }, options ? await token(options) : undefined);
+    expect(response.status).toBe(status);
   });
 });

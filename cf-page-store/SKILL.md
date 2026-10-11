@@ -59,6 +59,7 @@ Run these steps in order. Cloudflare commands run once during install; never run
    npx wrangler d1 create "$DATABASE_NAME"
    export D1_DATABASE_ID='<database-id-from-the-create-command>'
    npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0001_schema.sql
+   npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql
    mkdir -p "$(dirname "$DEPLOY_CONFIG")"
    jq \
      --arg name "$WORKER_NAME" \
@@ -156,9 +157,43 @@ Run these steps in order. Cloudflare commands run once during install; never run
 
 7. Confirm that the store address without a login is turned away. Publish a phone-page question, open its link and complete it, then confirm `cf-page-store answers <id>` prints that submission. Before a submission, `answers` must print nothing and exit 3.
 
+## Answer notifications
+
+Before updating an existing store, apply `migrations/0002_herdr_tab_id.sql` once with `npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql --config "$DEPLOY_CONFIG"`. Existing pages keep a null asking tab.
+
+The `EVENTS` binding points to one SQLite-backed `PageEvents` Durable Object. Its Wrangler migration is `v1` with `new_sqlite_classes: ["PageEvents"]`, separate from the D1 migration above. For an existing rendered deploy config, copy these two sections from the template before deploying:
+
+```sh
+jq --slurpfile template wrangler.template.jsonc \
+  '.durable_objects = $template[0].durable_objects | .migrations = $template[0].migrations' \
+  "$DEPLOY_CONFIG" >"$DEPLOY_CONFIG.new"
+mv "$DEPLOY_CONFIG.new" "$DEPLOY_CONFIG"
+npm ci
+npx wrangler deploy --config "$DEPLOY_CONFIG"
+```
+
+`GET /api/events` upgrades to a WebSocket behind the same Cloudflare Access authentication as the other API routes. After storing an answer for a page with an asking tab, the Worker schedules `{id, page_id, tab_id}` for background publication to every listener and returns HTTP 204 without waiting for publication. Publication failures are logged and do not fail the saved answer. Events contain no titles or answers, persist in SQLite until a listener sends `{"ack": "<event-id>"}`, and replay on every new connection. Delivery can repeat if a listener disconnects before its acknowledgment arrives.
+
+Run `cf-page-store listen` with Node 25, `herdr`, and the existing service-token keyring entries available. The listener uses `ws` to send Access headers, validates event identifiers, and prompts the single matching agent pane when its state is idle, done, or working. If no eligible pane exists, it logs the page and tab instead. It acknowledges each handled event and reconnects with backoff from one to sixty seconds. Credentials never appear in its output.
+
+On Linux, install the user service from this directory after the command is linked into `PATH`:
+
+```sh
+mkdir -p "$HOME/.config/systemd/user"
+# If Node 25 is outside the service PATH, link it into ~/.local/bin first.
+install -m 0644 cf-page-store-listener.service "$HOME/.config/systemd/user/"
+systemctl --user daemon-reload
+systemctl --user enable --now cf-page-store-listener.service
+```
+
+For Node installed through a version manager, link the selected executable with `ln -s "$(command -v node)" "$HOME/.local/bin/node"` when that destination does not exist. The service resolves `cf-page-store` through `%h/.local/bin` and needs `node`, `herdr`, and `secret-tool` on its configured `PATH`, plus an unlocked keyring. Its `Restart=always` setting restarts a listener that exits.
+
 ## Commands
 
-- `cf-page-store publish <file>` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
+- `cf-page-store publish <file> [tab-id]` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
+- `cf-page-store listen` maintains the answer-event WebSocket and wakes asking Herdr tabs.
 - `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
 
-Both commands read the service-token id and secret from the OS keyring and never print either value.
+The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and one or more ASCII letters or digits. Invalid values return HTTP 400.
+
+All commands read the service-token id and secret from the OS keyring and never print either value.

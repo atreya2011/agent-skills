@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers";
 import { Hono } from "hono";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import manifest from "../../phone-page/assets.json";
@@ -7,6 +8,66 @@ interface Env {
   ASSETS: Fetcher;
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUDIENCE: string;
+  EVENTS: DurableObjectNamespace<PageEvents>;
+}
+
+interface PageEvent extends Record<string, string> {
+  id: string;
+  page_id: string;
+  tab_id: string;
+}
+
+export class PageEvents extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, tab_id TEXT NOT NULL)");
+  }
+
+  publish(event: PageEvent) {
+    this.ctx.storage.sql.exec("INSERT INTO events (id, page_id, tab_id) VALUES (?, ?, ?)", event.id, event.page_id, event.tab_id);
+    const message = JSON.stringify(event);
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(message);
+      } catch {
+        socket.close(1011, "send failed");
+      }
+    }
+  }
+
+  fetch(request: Request) {
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+      return new Response(null, { status: 426 });
+    }
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    for (const event of this.ctx.storage.sql.exec<PageEvent>("SELECT id, page_id, tab_id FROM events ORDER BY rowid")) {
+      server.send(JSON.stringify(event));
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  webSocketMessage(_socket: WebSocket, message: string | ArrayBuffer) {
+    if (typeof message !== "string") {
+      return;
+    }
+    try {
+      const value = JSON.parse(message);
+      if (typeof value?.ack === "string") {
+        this.ctx.storage.sql.exec("DELETE FROM events WHERE id = ?", value.ack);
+      }
+    } catch {
+      // Malformed acknowledgments leave events available for redelivery.
+    }
+  }
+
+  webSocketClose(socket: WebSocket, code: number) {
+    socket.close(code);
+  }
+
+  webSocketError(socket: WebSocket) {
+    socket.close(1011, "socket error");
+  }
 }
 
 const pageLimit = 1024 * 1024;
@@ -43,6 +104,10 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+app.get("/api/events", (c) => {
+  return c.env.EVENTS.getByName("listener").fetch(c.req.raw);
+});
+
 app.post("/api/pages", async (c) => {
   const body = await c.req.arrayBuffer();
   if (body.byteLength > pageLimit) {
@@ -52,11 +117,16 @@ app.post("/api/pages", async (c) => {
     return c.body(null, 415);
   }
 
+  const tabId = c.req.header("X-Herdr-Tab-Id");
+  if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/.test(tabId)) {
+    return c.body(null, 400);
+  }
+
   const html = new TextDecoder().decode(body);
   const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim() ?? "";
   const id = crypto.randomUUID();
-  await c.env.DB.prepare("INSERT INTO pages (id, title, html) VALUES (?, ?, ?)")
-    .bind(id, title, html)
+  await c.env.DB.prepare("INSERT INTO pages (id, title, html, herdr_tab_id) VALUES (?, ?, ?, ?)")
+    .bind(id, title, html, tabId ?? null)
     .run();
 
   return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href }, 201);
@@ -90,9 +160,9 @@ app.get("/p/:id/answers", async (c) => {
 });
 
 app.post("/p/:id/answers", async (c) => {
-  const page = await c.env.DB.prepare("SELECT id FROM pages WHERE id = ?")
+  const page = await c.env.DB.prepare("SELECT id, herdr_tab_id FROM pages WHERE id = ?")
     .bind(c.req.param("id"))
-    .first();
+    .first<{ id: string; herdr_tab_id: string | null }>();
   if (!page) {
     return c.body(null, 404);
   }
@@ -121,6 +191,20 @@ app.post("/p/:id/answers", async (c) => {
   `)
     .bind(c.req.param("id"), text)
     .run();
+  const tabId = page.herdr_tab_id;
+  if (tabId) {
+    c.executionCtx.waitUntil((async () => {
+      try {
+        await c.env.EVENTS.getByName("listener").publish({
+          id: crypto.randomUUID(),
+          page_id: page.id,
+          tab_id: tabId,
+        });
+      } catch {
+        console.error(`page store: could not publish answer event for page ${page.id} tab ${tabId}`);
+      }
+    })());
+  }
   return c.body(null, 204);
 });
 

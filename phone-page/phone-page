@@ -149,7 +149,11 @@ case "$command" in
     cleanup_path=$rendered_dir
     rendered="$rendered_dir/page.html"
     render "$1" >"$rendered"
-    published=$(store publish "$rendered")
+    publish_args=(publish "$rendered")
+    if [[ -n "${HERDR_TAB_ID:-}" ]]; then
+      publish_args+=("$HERDR_TAB_ID")
+    fi
+    published=$(store "${publish_args[@]}")
     url=$(printf '%s\n' "$published" | jq -er '.url | select(type == "string" and length > 0)')
     title=$(jq -r '.title | gsub("[\r\n]"; " ")' "$1")
     mkdir -p -- "$(dirname -- "$inbox_file")"

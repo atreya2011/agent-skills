@@ -37,7 +37,7 @@ page-store
 ## Commands
 
 - `phone-page publish <file>` publishes a read page and prints the store's one-line JSON object containing `id` and `url`.
-- `phone-page ask <spec>` validates a question spec, renders it, publishes it and prints the same JSON object.
+- `phone-page ask <spec>` validates a question spec, renders it, publishes it and prints the same JSON object. When `HERDR_TAB_ID` is nonempty, it passes that asking tab to the store; without it, the page has no asking tab.
 - `phone-page inbox` prunes and prints the local inbox of open question pages.
 - `phone-page render <spec>` validates a question spec and prints the complete HTML page.
 - `phone-page answers <id>` prints the latest submission. Exit 3 means an existing page has no submission; exit 4 means the page no longer exists.
@@ -100,8 +100,10 @@ The page adds Other and a note to every question. Questions may be skipped. The 
 
 ## Store contract
 
-The configured store command accepts `publish <file>` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `answers <id>` and prints the latest submission JSON, exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. Any other failure is nonzero.
+The configured store command accepts `publish <file> [tab-id]` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `answers <id>` and prints the latest submission JSON, exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. Any other failure is nonzero.
 
 The published page can make authenticated `GET` and `POST` requests to its own URL plus `/answers`, and can load the manifest files at its own origin under `/assets/<name>`. `GET <page URL>/answers` returns HTTP 404 when no submission exists. The store's content policy allows inline `script` and `style` elements on pages. A posted submission is a JSON object no larger than 64 KiB and replaces the prior submission. Only the user after login, and the store command, can reach any route.
+
+When `cf-page-store listen` runs on the asking machine, a submitted answer wakes the recorded herdr tab without polling. On that prompt, run `phone-page answers <id>` and continue from the stored submission.
 
 After publishing, reply in one line that says what the page contains and what the user should do, followed by its link. After the user replies `done`, run `phone-page answers <id>` and continue from that submission.

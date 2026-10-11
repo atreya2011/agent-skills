@@ -107,6 +107,28 @@ case_names=(
   'numbered string bullet'
   'numbered object bullet'
   'numbered sub-bullet'
+  'empty summary'
+  'one card'
+  'seven cards'
+  'card without text'
+  'card with an invalid icon'
+  'one table column'
+  'five table columns'
+  'no table rows'
+  'nine table rows'
+  'short table row'
+  'non-string table cell'
+  'no flow charts'
+  'five flow charts'
+  'flow chart without a title'
+  'flow chart title over forty characters'
+  'flow chart with one step'
+  'flow and flows together'
+  'multi-sentence summary'
+  'multi-sentence card text'
+  'multi-sentence table cell'
+  'multi-sentence flow title'
+  'multi-sentence titled flow step'
 )
 case_filters=(
   '.questions = []'
@@ -146,6 +168,28 @@ case_filters=(
   '.questions[0].context[0] = "1. Choose now."'
   '.questions[0].context[0] = {text: "2) Choose now.", items: ["A reason."]}'
   '.questions[0].context[0] = {text: "A reason.", items: ["  3) Choose now."]}'
+  '.summary = ""'
+  '.questions[0].cards = [{title: "Rule", text: "No rule exists."}]'
+  '.questions[0].cards = [range(0; 7) | {title: "Rule", text: "No rule exists."}]'
+  '.questions[0].cards = [{title: "Rule"}, {title: "Check", text: "CI checks the format."}]'
+  '.questions[0].cards = [{title: "Rule", text: "No rule exists.", icon: "Book Open"}, {title: "Check", text: "CI checks the format."}]'
+  '.questions[0].table = {columns: ["Paths"], rows: [["docs/"]]}'
+  '.questions[0].table = {columns: ["A", "B", "C", "D", "E"], rows: [["1", "2", "3", "4", "5"]]}'
+  '.questions[0].table = {columns: ["Paths", "Type"], rows: []}'
+  '.questions[0].table = {columns: ["Paths", "Type"], rows: [range(0; 9) | ["docs/", "docs"]]}'
+  '.questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/"]]}'
+  '.questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", 1]]}'
+  'del(.questions[0].flow) | .questions[0].flows = []'
+  'del(.questions[0].flow) | .questions[0].flows = [range(0; 5) | {title: "Chart", steps: ["Start.", "End."]}]'
+  'del(.questions[0].flow) | .questions[0].flows = [{steps: ["Start.", "End."]}]'
+  'del(.questions[0].flow) | .questions[0].flows = [{title: ("x" * 41), steps: ["Start.", "End."]}]'
+  'del(.questions[0].flow) | .questions[0].flows = [{title: "Chart", steps: ["Start."]}]'
+  '.questions[0].flows = [{title: "Chart", steps: ["Start.", "End."]}]'
+  '.summary = "Choose now. Finish later."'
+  '.questions[0].cards = [{title: "Rule", text: "Choose now. Finish later."}, {title: "Check", text: "CI checks the format."}]'
+  '.questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "Choose now. Finish later."]]}'
+  'del(.questions[0].flow) | .questions[0].flows = [{title: "Choose now. Finish later.", steps: ["Start.", "End."]}]'
+  'del(.questions[0].flow) | .questions[0].flows = [{title: "Chart", steps: ["Choose now. Finish later.", "End."]}]'
 )
 case_reasons=(
   'questions must contain 1 to 10 items'
@@ -185,6 +229,28 @@ case_reasons=(
   'context bullet must put numbered points in items: 1. Choose now.'
   'context bullet must put numbered points in items: 2) Choose now.'
   'context sub-bullet must put numbered points in items:   3) Choose now.'
+  'summary must be a non-empty string'
+  'question cards must contain 2 to 6 objects with a title, a text and an optional lucide icon name'
+  'question cards must contain 2 to 6 objects'
+  'question cards must contain 2 to 6 objects'
+  'question cards must contain 2 to 6 objects'
+  'question table must have 2 to 4 non-empty columns and 1 to 8 rows of one string cell per column'
+  'question table must have'
+  'question table must have'
+  'question table must have'
+  'question table must have'
+  'question table must have'
+  'question flows must contain 1 to 4 objects with a title of 1 to 40 characters and 2 or more steps'
+  'question flows must contain'
+  'question flows must contain'
+  'question flows must contain'
+  'question flows must contain'
+  'a question may use flow or flows, not both'
+  'summary must contain one sentence: Choose now. Finish later.'
+  'card text must contain one sentence: Choose now. Finish later.'
+  'table cell must contain one sentence: Choose now. Finish later.'
+  'flow title must contain one sentence: Choose now. Finish later.'
+  'flow step must contain one sentence: Choose now. Finish later.'
 )
 
 for index in "${!case_names[@]}"; do
@@ -201,10 +267,11 @@ for index in "${!case_names[@]}"; do
   fi
 done
 
-case_names=('nested context and branching flow' 'decimal and version text')
+case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows')
 case_filters=(
   '.questions[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .questions[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
   '.questions[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .questions[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}] | .questions[0].options[0].description = "Use v1.3.0 with a threshold of 0.60."'
+  '.summary = "Add the rule and the check." | .questions[0].cards = [{title: "Rule", text: "No rule maps changes to types.", icon: "book-open"}, {title: "Check", text: "CI checks only the format."}] | .questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "docs"], ["src/", "feat or fix"]]} | del(.questions[0].flow) | .questions[0].flows = [{title: "How it reached main", steps: ["An agent opens the PR.", "CI checks the format."]}, {title: "Proposed check", steps: ["Compare the type with the paths.", {text: "Do they match?", branches: ["Pass.", "Fail."]}]}]'
 )
 for index in "${!case_names[@]}"; do
   name="render accepts ${case_names[index]}"
@@ -228,6 +295,14 @@ case "$1" in
     [[ "${STORE_PUBLISH_STATUS:-0}" == 0 ]] || exit "$STORE_PUBLISH_STATUS"
     [[ -z "${STORE_CAPTURE:-}" ]] || cp "$2" "$STORE_CAPTURE"
     printf '%s\n' '{"id":"page-1","url":"https://store.example/p/page-1"}'
+    ;;
+  update)
+    [[ "${STORE_UPDATE_STATUS:-0}" == 0 ]] || exit "$STORE_UPDATE_STATUS"
+    [[ -z "${STORE_CAPTURE:-}" ]] || cp "$3" "$STORE_CAPTURE"
+    printf '{"id":"%s","url":"https://store.example/p/%s"}\n' "$2" "$2"
+    ;;
+  delete)
+    exit "${STORE_DELETE_STATUS:-0}"
     ;;
   answers)
     case "$2" in
@@ -293,6 +368,88 @@ status=0
 STORE_PUBLISH_STATUS=1 $command_path ask "$tmp/valid.json" >/dev/null || status=$?
 if [[ "$status" != 1 ]] || ! cmp -s "$tmp/before.md" "$PHONE_PAGE_INBOX_FILE"; then
   fail "$name" 'failed ask changed the inbox or returned the wrong status'
+else
+  pass "$name"
+fi
+
+name='publish with an id replaces the page through the store'
+output=$($command_path publish "$tmp/valid.json" page-2)
+if [[ "$output" != '{"id":"page-2","url":"https://store.example/p/page-2"}' ]]; then
+  fail "$name" "unexpected output: $output"
+elif [[ "$(tail -n 1 "$STORE_CALLS")" != "update page-2 $tmp/valid.json" ]]; then
+  fail "$name" "unexpected call: $(tail -n 1 "$STORE_CALLS")"
+else
+  pass "$name"
+fi
+
+name='ask with an id replaces the page in place and its inbox line'
+printf '%s\n' '- 2026-01-01 12:00 Old title: https://store.example/p/page-1' '- 2026-01-01 12:00 Other: https://store.example/p/page-2' >"$PHONE_PAGE_INBOX_FILE"
+jq '.title = "Revised route"' "$tmp/valid.json" >"$tmp/revised.json"
+export STORE_CAPTURE="$tmp/revised.html"
+output=$(HERDR_TAB_ID=wTEST:tU $command_path ask "$tmp/revised.json" page-1)
+unset STORE_CAPTURE
+call=$(tail -n 1 "$STORE_CALLS")
+embedded=$(sed -n 's#.*<script type="application/json" id="spec">\(.*\)</script>.*#\1#p' "$tmp/revised.html")
+if [[ "$output" != '{"id":"page-1","url":"https://store.example/p/page-1"}' ]]; then
+  fail "$name" "unexpected output: $output"
+elif [[ ! "$call" =~ ^update\ page-1\ .*/page\.html$ ]]; then
+  fail "$name" "unexpected call: $call"
+elif [[ "$(printf '%s' "$embedded" | jq -cS .)" != "$(jq -cS . "$tmp/revised.json")" ]]; then
+  fail "$name" 'replaced page spec differs from the input'
+elif [[ "$(wc -l <"$PHONE_PAGE_INBOX_FILE")" -ne 2 ]]; then
+  fail "$name" "inbox has $(wc -l <"$PHONE_PAGE_INBOX_FILE") lines, want 2"
+elif [[ "$(head -n 1 "$PHONE_PAGE_INBOX_FILE")" != '- 2026-01-01 12:00 Other: https://store.example/p/page-2' ]]; then
+  fail "$name" 'the other open entry was changed'
+elif [[ ! "$(tail -n 1 "$PHONE_PAGE_INBOX_FILE")" =~ ^-\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}\ Revised\ route:\ https://store.example/p/page-1$ ]]; then
+  fail "$name" "unexpected inbox line: $(tail -n 1 "$PHONE_PAGE_INBOX_FILE")"
+else
+  pass "$name"
+fi
+
+name='a failed in-place ask leaves the inbox unchanged'
+cp "$PHONE_PAGE_INBOX_FILE" "$tmp/before.md"
+status=0
+STORE_UPDATE_STATUS=4 $command_path ask "$tmp/revised.json" page-1 >/dev/null || status=$?
+if [[ "$status" != 4 ]]; then
+  fail "$name" "exit $status, want 4"
+elif ! cmp -s "$tmp/before.md" "$PHONE_PAGE_INBOX_FILE"; then
+  fail "$name" 'failed ask changed the inbox'
+else
+  pass "$name"
+fi
+
+name='delete removes the page and its inbox line'
+status=0
+$command_path delete page-1 || status=$?
+if [[ "$status" != 0 ]]; then
+  fail "$name" "exit $status, want 0"
+elif [[ "$(tail -n 1 "$STORE_CALLS")" != 'delete page-1' ]]; then
+  fail "$name" "unexpected call: $(tail -n 1 "$STORE_CALLS")"
+elif [[ "$(cat "$PHONE_PAGE_INBOX_FILE")" != '- 2026-01-01 12:00 Other: https://store.example/p/page-2' ]]; then
+  fail "$name" "unexpected inbox: $(cat "$PHONE_PAGE_INBOX_FILE")"
+else
+  pass "$name"
+fi
+
+name='delete of a missing page exits 4 and still removes its inbox line'
+status=0
+STORE_DELETE_STATUS=4 $command_path delete page-2 || status=$?
+if [[ "$status" != 4 ]]; then
+  fail "$name" "exit $status, want 4"
+elif [[ -s "$PHONE_PAGE_INBOX_FILE" ]]; then
+  fail "$name" "unexpected inbox: $(cat "$PHONE_PAGE_INBOX_FILE")"
+else
+  pass "$name"
+fi
+
+name='a failed delete leaves the inbox unchanged'
+printf '%s\n' '- 2026-01-01 12:00 Other: https://store.example/p/page-2' >"$PHONE_PAGE_INBOX_FILE"
+status=0
+STORE_DELETE_STATUS=1 $command_path delete page-2 >/dev/null 2>&1 || status=$?
+if [[ "$status" != 1 ]]; then
+  fail "$name" "exit $status, want 1"
+elif [[ "$(cat "$PHONE_PAGE_INBOX_FILE")" != '- 2026-01-01 12:00 Other: https://store.example/p/page-2' ]]; then
+  fail "$name" 'failed delete changed the inbox'
 else
   pass "$name"
 fi

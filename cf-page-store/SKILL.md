@@ -5,7 +5,7 @@ description: Run one private Cloudflare store for phone-page pages and their lat
 
 # Cloudflare page store
 
-Use `cf-page-store publish <file>` and `cf-page-store answers <id>` as phone-page's store command. The Worker requires a valid Cloudflare Access token on every route, including assets.
+Use `cf-page-store publish <file>`, `cf-page-store update <id> <file>`, `cf-page-store delete <id>` and `cf-page-store answers <id>` as phone-page's store command. The Worker requires a valid Cloudflare Access token on every route, including assets. `PUT /api/pages/<id>` and `DELETE /api/pages/<id>` back the update and delete commands.
 Answered pages are deleted three days after their last submission.
 
 ## Local file
@@ -194,6 +194,8 @@ For Node installed through a version manager, link the selected executable with 
 ## Commands
 
 - `cf-page-store publish <file> [tab-id]` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
+- `cf-page-store update <id> <file>` replaces an existing page's HTML at the same `id`, `url` and asking tab, deletes its submission, and prints the same JSON object. It exits 4 when the page no longer exists.
+- `cf-page-store delete <id>` deletes the page and its submission. It exits 4 when the page no longer exists.
 - `cf-page-store listen` maintains the answer-event WebSocket and wakes asking Herdr tabs.
 - `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
 

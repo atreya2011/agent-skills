@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import manifest from "../../phone-page/assets.json";
 
@@ -108,7 +108,8 @@ app.get("/api/events", (c) => {
   return c.env.EVENTS.getByName("listener").fetch(c.req.raw);
 });
 
-app.post("/api/pages", async (c) => {
+/** Reads an HTML page body, or returns the rejection response for an oversized or non-HTML body. */
+async function readPage(c: Context<{ Bindings: Env }>) {
   const body = await c.req.arrayBuffer();
   if (body.byteLength > pageLimit) {
     return c.body(null, 413);
@@ -117,19 +118,61 @@ app.post("/api/pages", async (c) => {
     return c.body(null, 415);
   }
 
+  const html = new TextDecoder().decode(body);
+  const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim() ?? "";
+  return { html, title };
+}
+
+app.post("/api/pages", async (c) => {
+  const page = await readPage(c);
+  if (page instanceof Response) {
+    return page;
+  }
+
   const tabId = c.req.header("X-Herdr-Tab-Id");
   if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/.test(tabId)) {
     return c.body(null, 400);
   }
 
-  const html = new TextDecoder().decode(body);
-  const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim() ?? "";
   const id = crypto.randomUUID();
   await c.env.DB.prepare("INSERT INTO pages (id, title, html, herdr_tab_id) VALUES (?, ?, ?, ?)")
-    .bind(id, title, html, tabId ?? null)
+    .bind(id, page.title, page.html, tabId ?? null)
     .run();
 
   return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href }, 201);
+});
+
+app.put("/api/pages/:id", async (c) => {
+  const id = c.req.param("id");
+  const existing = await c.env.DB.prepare("SELECT id FROM pages WHERE id = ?").bind(id).first();
+  if (!existing) {
+    return c.body(null, 404);
+  }
+
+  const page = await readPage(c);
+  if (page instanceof Response) {
+    return page;
+  }
+
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE pages SET title = ?, html = ? WHERE id = ?").bind(page.title, page.html, id),
+    c.env.DB.prepare("DELETE FROM submissions WHERE page_id = ?").bind(id),
+  ]);
+  return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href });
+});
+
+app.delete("/api/pages/:id", async (c) => {
+  const id = c.req.param("id");
+  const existing = await c.env.DB.prepare("SELECT id FROM pages WHERE id = ?").bind(id).first();
+  if (!existing) {
+    return c.body(null, 404);
+  }
+
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM submissions WHERE page_id = ?").bind(id),
+    c.env.DB.prepare("DELETE FROM pages WHERE id = ?").bind(id),
+  ]);
+  return c.body(null, 204);
 });
 
 app.get("/p/:id", async (c) => {

@@ -121,12 +121,51 @@ describe("pages", () => {
     ["one-byte oversized page", "text/html", "x".repeat(1024 * 1024 + 1), 413],
     ["non-HTML page", "text/plain", html, 415],
   ])("rejects a %s", async (_name, contentType, body, status) => {
-    const response = await request("/api/pages", {
-      method: "POST",
-      headers: { "Content-Type": contentType },
-      body,
-    }, await token());
-    expect(response.status).toBe(status);
+    const assertion = await token();
+    const page = await publish(assertion);
+    for (const [method, path] of [["POST", "/api/pages"], ["PUT", `/api/pages/${page.id}`]]) {
+      const response = await request(path, { method, headers: { "Content-Type": contentType }, body }, assertion);
+      expect(response.status, `${method} ${path}`).toBe(status);
+    }
+    expect(await (await request(`/p/${page.id}`, {}, assertion)).text()).toBe(html);
+  });
+
+  it.each([undefined, "wTEST:tU"])("replaces a page in place with asking tab %s and discards its submission", async (tabId) => {
+    const assertion = await token();
+    const page = await publish(assertion, tabId);
+    expect((await request(`/p/${page.id}/answers`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: '{"choice":"old"}',
+    }, assertion)).status).toBe(204);
+
+    const replaced = "<!doctype html><html><head><title>Revised</title></head><body>Choose again</body></html>";
+    const response = await request(`/api/pages/${page.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "text/html" },
+      body: replaced,
+    }, assertion);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(page);
+
+    expect(await env.DB.prepare("SELECT title, html, herdr_tab_id FROM pages WHERE id = ?").bind(page.id).first())
+      .toEqual({ title: "Revised", html: replaced, herdr_tab_id: tabId ?? null });
+    expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(200);
+    expect((await request(`/p/${page.id}/answers`, {}, assertion)).status).toBe(404);
+  });
+
+  it.each(["unanswered", "answered"])("deletes an %s page", async (state) => {
+    const assertion = await token();
+    const page = await publish(assertion, "wTEST:tD");
+    if (state === "answered") {
+      expect((await request(`/p/${page.id}/answers`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+      }, assertion)).status).toBe(204);
+    }
+
+    expect((await request(`/api/pages/${page.id}`, { method: "DELETE" }, assertion)).status).toBe(204);
+    expect(await env.DB.prepare("SELECT id FROM pages WHERE id = ?").bind(page.id).first()).toBeNull();
+    expect(await env.DB.prepare("SELECT page_id FROM submissions WHERE page_id = ?").bind(page.id).first()).toBeNull();
+    expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(404);
+    expect((await request(`/api/pages/${page.id}`, { method: "DELETE" }, assertion)).status).toBe(404);
   });
 });
 
@@ -146,8 +185,10 @@ describe("Access", () => {
     ["wrong issuer", { issuer: "https://wrong.invalid" }],
   ])("returns 403 for a %s", async (_name, options) => {
     const assertion = options ? await token(options) : undefined;
-    const response = await request("/api/pages", { method: "POST" }, assertion);
-    expect(response.status).toBe(403);
+    for (const [method, path] of [["POST", "/api/pages"], ["PUT", "/api/pages/any"], ["DELETE", "/api/pages/any"]]) {
+      const response = await request(path, { method }, assertion);
+      expect(response.status, `${method} ${path}`).toBe(403);
+    }
   });
 });
 
@@ -227,14 +268,16 @@ describe("scheduled cleanup", () => {
 
 describe("unknown pages", () => {
   it.each([
-    ["GET", "/p/unknown"],
-    ["GET", "/p/unknown/answers"],
-    ["POST", "/p/unknown/answers"],
-  ])("returns 404 for %s %s", async (method, path) => {
+    ["GET", "/p/unknown", undefined, undefined],
+    ["GET", "/p/unknown/answers", undefined, undefined],
+    ["POST", "/p/unknown/answers", "application/json", "{}"],
+    ["PUT", "/api/pages/unknown", "text/html", html],
+    ["DELETE", "/api/pages/unknown", undefined, undefined],
+  ])("returns 404 for %s %s", async (method, path, contentType, body) => {
     const response = await request(path, {
       method,
-      headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
-      body: method === "POST" ? "{}" : undefined,
+      headers: contentType ? { "Content-Type": contentType } : undefined,
+      body,
     }, await token());
     expect(response.status).toBe(404);
   });

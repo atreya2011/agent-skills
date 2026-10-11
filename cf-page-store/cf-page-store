@@ -15,7 +15,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: cf-page-store {publish <file> [tab-id]|answers <id>|listen}\n' >&2
+  printf 'usage: cf-page-store {publish <file> [tab-id]|update <id> <file>|delete <id>|answers <id>|listen}\n' >&2
   exit 2
 }
 
@@ -77,6 +77,28 @@ case "$command" in
     [[ "$status" == 201 ]] || die "publish failed with HTTP $status"
     cat "$cleanup_path"
     printf '\n'
+    ;;
+  update)
+    [[ $# -eq 2 && -f "$2" ]] || usage
+    status=$(request PUT "$address/api/pages/$1" "$cleanup_path" \
+      --header 'Content-Type: text/html' --data-binary "@$2") || die "request failed"
+    case "$status" in
+      200)
+        cat "$cleanup_path"
+        printf '\n'
+        ;;
+      404) exit 4 ;;
+      *) die "update failed with HTTP $status" ;;
+    esac
+    ;;
+  delete)
+    [[ $# -eq 1 ]] || usage
+    status=$(request DELETE "$address/api/pages/$1" "$cleanup_path") || die "request failed"
+    case "$status" in
+      204) ;;
+      404) exit 4 ;;
+      *) die "delete failed with HTTP $status" ;;
+    esac
     ;;
   listen)
     [[ $# -eq 0 ]] || usage

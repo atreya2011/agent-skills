@@ -86,6 +86,27 @@ case_names=(
   'one flow step'
   'empty flow item'
   'non-string flow item'
+  'context object without text'
+  'context object without items'
+  'empty nested items'
+  'non-string nested item'
+  'empty nested item'
+  'decision without text'
+  'decision without branches'
+  'one branch'
+  'five branches'
+  'empty branch'
+  'non-string branch'
+  'multi-sentence context bullet'
+  'multi-sentence object bullet'
+  'multi-sentence sub-bullet'
+  'multi-sentence flow step'
+  'multi-sentence decision'
+  'multi-sentence branch'
+  'multi-sentence option description'
+  'numbered string bullet'
+  'numbered object bullet'
+  'numbered sub-bullet'
 )
 case_filters=(
   '.questions = []'
@@ -104,6 +125,27 @@ case_filters=(
   '.questions[0].flow = ["Only step"]'
   '.questions[0].flow = ["First", ""]'
   '.questions[0].flow = ["First", 2]'
+  '.questions[0].context = [{items: ["A reason."]}]'
+  '.questions[0].context = [{text: "A reason."}]'
+  '.questions[0].context = [{text: "A reason.", items: []}]'
+  '.questions[0].context = [{text: "A reason.", items: [1]}]'
+  '.questions[0].context = [{text: "A reason.", items: [""]}]'
+  '.questions[0].flow[1] = {branches: ["Pass.", "Fail."]}'
+  '.questions[0].flow[1] = {text: "Ready?"}'
+  '.questions[0].flow[1] = {text: "Ready?", branches: ["Pass."]}'
+  '.questions[0].flow[1] = {text: "Ready?", branches: ["One.", "Two.", "Three.", "Four.", "Five."]}'
+  '.questions[0].flow[1] = {text: "Ready?", branches: ["Pass.", ""]}'
+  '.questions[0].flow[1] = {text: "Ready?", branches: ["Pass.", 1]}'
+  '.questions[0].context[0] = "Choose now. Finish later."'
+  '.questions[0].context[0] = {text: "Choose now! Finish later.", items: ["A reason."]}'
+  '.questions[0].context[0] = {text: "A reason.", items: ["Ready? Choose now."]}'
+  '.questions[0].flow[0] = "Choose now. 2 checks remain."'
+  '.questions[0].flow[1] = {text: "Ready? Choose now.", branches: ["Pass.", "Fail."]}'
+  '.questions[0].flow[1] = {text: "Ready?", branches: ["Pass. Deliver now.", "Fail."]}'
+  '.questions[0].options[0].description = "Choose now. Finish later."'
+  '.questions[0].context[0] = "1. Choose now."'
+  '.questions[0].context[0] = {text: "2) Choose now.", items: ["A reason."]}'
+  '.questions[0].context[0] = {text: "A reason.", items: ["  3) Choose now."]}'
 )
 case_reasons=(
   'questions must contain 1 to 10 items'
@@ -115,13 +157,34 @@ case_reasons=(
   'option labels must be unique within each question'
   'a question may recommend at most one option'
   'the recommended option must be first'
-  'question context must contain 1 or more non-empty strings'
-  'question context must contain 1 or more non-empty strings'
-  'question context must contain 1 or more non-empty strings'
-  'question context must contain 1 or more non-empty strings'
-  'question flow must contain 2 or more non-empty strings'
-  'question flow must contain 2 or more non-empty strings'
-  'question flow must contain 2 or more non-empty strings'
+  'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
+  'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
+  'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
+  'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
+  'question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches'
+  'question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches'
+  'question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches'
+  'question context must contain'
+  'question context must contain'
+  'question context must contain'
+  'question context must contain'
+  'question context must contain'
+  'question flow must contain'
+  'question flow must contain'
+  'question flow must contain'
+  'question flow must contain'
+  'question flow must contain'
+  'question flow must contain'
+  'context bullet must contain one sentence: Choose now. Finish later.'
+  'context bullet must contain one sentence: Choose now! Finish later.'
+  'context sub-bullet must contain one sentence: Ready? Choose now.'
+  'flow step must contain one sentence: Choose now. 2 checks remain.'
+  'flow step must contain one sentence: Ready? Choose now.'
+  'flow branch must contain one sentence: Pass. Deliver now.'
+  'option description must contain one sentence: Choose now. Finish later.'
+  'context bullet must put numbered points in items: 1. Choose now.'
+  'context bullet must put numbered points in items: 2) Choose now.'
+  'context sub-bullet must put numbered points in items:   3) Choose now.'
 )
 
 for index in "${!case_names[@]}"; do
@@ -133,6 +196,23 @@ for index in "${!case_names[@]}"; do
     fail "$name" "exit $status, want 1"
   elif [[ "$output" != *"${case_reasons[index]}"* ]]; then
     fail "$name" "missing reason '${case_reasons[index]}' in: $output"
+  else
+    pass "$name"
+  fi
+done
+
+case_names=('nested context and branching flow' 'decimal and version text')
+case_filters=(
+  '.questions[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .questions[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
+  '.questions[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .questions[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}] | .questions[0].options[0].description = "Use v1.3.0 with a threshold of 0.60."'
+)
+for index in "${!case_names[@]}"; do
+  name="render accepts ${case_names[index]}"
+  jq "${case_filters[index]}" "$tmp/valid.json" >"$tmp/accepted.json"
+  status=0
+  $command_path render "$tmp/accepted.json" >"$tmp/accepted.html" || status=$?
+  if [[ "$status" != 0 ]]; then
+    fail "$name" "exit $status, want 0"
   else
     pass "$name"
   fi

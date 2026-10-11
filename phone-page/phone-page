@@ -28,6 +28,24 @@ validate_spec() {
   local spec=$1 reason
   jq -e . "$spec" >/dev/null 2>&1 || die "question spec is not valid JSON"
   reason=$(jq -r '
+    def nonempty: type == "string" and length > 0;
+    def context_item:
+      if type == "string" then nonempty
+      elif type == "object" then
+        (.text | nonempty) and (.items | if type == "array" then length > 0 and all(.[]; nonempty) else false end)
+      else false end;
+    def flow_item:
+      if type == "string" then nonempty
+      elif type == "object" then
+        (.text | nonempty) and (.branches | if type == "array" then length >= 2 and length <= 4 and all(.[]; nonempty) else false end)
+      else false end;
+    def content_texts:
+      .questions[] |
+      (.context[]? | if type == "string" then {kind: "context bullet", text: ., bullet: true}
+        else {kind: "context bullet", text: .text, bullet: true}, (.items[] | {kind: "context sub-bullet", text: ., bullet: true}) end),
+      (.flow[]? | if type == "string" then {kind: "flow step", text: .}
+        else {kind: "flow step", text: .text}, (.branches[] | {kind: "flow branch", text: .}) end),
+      (.options[] | {kind: "option description", text: .description});
     if type != "object" then "question spec must be an object"
     elif (.title | type) != "string" then "title must be a string"
     elif (.questions | type) != "array" then "questions must be an array"
@@ -37,8 +55,8 @@ validate_spec() {
     elif ([.questions[].id] | length) != ([.questions[].id] | unique | length) then "question ids must be unique"
     elif any(.questions[]; (.header | type) != "string" or (.header | length) < 1 or (.header | length) > 12) then "every header must contain 1 to 12 characters"
     elif any(.questions[]; (.question | type) != "string") then "every question must be a string"
-    elif any(.questions[]; has("context") and ((.context | type) != "array" or (.context | length) < 1 or any(.context[]; type != "string" or length < 1))) then "question context must contain 1 or more non-empty strings"
-    elif any(.questions[]; has("flow") and ((.flow | type) != "array" or (.flow | length) < 2 or any(.flow[]; type != "string" or length < 1))) then "question flow must contain 2 or more non-empty strings"
+    elif any(.questions[]; has("context") and (.context | if type == "array" then length < 1 or any(.[]; context_item | not) else true end)) then "question context must contain 1 or more non-empty strings or objects with text and non-empty items"
+    elif any(.questions[]; has("flow") and (.flow | if type == "array" then length < 2 or any(.[]; flow_item | not) else true end)) then "question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches"
     elif any(.questions[]; (.multiSelect | type) != "boolean") then "multiSelect must be a boolean"
     elif any(.questions[]; (.options | type) != "array") then "every question must have an options array"
     elif any(.questions[]; (.options | length) < 2 or (.options | length) > 6) then "every question must contain 2 to 6 options"
@@ -49,7 +67,11 @@ validate_spec() {
     elif any(.questions[]; ([.options[].label] | length) != ([.options[].label] | unique | length)) then "option labels must be unique within each question"
     elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) > 1) then "a question may recommend at most one option"
     elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) == 1 and (.options[0].recommended // false) != true) then "the recommended option must be first"
-    else ""
+    else
+      [content_texts |
+        if .bullet and (.text | test("^\\s*[0-9]+[.)](\\s|$)")) then "\(.kind) must put numbered points in items: \(.text)"
+        elif (.text | test("[.!?]\\s+[A-Z0-9]")) then "\(.kind) must contain one sentence: \(.text)"
+        else empty end] | .[0] // ""
     end
   ' "$spec")
   [[ -z "$reason" ]] || die "$reason"

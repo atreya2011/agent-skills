@@ -145,10 +145,17 @@ set -euo pipefail
 printf '%s\n' "$*" >>"$STORE_CALLS"
 case "$1" in
   publish)
+    [[ "${STORE_PUBLISH_STATUS:-0}" == 0 ]] || exit "$STORE_PUBLISH_STATUS"
     [[ -z "${STORE_CAPTURE:-}" ]] || cp "$2" "$STORE_CAPTURE"
     printf '%s\n' '{"id":"page-1","url":"https://store.example/p/page-1"}'
     ;;
   answers)
+    case "$2" in
+      answered) printf '%s\n' '{"route":"Direct"}'; exit 0 ;;
+      unanswered) exit 3 ;;
+      deleted) exit 4 ;;
+      unreadable) exit 1 ;;
+    esac
     printf '%s\n' '{"none":true}'
     exit "${STORE_ANSWERS_STATUS:-0}"
     ;;
@@ -158,6 +165,7 @@ chmod +x "$tmp/bin/store-stub"
 printf '%s\n' 'store-stub' >"$tmp/local.md"
 export PATH="$tmp/bin:$PATH"
 export PHONE_PAGE_LOCAL_FILE="$tmp/local.md"
+export PHONE_PAGE_INBOX_FILE="$tmp/inbox/inbox.md"
 export STORE_CALLS="$tmp/calls"
 
 name='publish passes the file to the store and preserves its output'
@@ -185,6 +193,73 @@ else
   pass "$name"
 fi
 unset STORE_CAPTURE
+
+name='ask creates and appends to the local inbox'
+line=$(cat "$PHONE_PAGE_INBOX_FILE")
+if [[ ! "$line" =~ ^-\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}\ Choose\ \<a\ route\>:\ https://store.example/p/page-1$ ]]; then
+  fail "$name" "unexpected inbox: $line"
+else
+  $command_path ask "$tmp/valid.json" >/dev/null
+  if [[ "$(wc -l <"$PHONE_PAGE_INBOX_FILE")" -ne 2 ]]; then
+    fail "$name" 'second ask did not preserve the first entry'
+  else
+    pass "$name"
+  fi
+fi
+
+name='a failed publish does not append to the inbox'
+cp "$PHONE_PAGE_INBOX_FILE" "$tmp/before.md"
+status=0
+STORE_PUBLISH_STATUS=1 $command_path ask "$tmp/valid.json" >/dev/null || status=$?
+if [[ "$status" != 1 ]] || ! cmp -s "$tmp/before.md" "$PHONE_PAGE_INBOX_FILE"; then
+  fail "$name" 'failed ask changed the inbox or returned the wrong status'
+else
+  pass "$name"
+fi
+
+case_names=('answered' 'unanswered' 'deleted' 'unreadable')
+case_kept=(0 1 0 1)
+for index in "${!case_names[@]}"; do
+  name="inbox handles ${case_names[index]} pages"
+  line="- 2026-01-01 12:00 Route: https://store.example/p/${case_names[index]}"
+  printf '%s\n' "$line" >"$PHONE_PAGE_INBOX_FILE"
+  output=$($command_path inbox)
+  expected=''
+  [[ "${case_kept[index]}" == 0 ]] || expected="$line"
+  if [[ "$output" != "$expected" ]] || [[ "$(cat "$PHONE_PAGE_INBOX_FILE")" != "$expected" ]]; then
+    fail "$name" 'printed or saved inbox differs from expected entries'
+  else
+    pass "$name"
+  fi
+done
+
+name='inbox preserves entries when its store command cannot be read'
+output=$(PHONE_PAGE_LOCAL_FILE="$tmp/missing.md" $command_path inbox)
+if [[ "$output" != "$line" ]] || [[ "$(cat "$PHONE_PAGE_INBOX_FILE")" != "$line" ]]; then
+  fail "$name" 'entry lost on an unreadable store configuration'
+else
+  pass "$name"
+fi
+
+name='concurrent asks and inbox rewrites preserve every open entry'
+printf '%s\n' '- 2026-01-01 12:00 Route: https://store.example/p/unanswered' >"$PHONE_PAGE_INBOX_FILE"
+export STORE_ANSWERS_STATUS=3
+pids=()
+for index in {1..10}; do
+  $command_path ask "$tmp/valid.json" >/dev/null &
+  pids+=("$!")
+  $command_path inbox >/dev/null &
+  pids+=("$!")
+done
+for pid in "${pids[@]}"; do
+  wait "$pid" || fail "$name" 'concurrent command failed'
+done
+unset STORE_ANSWERS_STATUS
+if [[ "$(wc -l <"$PHONE_PAGE_INBOX_FILE")" -ne 11 ]]; then
+  fail "$name" 'open entries were lost'
+else
+  pass "$name"
+fi
 
 name='answers passes through exit 3 and output'
 export STORE_ANSWERS_STATUS=3

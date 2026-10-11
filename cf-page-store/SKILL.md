@@ -159,6 +159,6 @@ Run these steps in order. Cloudflare commands run once during install; never run
 ## Commands
 
 - `cf-page-store publish <file>` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
-- `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when no submission exists.
+- `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
 
 Both commands read the service-token id and secret from the OS keyring and never print either value.

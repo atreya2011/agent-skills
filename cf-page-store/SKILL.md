@@ -161,27 +161,39 @@ Run these steps in order. Cloudflare commands run once during install; never run
 
 Before updating an existing store, apply `migrations/0002_herdr_tab_id.sql` once with `npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql --config "$DEPLOY_CONFIG"`. Existing pages keep a null asking tab.
 
-Optionally store the Discord webhook URL in the OS keyring under service `cf-page-store`, account `discord-webhook-url`, then put it into the Worker secret `DISCORD_WEBHOOK_URL`. Never print the URL, put it in a tracked config, or run these commands with shell tracing enabled. Use the same Cloudflare API token and deploy config as install:
+The `EVENTS` binding points to one SQLite-backed `PageEvents` Durable Object. Its Wrangler migration is `v1` with `new_sqlite_classes: ["PageEvents"]`, separate from the D1 migration above. For an existing rendered deploy config, copy these two sections from the template before deploying:
 
 ```sh
-# Linux: enter the URL at the hidden prompt.
-secret-tool store --label='cf-page-store Discord webhook' service cf-page-store username discord-webhook-url
-secret-tool lookup service cf-page-store username discord-webhook-url |
-  npx wrangler secret put DISCORD_WEBHOOK_URL --config "$DEPLOY_CONFIG"
-
-# macOS: enter the URL at the hidden prompt.
-security add-generic-password -U -s cf-page-store -a discord-webhook-url -w
-security find-generic-password -s cf-page-store -a discord-webhook-url -w |
-  npx wrangler secret put DISCORD_WEBHOOK_URL --config "$DEPLOY_CONFIG"
+jq --slurpfile template wrangler.template.jsonc \
+  '.durable_objects = $template[0].durable_objects | .migrations = $template[0].migrations' \
+  "$DEPLOY_CONFIG" >"$DEPLOY_CONFIG.new"
+mv "$DEPLOY_CONFIG.new" "$DEPLOY_CONFIG"
+npm ci
+npx wrangler deploy --config "$DEPLOY_CONFIG"
 ```
 
-When both the secret and the page's asking tab are present, each stored submission sends one background webhook message: `page answered [<tab-id>] <page-id>`, with mentions disabled. It sends no title or answers. Webhook failures log a generic message and never change or delay the submission response. Configure the separate herdr-connect Discord bridge to wake the asking tab; without the secret or tab, no notification is sent.
+`GET /api/events` upgrades to a WebSocket behind the same Cloudflare Access authentication as the other API routes. After storing an answer for a page with an asking tab, the Worker queues `{id, page_id, tab_id}` and sends it to every listener. Events contain no titles or answers, persist in SQLite until a listener sends `{"ack": "<event-id>"}`, and replay on every new connection. Delivery can repeat if a listener disconnects before its acknowledgment arrives.
+
+Run `cf-page-store listen` with Node 25, `herdr`, and the existing service-token keyring entries available. The listener uses `ws` to send Access headers, validates event identifiers, and prompts the single matching agent pane when its state is idle, done, or working. If no eligible pane exists, it logs the page and tab instead. It acknowledges each handled event and reconnects with backoff from one to sixty seconds. Credentials never appear in its output.
+
+On Linux, install the user service from this directory after the command is linked into `PATH`:
+
+```sh
+mkdir -p "$HOME/.config/systemd/user"
+# If Node 25 is outside the service PATH, link it into ~/.local/bin first.
+install -m 0644 cf-page-store-listener.service "$HOME/.config/systemd/user/"
+systemctl --user daemon-reload
+systemctl --user enable --now cf-page-store-listener.service
+```
+
+For Node installed through a version manager, link the selected executable with `ln -s "$(command -v node)" "$HOME/.local/bin/node"` when that destination does not exist. The service resolves `cf-page-store` through `%h/.local/bin` and needs `node`, `herdr`, and `secret-tool` on its configured `PATH`, plus an unlocked keyring. Its `Restart=always` setting restarts a listener that exits.
 
 ## Commands
 
 - `cf-page-store publish <file> [tab-id]` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
+- `cf-page-store listen` maintains the answer-event WebSocket and wakes asking Herdr tabs.
 - `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
 
 The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and one or more ASCII letters or digits. Invalid values return HTTP 400.
 
-Both commands read the service-token id and secret from the OS keyring and never print either value.
+All commands read the service-token id and secret from the OS keyring and never print either value.

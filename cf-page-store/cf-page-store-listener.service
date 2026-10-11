@@ -1,0 +1,11 @@
+[Unit]
+Description=Phone-page answer listener
+
+[Service]
+ExecStart=%h/.local/bin/cf-page-store listen
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

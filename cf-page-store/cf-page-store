@@ -15,7 +15,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: cf-page-store {publish <file> [tab-id]|answers <id>}\n' >&2
+  printf 'usage: cf-page-store {publish <file> [tab-id]|answers <id>|listen}\n' >&2
   exit 2
 }
 
@@ -77,6 +77,14 @@ case "$command" in
     [[ "$status" == 201 ]] || die "publish failed with HTTP $status"
     cat "$cleanup_path"
     printf '\n'
+    ;;
+  listen)
+    [[ $# -eq 0 ]] || usage
+    script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+    script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
+    client_id=$(keyring_value service-token-id)
+    client_secret=$(keyring_value service-token-secret)
+    printf '%s\n' "$client_id" "$client_secret" | node "$script_dir/listen.mjs" "$address"
     ;;
   answers)
     [[ $# -eq 1 ]] || usage

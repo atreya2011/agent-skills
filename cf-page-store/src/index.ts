@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers";
 import { Hono } from "hono";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import manifest from "../../phone-page/assets.json";
@@ -7,7 +8,66 @@ interface Env {
   ASSETS: Fetcher;
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUDIENCE: string;
-  DISCORD_WEBHOOK_URL?: string;
+  EVENTS: DurableObjectNamespace<PageEvents>;
+}
+
+interface PageEvent extends Record<string, string> {
+  id: string;
+  page_id: string;
+  tab_id: string;
+}
+
+export class PageEvents extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, tab_id TEXT NOT NULL)");
+  }
+
+  publish(event: PageEvent) {
+    this.ctx.storage.sql.exec("INSERT INTO events (id, page_id, tab_id) VALUES (?, ?, ?)", event.id, event.page_id, event.tab_id);
+    const message = JSON.stringify(event);
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(message);
+      } catch {
+        socket.close(1011, "send failed");
+      }
+    }
+  }
+
+  fetch(request: Request) {
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+      return new Response(null, { status: 426 });
+    }
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    for (const event of this.ctx.storage.sql.exec<PageEvent>("SELECT id, page_id, tab_id FROM events ORDER BY rowid")) {
+      server.send(JSON.stringify(event));
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  webSocketMessage(_socket: WebSocket, message: string | ArrayBuffer) {
+    if (typeof message !== "string") {
+      return;
+    }
+    try {
+      const value = JSON.parse(message);
+      if (typeof value?.ack === "string") {
+        this.ctx.storage.sql.exec("DELETE FROM events WHERE id = ?", value.ack);
+      }
+    } catch {
+      // Malformed acknowledgments leave events available for redelivery.
+    }
+  }
+
+  webSocketClose(socket: WebSocket, code: number) {
+    socket.close(code);
+  }
+
+  webSocketError(socket: WebSocket) {
+    socket.close(1011, "socket error");
+  }
 }
 
 const pageLimit = 1024 * 1024;
@@ -42,6 +102,10 @@ app.use("*", async (c, next) => {
   }
 
   await next();
+});
+
+app.get("/api/events", (c) => {
+  return c.env.EVENTS.getByName("listener").fetch(c.req.raw);
 });
 
 app.post("/api/pages", async (c) => {
@@ -127,24 +191,12 @@ app.post("/p/:id/answers", async (c) => {
   `)
     .bind(c.req.param("id"), text)
     .run();
-  if (c.env.DISCORD_WEBHOOK_URL && page.herdr_tab_id) {
-    c.executionCtx.waitUntil((async () => {
-      try {
-        const response = await fetch(c.env.DISCORD_WEBHOOK_URL!, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: `page answered [${page.herdr_tab_id}] ${page.id}`,
-            allowed_mentions: { parse: [] },
-          }),
-        });
-        if (!response.ok) {
-          console.error("page answer webhook failed", response.status);
-        }
-      } catch {
-        console.error("page answer webhook failed");
-      }
-    })());
+  if (page.herdr_tab_id) {
+    await c.env.EVENTS.getByName("listener").publish({
+      id: crypto.randomUUID(),
+      page_id: page.id,
+      tab_id: page.herdr_tab_id,
+    });
   }
   return c.body(null, 204);
 });

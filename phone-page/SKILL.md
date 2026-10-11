@@ -104,6 +104,6 @@ The configured store command accepts `publish <file> [tab-id]` and prints exactl
 
 The published page can make authenticated `GET` and `POST` requests to its own URL plus `/answers`, and can load the manifest files at its own origin under `/assets/<name>`. `GET <page URL>/answers` returns HTTP 404 when no submission exists. The store's content policy allows inline `script` and `style` elements on pages. A posted submission is a JSON object no larger than 64 KiB and replaces the prior submission. Only the user after login, and the store command, can reach any route.
 
-When cf-page-store has its optional Discord webhook secret and herdr-connect is configured, a submitted answer wakes the asking herdr tab without polling. On that prompt, run `phone-page answers <id>` and continue from the stored submission.
+When `cf-page-store listen` runs on the asking machine, a submitted answer wakes the recorded herdr tab without polling. On that prompt, run `phone-page answers <id>` and continue from the stored submission.
 
 After publishing, reply in one line that says what the page contains and what the user should do, followed by its link. After the user replies `done`, run `phone-page answers <id>` and continue from that submission.

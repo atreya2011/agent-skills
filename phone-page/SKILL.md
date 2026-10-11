@@ -33,11 +33,15 @@ page-store
 
 - `phone-page publish <file>` publishes a read page and prints the store's one-line JSON object containing `id` and `url`.
 - `phone-page ask <spec>` validates a question spec, renders it, publishes it and prints the same JSON object.
+- `phone-page inbox` prunes and prints the local inbox of open question pages.
 - `phone-page render <spec>` validates a question spec and prints the complete HTML page.
-- `phone-page answers <id>` prints the latest submission. Exit 3 means that no submission exists.
+- `phone-page answers <id>` prints the latest submission. Exit 3 means an existing page has no submission; exit 4 means the page no longer exists.
 - `phone-page assets <directory>` downloads and verifies every file in `assets.json` before installing it in the directory.
 
 `publish`, `ask` and `answers` preserve the store command's output and exit status.
+
+After a successful `ask`, `~/.agents/local/inbox.md` receives `- <YYYY-MM-DD HH:MM> <spec title>: <page url>`. `inbox` removes answered or deleted pages and keeps entries when the store cannot be read. Both commands lock the inbox with `flock`; install it if unavailable. `PHONE_PAGE_INBOX_FILE` overrides the path for tests.
+When a new page replaces an open page, delete the old page's line from the inbox while holding the same exclusive lock on `~/.agents/local/inbox.md.lock`.
 
 ## Question spec
 
@@ -81,7 +85,7 @@ The page adds Other and a note to every question. Questions may be skipped. The 
 
 ## Store contract
 
-The configured store command accepts `publish <file>` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `answers <id>` and prints the latest submission JSON, or exits 3 when none exists. Any other failure is nonzero.
+The configured store command accepts `publish <file>` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `answers <id>` and prints the latest submission JSON, exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. Any other failure is nonzero.
 
 The published page can make authenticated `GET` and `POST` requests to its own URL plus `/answers`, and can load the manifest files at its own origin under `/assets/<name>`. `GET <page URL>/answers` returns HTTP 404 when no submission exists. The store's content policy allows inline `script` and `style` elements on pages. A posted submission is a JSON object no larger than 64 KiB and replaces the prior submission. Only the user after login, and the store command, can reach any route.
 

@@ -6,6 +6,7 @@ script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
 template="$script_dir/question-page.html"
 manifest="$script_dir/assets.json"
 local_file=${PHONE_PAGE_LOCAL_FILE:-"$HOME/.agents/local/phone-page.md"}
+inbox_file=${PHONE_PAGE_INBOX_FILE:-"$HOME/.agents/local/inbox.md"}
 cleanup_path=""
 
 cleanup() {
@@ -19,7 +20,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: phone-page {publish <file>|ask <spec>|render <spec>|answers <id>|assets <directory>}\n' >&2
+  printf 'usage: phone-page {publish <file>|ask <spec>|inbox|render <spec>|answers <id>|assets <directory>}\n' >&2
   exit 2
 }
 
@@ -70,6 +71,32 @@ store() {
   "$store_command" "$@"
 }
 
+append_inbox() {
+  flock -x 9
+  printf -- '- %s %s: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" "$2" >>"$inbox_file"
+}
+
+prune_inbox() {
+  flock -x 9
+  local line url id status
+  cleanup_path=$(mktemp "${inbox_file}.XXXXXX")
+  if [[ -f "$inbox_file" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      url=${line##* }
+      id=${url##*/}
+      status=0
+      (store answers "$id") >/dev/null 2>&1 || status=$?
+      case "$status" in
+        0|4) ;;
+        *) printf '%s\n' "$line" >>"$cleanup_path" ;;
+      esac
+    done <"$inbox_file"
+  fi
+  mv -- "$cleanup_path" "$inbox_file"
+  cleanup_path=""
+  cat "$inbox_file"
+}
+
 download_assets() {
   local destination=$1 download_dir name url expected actual
   download_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page-assets.XXXXXX")
@@ -100,7 +127,17 @@ case "$command" in
     cleanup_path=$rendered_dir
     rendered="$rendered_dir/page.html"
     render "$1" >"$rendered"
-    store publish "$rendered"
+    published=$(store publish "$rendered")
+    url=$(printf '%s\n' "$published" | jq -er '.url | select(type == "string" and length > 0)')
+    title=$(jq -r '.title | gsub("[\r\n]"; " ")' "$1")
+    mkdir -p -- "$(dirname -- "$inbox_file")"
+    append_inbox "$title" "$url" 9>>"$inbox_file.lock"
+    printf '%s\n' "$published"
+    ;;
+  inbox)
+    [[ $# -eq 0 ]] || usage
+    mkdir -p -- "$(dirname -- "$inbox_file")"
+    prune_inbox 9>>"$inbox_file.lock"
     ;;
   render)
     [[ $# -eq 1 ]] || usage

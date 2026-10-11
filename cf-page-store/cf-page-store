@@ -81,7 +81,14 @@ case "$command" in
         cat "$cleanup_path"
         printf '\n'
         ;;
-      404) exit 3 ;;
+      404)
+        status=$(request GET "$address/p/$1" "$cleanup_path") || die "request failed"
+        case "$status" in
+          200) exit 3 ;;
+          404) exit 4 ;;
+          *) die "page check failed with HTTP $status" ;;
+        esac
+        ;;
       *) die "answers failed with HTTP $status" ;;
     esac
     ;;

@@ -7,7 +7,7 @@ description: Publish designed read pages and tappable question pages for replies
 
 Use a page when a reply to the user needs more than two sentences, a diagram, a table or any question. A chat reply that points to a page has at most two sentences plus the link, with no code block, table or list. Put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
 
-For read pages and question pages, open with the bottom line, then give the reasons. Write all content as bullets. When the content is a process or sequence, show it as a flow diagram: use a step flow on a read page or the question spec's `flow` field on a question page. Content text is 17 px.
+For read pages and question pages, open with the bottom line, then give the reasons. Write each bullet and sub-bullet as one sentence. Put numbered points in nested sub-bullets, never as numbering in bullet text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: draw the chart on a read page or use the question spec's `flow` field on a question page. Content text is 17 px.
 
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.
 
@@ -45,7 +45,11 @@ When a new page replaces an open page, delete the old page's line from the inbox
 
 ## Question spec
 
-Write one JSON object with a string `title` and 1 to 10 questions. Every question has a unique string `id`, a `header` of 1 to 12 characters, a string `question`, an optional `context` array of 1 or more non-empty strings, an optional `flow` array of 2 or more non-empty strings, a Boolean `multiSelect`, and 2 to 6 options. The first context bullet states the bottom line; any remaining bullets give the reasons. Every option has a unique string `label`, a string `description`, and may set Boolean `recommended`; at most one option is recommended, and it must be first.
+Write one JSON object with a string `title` and 1 to 10 questions. Every question has a unique string `id`, a `header` of 1 to 12 characters, a string `question`, an optional `context` array of 1 or more items, an optional `flow` array of 2 or more steps, a Boolean `multiSelect`, and 2 to 6 options. The first context bullet states the bottom line; any remaining bullets give the reasons. Every option has a unique string `label`, a string `description`, and may set Boolean `recommended`; at most one option is recommended, and it must be first.
+
+Each context item is a one-sentence string or an object `{"text": "<one sentence>", "items": ["<one sentence>", ...]}` with one or more nested sub-bullets. Put numbered points in `items` without numbering their text. Each flow step is a one-sentence string or an object `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with 2 to 4 branches. The chart has a small Flow label, bordered boxes and down arrows; decision outcomes sit side by side or stack beside a shared connector when the screen is too narrow.
+
+Context bullets, sub-bullets, flow steps, branch outcomes and option descriptions each contain one sentence. Validation rejects a sentence break at `.`, `!` or `?` followed by whitespace and an uppercase letter or digit; decimals such as `0.60` and versions such as `v1.3.0` stay valid. Context bullets and sub-bullets cannot start with list numbering such as `1.` or `2)`. Errors name the offending text.
 
 ```json
 {
@@ -57,12 +61,18 @@ Write one JSON object with a string `title` and 1 to 10 questions. Every questio
       "question": "Which route should the work take?",
       "context": [
         "Take the direct route.",
-        "It has the fewest moving parts."
+        {
+          "text": "It has the fewest moving parts.",
+          "items": ["Use the existing path.", "Keep the current lifecycle."]
+        }
       ],
       "flow": [
         "Make the smallest change.",
-        "Verify the result.",
-        "Deliver it."
+        {
+          "text": "Did the checks pass?",
+          "branches": ["Deliver the passing result.", "Repair the failing result."]
+        },
+        "Record the result."
       ],
       "multiSelect": false,
       "options": [

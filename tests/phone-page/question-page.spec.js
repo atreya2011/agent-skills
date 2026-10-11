@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -158,18 +159,14 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   const routeQuestion = page.locator('[data-question-id="route"]');
   await expect(routeQuestion.locator('.context')).toHaveRole('list');
   await expect(routeQuestion.locator('.context li')).toHaveText(spec.questions[0].context);
-  await expect(routeQuestion.locator('.flow')).toHaveRole('list');
-  await expect(routeQuestion.locator('.flow-copy')).toHaveText(spec.questions[0].flow);
-  await expect(routeQuestion.locator('.flow-number')).toHaveText(['1', '2', '3']);
+  await expect(routeQuestion.locator('.flow-label')).toHaveText('Flow');
+  await expect(routeQuestion.locator('.flow-box')).toHaveText(spec.questions[0].flow);
+  await expect(routeQuestion.locator('.flow > .flow-arrow')).toHaveText(['↓', '↓']);
   await expect(routeQuestion.locator('.context + .flow')).toBeVisible();
   await expect(routeQuestion.locator('.flow + .options')).toBeVisible();
   expect(await routeQuestion.locator('.context li').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
-  expect(await routeQuestion.locator('.flow-copy').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
-  expect(await routeQuestion.locator('.flow-step').evaluateAll((steps) => steps.map((step) => getComputedStyle(step, '::after').content))).toEqual([
-    '""',
-    '""',
-    'none'
-  ]);
+  expect(await routeQuestion.locator('.flow-box').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
+  expect(await routeQuestion.locator('.flow-box').evaluateAll((boxes) => boxes.map((box) => getComputedStyle(box).borderStyle))).toEqual(['solid', 'solid', 'solid']);
   await routeQuestion.getByLabel('Other', { exact: true }).check();
   await expect(routeQuestion.getByLabel('Other response')).toBeVisible();
   await page.getByRole('button', { name: 'Submit answers' }).click();
@@ -281,3 +278,63 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   const desktopAccessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   expect(desktopAccessibility.violations).toEqual([]);
 });
+
+for (const branchCount of [2, 4]) {
+  test(`nested bullets and ${branchCount} flow branches render as a responsive chart`, async ({ page }) => {
+    const question = structuredClone(spec.questions[0]);
+    const items = ['Use the existing path.', 'Keep its lifecycle.'];
+    const branches = ['Deliver the result.', 'Repair the result.', 'Review the result.', 'Hold the result.'].slice(0, branchCount);
+    question.context = ['Take the direct route.', { text: 'Keep the change small.', items }];
+    question.flow = ['Run the checks.', { text: 'Did the checks pass?', branches }];
+    const specPath = join(renderDirectory, `branches-${branchCount}.json`);
+    await writeFile(specPath, JSON.stringify({ title: 'Choose a route', questions: [question] }));
+    const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+    const server = createServer(async (request, response) => {
+      if (request.url === '/') {
+        response.setHeader('Content-Type', 'text/html');
+        response.end(html);
+      } else if (request.url.startsWith('/assets/')) {
+        const name = basename(request.url);
+        response.setHeader('Content-Type', name.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
+        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, name)));
+      } else {
+        response.writeHead(404);
+        response.end();
+      }
+    });
+    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
+    try {
+      for (const width of [420, 900]) {
+        await page.setViewportSize({ width, height: 1100 });
+        await page.goto(`http://localhost:${server.address().port}/`);
+        const card = page.locator('.question-card');
+        await expect(card.locator('.context > li')).toHaveCount(2);
+        await expect(card.locator('.context > li').last()).toContainText('Keep the change small.');
+        await expect(card.locator('.context > li > ul')).toHaveRole('list');
+        await expect(card.locator('.context > li > ul > li')).toHaveText(items);
+        await expect(card.locator('.flow-label')).toHaveText('Flow');
+        await expect(card.locator('.flow-decision')).toHaveText('Did the checks pass?');
+        await expect(card.locator('.flow-branch > .flow-box')).toHaveText(branches);
+        await expect(card.locator('.flow-branch > .flow-arrow')).toHaveCount(branchCount);
+        await expect(card.locator('.flow > .flow-arrow')).toHaveText('↓');
+        await expect(card.locator('.flow-number')).toHaveCount(0);
+        expect(await card.locator('.flow-box').evaluateAll((boxes) => boxes.map((box) => getComputedStyle(box).fontSize))).toEqual(Array(branchCount + 2).fill('17px'));
+        const positions = await card.locator('.flow-branch').evaluateAll((elements) => elements.map((element) => {
+          const { x, y } = element.getBoundingClientRect();
+          return { x, y };
+        }));
+        if (width === 420) {
+          expect(new Set(positions.map(({ x }) => x)).size).toBe(1);
+          expect(new Set(positions.map(({ y }) => y)).size).toBe(branchCount);
+        } else {
+          expect(new Set(positions.map(({ x }) => x)).size).toBe(branchCount);
+          expect(new Set(positions.map(({ y }) => y)).size).toBe(1);
+        }
+        expect(await card.locator('.flow-branch > .flow-arrow').evaluateAll((arrows) => arrows.map((arrow) => getComputedStyle(arrow, '::before').content))).toEqual(Array(branchCount).fill(width === 420 ? '"→"' : '"↓"'));
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      }
+    } finally {
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+}

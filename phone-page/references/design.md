@@ -19,7 +19,7 @@ Use one column with a 16 px gutter on a phone. Keep that column centered and no 
 
 ## Content
 
-Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write all content as bullets at 17 px. When the content is a process or sequence, show it as a flow diagram: use the question spec's `flow` field on a question page or a step flow on a read page.
+Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the question spec's `flow` field on a question page or draw the same chart on a read page.
 
 Use Lucide icons only when they identify meaning. Pair every icon with visible text or an accessible name. Do not use an icon as decoration between paragraphs.
 
@@ -29,9 +29,11 @@ Use Lucide icons only when they identify meaning. Pair every icon with visible t
 
 A card groups one decision, fact or outcome. Give it a short heading and bullet content, plus a small status chip when useful. Use the lime outline only for the current or selected card.
 
-### Step flow
+### Flow chart
 
-Draw a process as a vertical stepper. Each step has a numbered or semantic icon and bullet content at 17 px. Use a line between steps; never put a flow in a code block.
+Draw every process as bordered boxes joined by down arrows under a small Flow label, with 17 px text and the existing colors. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
+
+In a question spec, `context` accepts one-sentence strings or objects `{"text": "<one sentence>", "items": ["<one sentence>", ...]}` whose non-empty `items` render as nested sub-bullets. `flow` accepts one-sentence strings or objects `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with 2 to 4 branches. Each bullet, sub-bullet, flow step, branch outcome and option description has one sentence. Validation rejects `.`, `!` or `?` followed by whitespace and an uppercase letter or digit, while allowing decimals and version numbers; bullets cannot start with `1.` or `2)` numbering.
 
 ### Options
 

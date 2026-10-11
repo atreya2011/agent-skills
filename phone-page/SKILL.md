@@ -11,6 +11,9 @@ For read pages and question pages, open with the bottom line, then give the reas
 
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.
 
+- Before writing any page, use `git ls-files` in the current repository to find files named `glossary.md` at any path, ignoring letter case, and read any matches.
+- Use glossary terms with their exact spelling and meaning, and define each term on first use using the glossary's own definition.
+
 ## Local file
 
 `~/.agents/local/phone-page.md` holds the store command and nothing else. Read it when it exists. Its complete format is one line containing an executable name from `PATH` or an absolute executable path:

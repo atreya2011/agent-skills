@@ -11,4 +11,4 @@ Steps 1 to 4 take the lists. After step 4, write `Import lists taken: <date>` in
 5. Ask the tracker the gate's own question, with the same `--wait --timeout 120000`: "Are your tabs still needed? Reply done only if you have listed everything and your tab can close." Pipe its reply into `bin/cto-snapshot reply`. If the verdict is `act` and the label is `done`, close its tab with `herdr tab close <tab_id>`. A timeout, a `blocked` state or any other verdict is "not done": report it in Needs you and keep the Import section for the next sweep.
 6. After the tab is closed, delete the Import section from the local file.
 
-The imported rulings can include the `Assignee split` ruling, so the sweep applies the split after this import.
+The imported rulings can include the `Assignee split` ruling, so this and every later sweep applies the split after the import step.

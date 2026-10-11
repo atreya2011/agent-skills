@@ -48,7 +48,7 @@ log = "<gate-call log path>"
 Two rulings have a fixed format:
 
 - `Dispatch default: seat table <default or a table name>; reviewers <a count, or reviewer-<name> seats separated by commas>`. The install step writes it. Every kickoff states both settings, so a dispatch never waits on the user for them.
-- `Assignee split: <the user's rule for +cos and +cto>`, followed by `Assignee split applied: <date>` once the first sweep has applied it.
+- `Assignee split: <the user's rule for +cos and +cto>`.
 
 The API key is never in this file. The tool reads `TYPESAFE_API_KEY` from the environment, else the OS keyring entry with service `typesafe` and user `api`. Without a key every gate escalates.
 
@@ -70,16 +70,17 @@ The crontab addresses the tab by pane ID because `/clear` starts a new agent ses
 ## Sweep
 
 1. Read the local file. If it has an Import section, do `references/import.md` now.
-2. If the `Assignee split` ruling has no `applied` line, apply it once: run `task <uuid> modify +cto` or `+cos` for every todo the ruling covers. A todo it does not cover keeps no tag and becomes a judgment call. Then record `Assignee split applied: <date>`.
-3. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop.
-4. Read `unreadable`. Each entry is a source the tool could not read. List them in the brief under Not checked. Never infer from silence: a tab, todo or project that depends on an unreadable source is reported as unchecked, and no todo changes on a bad read.
-5. Handle orchestrator messages (below).
-6. Apply the judgments below.
-7. Clean up tabs (below).
-8. Dispatch ready todos (below).
-9. Make wiki writes (below).
-10. If any tab has state `blocked`, raise one notification: `herdr notification show "Blocked tab" --body "<project>: <tab labels>" --sound request`.
-11. Write the brief.
+2. Apply the `Assignee split` ruling on every sweep. For every open todo that has neither assignee tag and that the ruling covers, run `task <uuid> modify +cto` or `+cos`. A todo the ruling does not cover keeps no assignee tag and becomes a judgment call. If the split tags a todo whose only question was its missing assignee tag, remove `+ask`. Keep the UUID and description of every todo this sweep tags `+cos`.
+3. If this sweep tagged any todo `+cos`, send the CoS one chat message. First run `herdr agent send-keys cos ctrl+s`. Then run `herdr agent prompt cos --wait --timeout 120000` with this message, putting each todo on its own line: `AGENT MESSAGE (cto, not a human). New todos for you:\n<uuid> <description>\nAct on each within your standing rules and close it only on proof.` If the send fails, list it in the brief under Not checked.
+4. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop.
+5. Read `unreadable`. Each entry is a source the tool could not read. List them in the brief under Not checked. Never infer from silence: a tab, todo or project that depends on an unreadable source is reported as unchecked, and no todo changes on a bad read.
+6. Handle orchestrator messages (below).
+7. Apply the judgments below.
+8. Clean up tabs (below).
+9. Dispatch ready todos (below).
+10. Make wiki writes (below).
+11. If any tab has state `blocked`, raise one notification: `herdr notification show "Blocked tab" --body "<project>: <tab labels>" --sound request`.
+12. Write the brief.
 
 ## Orchestrator messages
 

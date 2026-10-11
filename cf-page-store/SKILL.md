@@ -178,6 +178,9 @@ Run `cf-page-store listen` with Node 25, `herdr`, and the existing service-token
 
 On Linux, install the user service from this directory after the command is linked into `PATH`:
 
+- Check the executable locations from `command -v node herdr` against the service unit's configured `PATH`.
+- If either executable is outside that `PATH`, run `systemctl --user edit cf-page-store-listener.service` and add a `[Service]` section with `Environment=PATH=<node-directory>:<herdr-directory>:<existing-service-PATH>`, including both executable directories and the existing service `PATH`.
+
 ```sh
 mkdir -p "$HOME/.config/systemd/user"
 # If Node 25 is outside the service PATH, link it into ~/.local/bin first.

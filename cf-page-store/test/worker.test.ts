@@ -1,10 +1,12 @@
 import {
   applyD1Migrations,
+  createExecutionContext,
   createScheduledController,
   evictDurableObject,
   runInDurableObject,
+  waitOnExecutionContext,
 } from "cloudflare:test";
-import { env, exports } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 import type { D1Migration } from "@cloudflare/vitest-pool-workers";
 import { importPKCS8, SignJWT, type CryptoKey } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -54,7 +56,10 @@ async function request(path: string, init: RequestInit = {}, assertion?: string)
   if (assertion) {
     headers.set("Cf-Access-Jwt-Assertion", assertion);
   }
-  return exports.default.fetch(`https://store.invalid${path}`, { ...init, headers });
+  const context = createExecutionContext();
+  const response = await worker.fetch(new Request(`https://store.invalid${path}`, { ...init, headers }), env, context);
+  await waitOnExecutionContext(context);
+  return response;
 }
 
 async function publish(assertion: string, tabId?: string) {

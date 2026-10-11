@@ -172,7 +172,7 @@ npm ci
 npx wrangler deploy --config "$DEPLOY_CONFIG"
 ```
 
-`GET /api/events` upgrades to a WebSocket behind the same Cloudflare Access authentication as the other API routes. After storing an answer for a page with an asking tab, the Worker queues `{id, page_id, tab_id}` and sends it to every listener. Events contain no titles or answers, persist in SQLite until a listener sends `{"ack": "<event-id>"}`, and replay on every new connection. Delivery can repeat if a listener disconnects before its acknowledgment arrives.
+`GET /api/events` upgrades to a WebSocket behind the same Cloudflare Access authentication as the other API routes. After storing an answer for a page with an asking tab, the Worker schedules `{id, page_id, tab_id}` for background publication to every listener and returns HTTP 204 without waiting for publication. Publication failures are logged and do not fail the saved answer. Events contain no titles or answers, persist in SQLite until a listener sends `{"ack": "<event-id>"}`, and replay on every new connection. Delivery can repeat if a listener disconnects before its acknowledgment arrives.
 
 Run `cf-page-store listen` with Node 25, `herdr`, and the existing service-token keyring entries available. The listener uses `ws` to send Access headers, validates event identifiers, and prompts the single matching agent pane when its state is idle, done, or working. If no eligible pane exists, it logs the page and tab instead. It acknowledges each handled event and reconnects with backoff from one to sixty seconds. Credentials never appear in its output.
 

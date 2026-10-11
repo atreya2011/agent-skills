@@ -191,12 +191,19 @@ app.post("/p/:id/answers", async (c) => {
   `)
     .bind(c.req.param("id"), text)
     .run();
-  if (page.herdr_tab_id) {
-    await c.env.EVENTS.getByName("listener").publish({
-      id: crypto.randomUUID(),
-      page_id: page.id,
-      tab_id: page.herdr_tab_id,
-    });
+  const tabId = page.herdr_tab_id;
+  if (tabId) {
+    c.executionCtx.waitUntil((async () => {
+      try {
+        await c.env.EVENTS.getByName("listener").publish({
+          id: crypto.randomUUID(),
+          page_id: page.id,
+          tab_id: tabId,
+        });
+      } catch {
+        console.error(`page store: could not publish answer event for page ${page.id} tab ${tabId}`);
+      }
+    })());
   }
   return c.body(null, 204);
 });

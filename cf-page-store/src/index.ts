@@ -7,6 +7,7 @@ interface Env {
   ASSETS: Fetcher;
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUDIENCE: string;
+  DISCORD_WEBHOOK_URL?: string;
 }
 
 const pageLimit = 1024 * 1024;
@@ -52,11 +53,16 @@ app.post("/api/pages", async (c) => {
     return c.body(null, 415);
   }
 
+  const tabId = c.req.header("X-Herdr-Tab-Id");
+  if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[1-9][0-9]*$/.test(tabId)) {
+    return c.body(null, 400);
+  }
+
   const html = new TextDecoder().decode(body);
   const title = html.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1].trim() ?? "";
   const id = crypto.randomUUID();
-  await c.env.DB.prepare("INSERT INTO pages (id, title, html) VALUES (?, ?, ?)")
-    .bind(id, title, html)
+  await c.env.DB.prepare("INSERT INTO pages (id, title, html, herdr_tab_id) VALUES (?, ?, ?, ?)")
+    .bind(id, title, html, tabId ?? null)
     .run();
 
   return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href }, 201);
@@ -90,9 +96,9 @@ app.get("/p/:id/answers", async (c) => {
 });
 
 app.post("/p/:id/answers", async (c) => {
-  const page = await c.env.DB.prepare("SELECT id FROM pages WHERE id = ?")
+  const page = await c.env.DB.prepare("SELECT id, herdr_tab_id FROM pages WHERE id = ?")
     .bind(c.req.param("id"))
-    .first();
+    .first<{ id: string; herdr_tab_id: string | null }>();
   if (!page) {
     return c.body(null, 404);
   }
@@ -121,6 +127,25 @@ app.post("/p/:id/answers", async (c) => {
   `)
     .bind(c.req.param("id"), text)
     .run();
+  if (c.env.DISCORD_WEBHOOK_URL && page.herdr_tab_id) {
+    c.executionCtx.waitUntil((async () => {
+      try {
+        const response = await fetch(c.env.DISCORD_WEBHOOK_URL!, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `page answered [${page.herdr_tab_id}] ${page.id}`,
+            allowed_mentions: { parse: [] },
+          }),
+        });
+        if (!response.ok) {
+          console.error("page answer webhook failed", response.status);
+        }
+      } catch {
+        console.error("page answer webhook failed");
+      }
+    })());
+  }
   return c.body(null, 204);
 });
 

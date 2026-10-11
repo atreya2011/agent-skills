@@ -59,6 +59,7 @@ Run these steps in order. Cloudflare commands run once during install; never run
    npx wrangler d1 create "$DATABASE_NAME"
    export D1_DATABASE_ID='<database-id-from-the-create-command>'
    npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0001_schema.sql
+   npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql
    mkdir -p "$(dirname "$DEPLOY_CONFIG")"
    jq \
      --arg name "$WORKER_NAME" \
@@ -156,9 +157,31 @@ Run these steps in order. Cloudflare commands run once during install; never run
 
 7. Confirm that the store address without a login is turned away. Publish a phone-page question, open its link and complete it, then confirm `cf-page-store answers <id>` prints that submission. Before a submission, `answers` must print nothing and exit 3.
 
+## Answer notifications
+
+Before updating an existing store, apply `migrations/0002_herdr_tab_id.sql` once with `npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql --config "$DEPLOY_CONFIG"`. Existing pages keep a null asking tab.
+
+Optionally store the Discord webhook URL in the OS keyring under service `cf-page-store`, account `discord-webhook-url`, then put it into the Worker secret `DISCORD_WEBHOOK_URL`. Never print the URL, put it in a tracked config, or run these commands with shell tracing enabled. Use the same Cloudflare API token and deploy config as install:
+
+```sh
+# Linux: enter the URL at the hidden prompt.
+secret-tool store --label='cf-page-store Discord webhook' service cf-page-store username discord-webhook-url
+secret-tool lookup service cf-page-store username discord-webhook-url |
+  npx wrangler secret put DISCORD_WEBHOOK_URL --config "$DEPLOY_CONFIG"
+
+# macOS: enter the URL at the hidden prompt.
+security add-generic-password -U -s cf-page-store -a discord-webhook-url -w
+security find-generic-password -s cf-page-store -a discord-webhook-url -w |
+  npx wrangler secret put DISCORD_WEBHOOK_URL --config "$DEPLOY_CONFIG"
+```
+
+When both the secret and the page's asking tab are present, each stored submission sends one background webhook message: `page answered [<tab-id>] <page-id>`, with mentions disabled. It sends no title or answers. Webhook failures log a generic message and never change or delay the submission response. Configure the separate herdr-connect Discord bridge to wake the asking tab; without the secret or tab, no notification is sent.
+
 ## Commands
 
-- `cf-page-store publish <file>` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
+- `cf-page-store publish <file> [tab-id]` sends one HTML file and prints exactly the Worker's one-line JSON object containing `id` and `url`.
 - `cf-page-store answers <id>` prints the latest submission JSON. It prints nothing and exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. After an answers HTTP 404, it checks the page itself to distinguish these cases; other read failures remain errors.
+
+The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and a positive decimal tab number. Invalid values return HTTP 400.
 
 Both commands read the service-token id and secret from the OS keyring and never print either value.

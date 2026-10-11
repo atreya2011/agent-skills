@@ -4,10 +4,8 @@ import {
 } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
 import type { D1Migration } from "@cloudflare/vitest-pool-workers";
-import { setupNetwork } from "@msw/cloudflare";
-import { HttpResponse, http } from "msw";
-import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { importPKCS8, SignJWT, type CryptoKey } from "jose";
+import { beforeAll, describe, expect, it } from "vitest";
 import worker from "../src/index";
 
 declare global {
@@ -17,6 +15,7 @@ declare global {
       ASSETS: Fetcher;
       ACCESS_TEAM_DOMAIN: string;
       ACCESS_AUDIENCE: string;
+      TEST_SIGNING_KEY: string;
       TEST_MIGRATIONS: D1Migration[];
     }
 
@@ -26,7 +25,6 @@ declare global {
   }
 }
 
-const network = setupNetwork();
 const pageHeaders = {
   "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   "cache-control": "no-store",
@@ -56,10 +54,10 @@ async function request(path: string, init: RequestInit = {}, assertion?: string)
   return exports.default.fetch(`https://store.invalid${path}`, { ...init, headers });
 }
 
-async function publish(assertion: string) {
+async function publish(assertion: string, tabId?: string) {
   const response = await request("/api/pages", {
     method: "POST",
-    headers: { "Content-Type": "text/html" },
+    headers: { "Content-Type": "text/html", ...(tabId === undefined ? {} : { "X-Herdr-Tab-Id": tabId }) },
     body: html,
   }, assertion);
   expect(response.status).toBe(201);
@@ -67,17 +65,9 @@ async function publish(assertion: string) {
 }
 
 beforeAll(async () => {
-  const pair = await generateKeyPair("RS256");
-  privateKey = pair.privateKey;
-  const publicKey = await exportJWK(pair.publicKey);
-  network.use(http.get(`${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, () => HttpResponse.json({
-    keys: [{ ...publicKey, alg: "RS256", kid: "test-key", use: "sig" }],
-  })));
-  network.enable();
+  privateKey = await importPKCS8(env.TEST_SIGNING_KEY, "RS256");
   await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 });
-
-afterAll(() => network.disable());
 
 describe("pages", () => {
   it("publishes and opens a page with the required headers", async () => {
@@ -91,6 +81,32 @@ describe("pages", () => {
     for (const [name, value] of Object.entries(pageHeaders)) {
       expect(response.headers.get(name)).toBe(value);
     }
+  });
+
+  it.each([undefined, "wTEST:t1", "wTEST2:t12"])("stores optional asking tab %s and submits without a webhook secret", async (tabId) => {
+    const assertion = await token();
+    const page = await publish(assertion, tabId);
+    expect(await env.DB.prepare("SELECT herdr_tab_id FROM pages WHERE id = ?")
+      .bind(page.id).first()).toEqual({ herdr_tab_id: tabId ?? null });
+    const response = await request(`/p/${page.id}/answers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: '{"choice":"submitted"}',
+    }, assertion);
+    expect(response.status).toBe(204);
+    expect(await env.DB.prepare("SELECT body FROM submissions WHERE page_id = ?")
+      .bind(page.id).first()).toEqual({ body: '{"choice":"submitted"}' });
+  });
+
+  it.each(["", "wTEST", "wTEST:t0", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing a page", async (tabId) => {
+    const before = await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first();
+    const response = await request("/api/pages", {
+      method: "POST",
+      headers: { "Content-Type": "text/html", "X-Herdr-Tab-Id": tabId },
+      body: html,
+    }, await token());
+    expect(response.status).toBe(400);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first()).toEqual(before);
   });
 
   it.each([

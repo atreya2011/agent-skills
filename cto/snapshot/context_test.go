@@ -60,6 +60,11 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"wrapped locator", "wiki: `team's notes.md:95`", []string{"team's notes.md:95"}},
 		{"multiple punctuated references", "wiki: a.md, team's notes.md; [[archive.md/notes [draft].md]]", []string{"a.md", "archive.md/notes [draft].md", "team's notes.md"}},
 		{"locator-shaped directory", "wiki: archive.md:95/article.md", []string{"archive.md:95/article.md"}},
+		{"single bracket reference", "wiki: [notes.md]", []string{"notes.md"}},
+		{"single bracket punctuated reference", "wiki: [notes [draft].md]", []string{"notes [draft].md"}},
+		{"compact metadata", "wiki: build-upgrade-schedule, collaborator| src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
+		{"compact metadata marker", "wiki: build-upgrade-schedule, collaborator|src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
+		{"quoted metadata text filename", "wiki: \"notes |src: draft.md\"", []string{"notes |src: draft.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {

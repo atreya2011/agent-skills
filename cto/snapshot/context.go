@@ -22,6 +22,8 @@ var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^\n]+)`)
 
 var markdownEnd = regexp.MustCompile(`\.md(?:[:][0-9]+)?`)
 
+var wikiSource = regexp.MustCompile(`[ \t]*\|[ \t]*src:`)
+
 func wikiNames(annotations []string) []string {
 	var names []string
 	for _, a := range gateAnnotations(annotations) {
@@ -66,7 +68,7 @@ func referenceBoundary(rest string) bool {
 
 func markdownReference(text string) (path, rest string, ok bool) {
 	// A marker is formatting only when its matching closer follows the whole reference.
-	for _, pair := range []struct{ open, close string }{{"[[", "]]"}, {"`", "`"}, {"\"", "\""}, {"'", "'"}} {
+	for _, pair := range []struct{ open, close string }{{"[[", "]]"}, {"[", "]"}, {"`", "`"}, {"\"", "\""}, {"'", "'"}} {
 		if !strings.HasPrefix(text, pair.open) {
 			continue
 		}
@@ -76,8 +78,11 @@ func markdownReference(text string) (path, rest string, ok bool) {
 			}
 		}
 	}
-	for _, stop := range []string{". Repo:", ". Contract:", " | src:"} {
+	for _, stop := range []string{". Repo:", ". Contract:"} {
 		text, _, _ = strings.Cut(text, stop)
+	}
+	if source := wikiSource.FindStringIndex(text); source != nil {
+		text = text[:source[0]]
 	}
 	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
 		if referenceBoundary(text[end[1]:]) {

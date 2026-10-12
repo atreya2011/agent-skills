@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 type contextPage struct {
@@ -16,19 +18,16 @@ type contextPage struct {
 	Text string `json:"text"`
 }
 
-var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^|\n]+)`)
+var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^\n]+)`)
 
-var markdownRef = regexp.MustCompile(`[^\s,;()|\x60"'\[\]]+?[^\n,;()|\x60"'\[\]]*?\.md(?:[:][0-9]+)?`)
+var markdownEnd = regexp.MustCompile(`\.md(?:[:][0-9]+)?`)
 
 func wikiNames(annotations []string) []string {
 	var names []string
 	for _, a := range gateAnnotations(annotations) {
 		for _, match := range wikiRef.FindAllStringSubmatch(a, -1) {
 			text := match[1]
-			for _, stop := range []string{". Repo:", ". Contract:"} {
-				text, _, _ = strings.Cut(text, stop)
-			}
-			paths := markdownRef.FindAllString(text, -1)
+			paths := markdownPaths(text)
 			if len(paths) > 0 {
 				for _, path := range paths {
 					// Existing annotations use "daily" as a label before sources/ paths.
@@ -38,6 +37,9 @@ func wikiNames(annotations []string) []string {
 					names = append(names, path)
 				}
 				continue
+			}
+			for _, stop := range []string{". Repo:", ". Contract:", "|"} {
+				text, _, _ = strings.Cut(text, stop)
 			}
 			// Bare page names form the leading comma-separated list; the rest is prose.
 			text, _, _ = strings.Cut(text, " — ")
@@ -52,6 +54,64 @@ func wikiNames(annotations []string) []string {
 	}
 	slices.Sort(names)
 	return slices.Compact(names)
+}
+
+func referenceBoundary(rest string) bool {
+	if rest == "" {
+		return true
+	}
+	r, _ := utf8.DecodeRuneInString(rest)
+	return unicode.IsSpace(r) || strings.ContainsRune(",;|", r)
+}
+
+func markdownReference(text string) (path, rest string, ok bool) {
+	// A marker is formatting only when its matching closer follows the whole reference.
+	for _, pair := range []struct{ open, close string }{{"[[", "]]"}, {"`", "`"}, {"\"", "\""}, {"'", "'"}} {
+		if !strings.HasPrefix(text, pair.open) {
+			continue
+		}
+		for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
+			if tail, closed := strings.CutPrefix(text[end[1]:], pair.close); closed && referenceBoundary(tail) {
+				return text[len(pair.open):end[1]], tail, true
+			}
+		}
+	}
+	for _, stop := range []string{". Repo:", ". Contract:", " | src:"} {
+		text, _, _ = strings.Cut(text, stop)
+	}
+	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
+		if referenceBoundary(text[end[1]:]) {
+			return text[:end[1]], text[end[1]:], true
+		}
+	}
+	return "", text, false
+}
+
+func markdownPaths(text string) []string {
+	var paths []string
+	text = strings.TrimSpace(text)
+	for text != "" {
+		path, rest, ok := markdownReference(text)
+		if !ok {
+			break
+		}
+		paths = append(paths, path)
+		text = strings.TrimSpace(rest)
+		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") {
+			break
+		}
+		// Parenthetical annotations after a reference end at a list separator or field end.
+		if strings.HasPrefix(text, "(") {
+			if end := strings.IndexByte(text, ')'); end >= 0 {
+				tail := strings.TrimSpace(text[end+1:])
+				if tail == "" || strings.HasPrefix(tail, ";") || strings.HasPrefix(tail, ",") {
+					text = tail
+				}
+			}
+		}
+		text = strings.TrimLeftFunc(text, func(r rune) bool { return unicode.IsSpace(r) || r == ',' || r == ';' })
+	}
+	return paths
 }
 
 func within(root, path string) bool {
@@ -97,7 +157,7 @@ func sensitiveContextPath(path string) bool {
 
 func wikiPage(cfg Config, vault, name string) (contextPage, error) {
 	name = expandHome(name)
-	if before, _, ok := strings.Cut(name, ".md:"); ok {
+	if before, line, ok := strings.CutLast(name, ".md:"); ok && line != "" && strings.IndexFunc(line, func(r rune) bool { return r < '0' || r > '9' }) < 0 {
 		name = before + ".md"
 	}
 	if sensitiveContextPath(name) {

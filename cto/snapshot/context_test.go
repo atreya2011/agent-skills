@@ -36,6 +36,30 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"separate references", "wiki: a.md b.md", []string{"a.md", "b.md"}},
 		{"mixed spaced Unicode references", "wiki: `articles/team plans.md` \"articles/日本語-note.md\" [[team plans/日本語 note.md]]", []string{"articles/team plans.md", "articles/日本語-note.md", "team plans/日本語 note.md"}},
 		{"unformatted spaced Unicode references", "wiki: articles/team plans.md articles/日本語-note.md", []string{"articles/team plans.md", "articles/日本語-note.md"}},
+		{"apostrophe filename", "wiki: team's notes.md", []string{"team's notes.md"}},
+		{"brackets filename", "wiki: notes [draft].md", []string{"notes [draft].md"}},
+		{"leading brackets filename", "wiki: [draft] notes.md", []string{"[draft] notes.md"}},
+		{"literal opening quotes", "wiki: \"draft\" notes.md", []string{"\"draft\" notes.md"}},
+		{"literal opening backticks", "wiki: `draft` notes.md", []string{"`draft` notes.md"}},
+		{"literal opening wiki brackets", "wiki: [[draft]] notes.md", []string{"[[draft]] notes.md"}},
+		{"quotes filename", "wiki: notes \"draft\".md", []string{"notes \"draft\".md"}},
+		{"backticks filename", "wiki: notes `draft`.md", []string{"notes `draft`.md"}},
+		{"parentheses filename", "wiki: notes (draft).md", []string{"notes (draft).md"}},
+		{"comma filename", "wiki: notes, draft.md", []string{"notes, draft.md"}},
+		{"semicolon filename", "wiki: notes; draft.md", []string{"notes; draft.md"}},
+		{"pipe filename", "wiki: notes|draft.md", []string{"notes|draft.md"}},
+		{"quoted apostrophe filename", "wiki: 'team's notes.md'", []string{"team's notes.md"}},
+		{"quoted quote filename", "wiki: \"team \"draft\" notes.md\"", []string{"team \"draft\" notes.md"}},
+		{"wrapped bracket filename", "wiki: [[notes [draft].md]]", []string{"notes [draft].md"}},
+		{"wrapped mixed punctuation", "wiki: [[日本語/team's \"draft\" `v2` [plan] (review), final; note.md]]", []string{"日本語/team's \"draft\" `v2` [plan] (review), final; note.md"}},
+		{"nested markdown directory", "wiki: archive.md/article.md", []string{"archive.md/article.md"}},
+		{"nested markdown suffix", "wiki: archive.md-backup/article.md", []string{"archive.md-backup/article.md"}},
+		{"nested markdown directories", "wiki: archive.md/history.md/article.md:95", []string{"archive.md/history.md/article.md:95"}},
+		{"wrapped nested markdown directory", "wiki: [[archive.md/team's [draft] notes.md]]", []string{"archive.md/team's [draft] notes.md"}},
+		{"wrapped spaced extensions", "wiki: \"a.md b.md\"", []string{"a.md b.md"}},
+		{"wrapped locator", "wiki: `team's notes.md:95`", []string{"team's notes.md:95"}},
+		{"multiple punctuated references", "wiki: a.md, team's notes.md; [[archive.md/notes [draft].md]]", []string{"a.md", "archive.md/notes [draft].md", "team's notes.md"}},
+		{"locator-shaped directory", "wiki: archive.md:95/article.md", []string{"archive.md:95/article.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {
@@ -48,7 +72,7 @@ func TestTodoContextFiles(t *testing.T) {
 		name, path, reader string
 		symlink            bool
 	}{}
-	for _, name := range []string{"complete context", "checkout evaluation", "facts without judgments", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
+	for _, name := range []string{"complete context", "checkout evaluation", "facts without judgments", "non-ASCII page", "spaced filename", "apostrophe filename", "brackets filename", "nested markdown directory", "locator-shaped directory", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
 		cases = append(cases, struct {
 			name, path, reader string
 			symlink            bool
@@ -184,11 +208,13 @@ func TestTodoContextFiles(t *testing.T) {
 			}
 			var wantError string
 			switch kind {
-			case "non-ASCII page", "spaced filename":
-				name := "日本語-note.md"
-				if kind == "spaced filename" {
-					name = "team plans.md"
-				}
+			case "non-ASCII page", "spaced filename", "apostrophe filename", "brackets filename", "nested markdown directory", "locator-shaped directory":
+				name := map[string]string{
+					"non-ASCII page": "日本語-note.md", "spaced filename": "team plans.md",
+					"apostrophe filename": "team's notes.md", "brackets filename": "notes [draft].md",
+					"nested markdown directory": "archive.md/article.md", "locator-shaped directory": "archive.md:95/article.md",
+				}[kind]
+				require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(vault, "projects", name)), 0o700))
 				require.NoError(t, os.WriteFile(filepath.Join(vault, "projects", name), []byte(text), 0o600))
 				todo.Annotations[0] = "wiki: projects/" + name
 			case "missing page":

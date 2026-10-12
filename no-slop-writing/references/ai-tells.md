@@ -59,11 +59,10 @@ A clean human writer can hit several patterns above with no AI involved. Leave t
 - Formal or academic vocabulary in general. Only the words in the AI vocabulary list are AI-coded.
 - Letter-style openings or sign-offs. They predate chatbots by centuries.
 - A single transition word (however, additionally, moreover). Only a tell when piled up.
-- A single em dash. Evidence only paired with formulaic, sales-y rhythm.
 - Unsourced claims alone. Most of the web is unsourced; that proves nothing.
 - Clean, correct formatting from a template or visual editor.
 
-Look for clusters of tells rather than isolated ones. One em dash means nothing; em dash plus rule of three plus "vibrant tapestry" plus a "Conclusion" section is a confession.
+Look for clusters of tells rather than isolated ones. Em dashes, a rule of three, "vibrant tapestry", and a "Conclusion" section in the same piece are strong evidence of AI writing.
 
 ## Signs of human writing
 

@@ -169,7 +169,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     return Boolean(context.compareDocumentPosition(flow) & Node.DOCUMENT_POSITION_FOLLOWING)
       && flow.getBoundingClientRect().top >= context.getBoundingClientRect().bottom;
   })).toBe(true);
-  await expect(routeQuestion.locator('.flow + .options')).toBeVisible();
+  await expect(routeQuestion.locator('.flow + .answer-controls > .options')).toBeVisible();
   expect(await routeQuestion.locator('.context li').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
   expect(await routeQuestion.locator('.flow-box').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
   expect(await routeQuestion.locator('.flow-box').evaluateAll((boxes) => boxes.map((box) => getComputedStyle(box).borderStyle))).toEqual(['solid', 'solid', 'solid']);
@@ -435,41 +435,54 @@ for (const { name, width, stepped } of [
       const panel = page.locator('#answer-panel');
       const rows = panel.locator('.answer-row');
       const submit = page.getByRole('button', { name: 'Submit answers' });
-      await cards.nth(0).getByLabel('Direct', { exact: true }).check();
-      await page.screenshot({ path: testInfo.outputPath('first-answer.png'), fullPage: true });
+      await page.screenshot({ path: testInfo.outputPath('first-screen.png'), fullPage: true });
       if (stepped) {
         await expect(submit).toBeHidden();
         await expect(panel).toBeHidden();
         await expect(page.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled();
-        await expect(page.locator('#position')).toHaveText('Question 1 of 4');
-        const columns = await cards.nth(0).evaluate((card) => {
-          const left = card.querySelector('.question-content').getBoundingClientRect();
-          const right = card.querySelector('.question-answer').getBoundingClientRect();
-          return { left: left.x, right: right.x, topLeft: left.y, topRight: right.y };
-        });
-        expect(columns.right).toBeGreaterThan(columns.left);
-        expect(columns.topRight).toBe(columns.topLeft);
-        console.log('Walk Next through each question to Review.');
-        for (const index of [1, 2, 3]) {
-          await page.getByRole('button', { name: 'Next', exact: true }).click();
-          await expect(cards.nth(index)).toBeVisible();
-          await expect(cards.nth(index - 1)).toBeHidden();
-          await expect(cards.nth(index).getByRole('heading')).toBeFocused();
+        await expect(page.locator('#position')).toHaveText(/^Question 1 of 4(?:, part \d+ of \d+)?$/);
+        const columns = await cards.nth(0).locator('.question-part:not([hidden]) .screen-column').evaluateAll((elements) => elements.map((element) => {
+          const { x, y } = element.getBoundingClientRect();
+          return { x, y };
+        }));
+        expect(columns).toHaveLength(2);
+        expect(columns[1].x).toBeGreaterThan(columns[0].x);
+        expect(columns[1].y).toBe(columns[0].y);
+        const direct = cards.nth(0).getByLabel('Direct', { exact: true });
+        for (let step = 0; step < 100 && !await direct.isVisible(); step += 1) await page.locator('#next').click();
+        await direct.check();
+        await page.screenshot({ path: testInfo.outputPath('first-answer.png'), fullPage: true });
+        console.log('Walk Next through every question part to Review.');
+        const answered = new Set([0]);
+        for (let step = 0; step < 100 && !await panel.isVisible(); step += 1) {
+          await page.locator('#next').click();
+          await page.screenshot({ path: testInfo.outputPath(`screen-${step + 2}.png`), fullPage: true });
+          if (await panel.isVisible()) break;
+          const visibleCard = cards.filter({ visible: true });
+          await expect(visibleCard).toHaveCount(1);
+          await expect(visibleCard.getByRole('heading', { level: 2 })).toBeFocused();
           await expect(submit).toBeHidden();
           await expect(page.locator('.masthead')).toBeHidden();
           expect(await page.evaluate(() => window.scrollY)).toBe(0);
+          const questionId = await visibleCard.getAttribute('data-question-id');
+          const index = spec.questions.findIndex(({ id }) => id === questionId);
+          if (answered.has(index)) continue;
+          const control = index === 1 ? visibleCard.getByLabel('Ship', { exact: true })
+            : index === 2 ? visibleCard.getByLabel('Behavior', { exact: true })
+              : visibleCard.getByRole('button', { name: 'Skip this question' });
+          if (!await control.isVisible()) continue;
           if (index === 1) {
-            await cards.nth(index).getByLabel('Ship', { exact: true }).check();
-            await cards.nth(index).getByLabel('Note (optional)').fill('Send it here.');
+            await control.check();
+            await visibleCard.getByLabel('Note (optional)').fill('Send it here.');
           } else if (index === 2) {
-            await cards.nth(index).getByLabel('Behavior', { exact: true }).check();
-            await cards.nth(index).getByLabel('Access', { exact: true }).check();
+            await control.check();
+            await visibleCard.getByLabel('Access', { exact: true }).check();
           } else {
-            await cards.nth(index).getByRole('button', { name: 'Skip this question' }).click();
+            await control.click();
           }
-          await page.screenshot({ path: testInfo.outputPath(`question-${index + 1}.png`), fullPage: true });
+          answered.add(index);
         }
-        await page.getByRole('button', { name: 'Review answers', exact: true }).click();
+        expect([...answered].sort()).toEqual([0, 1, 2, 3]);
         await expect(page.getByRole('heading', { name: 'Check your answers' })).toBeFocused();
         await expect(cards.filter({ visible: true })).toHaveCount(0);
         await expect(page.locator('#position')).toHaveText('Review');
@@ -477,18 +490,20 @@ for (const { name, width, stepped } of [
         await expect(submit).toBeVisible();
         const box = await submit.boundingBox();
         expect(Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThanOrEqual(1);
-        await expect(rows.nth(1)).toContainText('Send it here.');
+        await expect(rows.nth(1)).toContainText('Note: Send it here.');
         await expect(rows.nth(2)).toContainText('Behavior');
         await expect(rows.nth(2)).toContainText('Access');
         await expect(rows.nth(3)).toContainText('Skipped');
       } else {
+        await cards.nth(0).getByLabel('Direct', { exact: true }).check();
+        await page.screenshot({ path: testInfo.outputPath('first-answer.png'), fullPage: true });
         await expect(page.getByRole('heading', { name: 'Your answers' })).toBeVisible();
         await expect(rows.nth(1)).toContainText('Not answered');
         await expect(submit).toBeVisible();
         await cards.nth(1).getByLabel('Ship', { exact: true }).check();
         await cards.nth(1).getByLabel('Note (optional)').fill('Send it here.');
         await expect(rows.nth(1)).toContainText('Ship');
-        await expect(rows.nth(1)).toContainText('Send it here.');
+        await expect(rows.nth(1)).toContainText('Note: Send it here.');
       }
       await expect(rows).toHaveCount(spec.questions.length);
       await expect(rows.nth(0)).toContainText('Route');
@@ -498,22 +513,22 @@ for (const { name, width, stepped } of [
 
       console.log('Change Delivery and confirm the summary updates.');
       await rows.nth(1).getByRole('button', { name: 'Change Delivery' }).click();
-      await expect(cards.nth(1).getByRole('heading')).toBeFocused();
+      await expect(cards.nth(1).getByRole('heading', { level: 2 })).toBeFocused();
       await cards.nth(1).getByLabel('Hold', { exact: true }).check();
       if (stepped) {
-        await expect(page.locator('#position')).toHaveText('Question 2 of 4');
+        await expect(page.locator('#position')).toHaveText(/^Question 2 of 4(?:, part \d+ of \d+)?$/);
         await expect(submit).toBeHidden();
-        const columnCount = await cards.nth(1).evaluate((card) => getComputedStyle(card).gridTemplateColumns.split(' ').length);
-        expect(columnCount).toBe(1);
         await cards.nth(1).getByLabel('Note (optional)').focus();
         await page.keyboard.press('ArrowRight');
-        await expect(page.locator('#position')).toHaveText('Question 2 of 4');
-        await cards.nth(1).getByRole('heading').focus();
+        await expect(page.locator('#position')).toHaveText(/^Question 2 of 4(?:, part \d+ of \d+)?$/);
+        await cards.nth(1).getByRole('heading', { level: 2 }).focus();
         await page.keyboard.press('ArrowLeft');
-        await expect(cards.nth(0).getByRole('heading')).toBeFocused();
+        await expect(cards.nth(0).getByRole('heading', { level: 2 })).toBeFocused();
+        for (let step = 0; step < 100 && !await page.locator('#previous').isDisabled(); step += 1) await page.keyboard.press('ArrowLeft');
         await expect(page.locator('.masthead')).toBeVisible();
+        await expect(cards.nth(0).locator('h1:focus, h2:focus')).toHaveCount(1);
         await page.keyboard.press('ArrowRight');
-        for (const index of [2, 3, 4]) await page.keyboard.press('ArrowRight');
+        for (let step = 0; step < 100 && !await panel.isVisible(); step += 1) await page.keyboard.press('ArrowRight');
         await expect(panel).toBeVisible();
       }
       await expect(rows.nth(1)).toContainText('Hold');
@@ -522,19 +537,23 @@ for (const { name, width, stepped } of [
 
       console.log('Select Other without text and verify submission returns to its field.');
       await rows.nth(0).getByRole('button', { name: 'Change Route' }).click();
-      await cards.nth(0).getByLabel('Other', { exact: true }).check();
+      const other = cards.nth(0).getByLabel('Other', { exact: true });
       if (stepped) {
-        await cards.nth(0).getByRole('heading').focus();
-        for (const index of [1, 2, 3, 4]) await page.keyboard.press('ArrowRight');
+        for (let step = 0; step < 100 && !await other.isVisible(); step += 1) await page.locator('#next').click();
+      }
+      await other.check();
+      if (stepped) {
+        await cards.nth(0).getByRole('heading', { level: 2 }).focus();
+        for (let step = 0; step < 100 && !await panel.isVisible(); step += 1) await page.keyboard.press('ArrowRight');
       }
       await submit.click();
       await expect(page.getByRole('alert')).toContainText('Write the Other response');
       await expect(cards.nth(0).getByLabel('Other response')).toBeFocused();
-      if (stepped) await expect(page.locator('#position')).toHaveText('Question 1 of 4');
+      if (stepped) await expect(page.locator('#position')).toHaveText(/^Question 1 of 4(?:, part \d+ of \d+)?$/);
       await cards.nth(0).getByLabel('Other response').fill('Use a staged route.');
       if (stepped) {
-        await cards.nth(0).getByRole('heading').focus();
-        for (const index of [1, 2, 3, 4]) await page.keyboard.press('ArrowRight');
+        await cards.nth(0).getByRole('heading', { level: 2 }).focus();
+        for (let step = 0; step < 100 && !await panel.isVisible(); step += 1) await page.keyboard.press('ArrowRight');
       }
       await expect(rows.nth(0)).toContainText('Other: Use a staged route.');
       await page.screenshot({ path: testInfo.outputPath('other-answer.png'), fullPage: true });
@@ -546,3 +565,232 @@ for (const { name, width, stepped } of [
     }
   });
 }
+
+test.describe('desktop form regressions', () => {
+  test.use({ isMobile: false, hasTouch: false });
+
+  for (const { name, long } of [
+    { name: 'Enter in Other opens Review without posting', long: false },
+    { name: 'long questions split into measured parts without page scrolling', long: true }
+  ]) {
+    test(`desktop ${name}`, async ({ page }, testInfo) => {
+      const question = structuredClone(spec.questions[0]);
+      if (long) {
+        delete question.flow;
+        question.context = Array.from({ length: 6 }, (_, index) => `Consider requirement ${index + 1} alongside the existing workflow and its current delivery constraints.`);
+        question.cards = Array.from({ length: 6 }, (_, index) => ({
+          title: `Approach ${index + 1}`,
+          text: 'Keep the current workflow available while comparing the delivery effort and ownership of this approach.'
+        }));
+        question.table = {
+          columns: ['Approach', 'Delivery', 'Ownership'],
+          rows: Array.from({ length: 8 }, (_, index) => [`Approach ${index + 1}`, 'Ready after the required checks finish', 'The existing team owns the workflow'])
+        };
+        question.flows = [
+          { title: 'Prepare delivery', steps: ['Compare the available approaches.', 'Confirm the required checks.', 'Prepare the delivery.'] },
+          { title: 'Extended checks', steps: Array.from({ length: 15 }, (_, index) => `Complete check ${index + 1} before proceeding to delivery.`) }
+        ];
+        question.options = Array.from({ length: 6 }, (_, index) => ({
+          label: `Approach ${index + 1}`,
+          description: 'Use this approach after confirming its delivery requirements and the responsibility for maintaining the workflow.'
+        }));
+      }
+      const fixture = { title: 'Choose the next move', questions: long ? [question, structuredClone(spec.questions[1])] : [question] };
+      const specPath = join(renderDirectory, `${long ? 'long' : 'enter'}-desktop.json`);
+      await writeFile(specPath, JSON.stringify(fixture));
+      const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+      const postedSubmissions = [];
+      let latestSubmission;
+      const server = createServer(async (request, response) => {
+        if (request.url === '/') {
+          response.setHeader('Content-Type', 'text/html');
+          response.end(html);
+        } else if (request.url.startsWith('/assets/')) {
+          const assetName = basename(request.url);
+          response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
+          response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
+        } else if (request.url === '/answers' && request.method === 'POST') {
+          let body = '';
+          for await (const chunk of request) body += chunk;
+          latestSubmission = JSON.parse(body);
+          postedSubmissions.push(latestSubmission);
+          response.writeHead(204);
+          response.end();
+        } else if (request.url === '/answers' && latestSubmission) {
+          response.setHeader('Content-Type', 'application/json');
+          response.end(JSON.stringify(latestSubmission));
+        } else {
+          response.writeHead(404);
+          response.end();
+        }
+      });
+      await new Promise((resolve) => server.listen(0, 'localhost', resolve));
+      try {
+        console.log(`Open the desktop form at 1440 by 900: ${name}.`);
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto(`http://localhost:${server.address().port}/`);
+        const card = page.locator('[data-question-id="route"]');
+        const panel = page.locator('#answer-panel');
+        const submit = page.getByRole('button', { name: 'Submit answers' });
+        await expect(card).toBeVisible();
+        await page.screenshot({ path: testInfo.outputPath('desktop-first-screen.png'), fullPage: true });
+        if (!long) {
+          console.log('Find the answer block, select Other, and press Enter in its text field.');
+          const other = card.getByLabel('Other', { exact: true });
+          for (let step = 0; step < 100 && !await other.isVisible(); step += 1) await page.locator('#next').click();
+          await other.check();
+          const answerPosition = await page.locator('#position').textContent();
+          console.log('Keep radio and modified arrow keys within the answer screen.');
+          await other.focus();
+          await page.keyboard.press('ArrowLeft');
+          await expect(page.locator('#position')).toHaveText(answerPosition);
+          await page.keyboard.press('ArrowRight');
+          await expect(page.locator('#position')).toHaveText(answerPosition);
+          await card.getByRole('heading', { level: 2 }).focus();
+          for (const modifier of ['Alt', 'Control', 'Meta', 'Shift']) {
+            await page.keyboard.press(`${modifier}+ArrowLeft`);
+            await expect(page.locator('#position')).toHaveText(answerPosition);
+            await page.keyboard.press(`${modifier}+ArrowRight`);
+            await expect(page.locator('#position')).toHaveText(answerPosition);
+          }
+          await other.check();
+          await card.getByLabel('Other response').fill('Use a staged route.');
+          await expect(submit).toBeHidden();
+          await card.getByLabel('Other response').press('Enter');
+          await expect(page.getByRole('heading', { name: 'Check your answers' })).toBeFocused();
+          await expect(page.locator('#position')).toHaveText('Review');
+          await expect(panel).toContainText('Other: Use a staged route.');
+          expect(postedSubmissions).toEqual([]);
+          await page.screenshot({ path: testInfo.outputPath('enter-opens-review.png'), fullPage: true });
+          console.log('Submit from Review and verify the submission time remains visible there.');
+          await submit.click();
+          await expect(page.getByRole('status')).toHaveText('Answers sent');
+          expect(postedSubmissions).toHaveLength(1);
+          expect(postedSubmissions[0].answers[0].other).toBe('Use a staged route.');
+          await expect(page.locator('#latest')).toBeVisible();
+          await expect(page.locator('#latest')).toContainText('Latest submission:');
+          await page.screenshot({ path: testInfo.outputPath('review-submitted.png'), fullPage: true });
+        } else {
+          console.log('Walk all measured parts and verify each screen fits between the fixed bars.');
+          const position = page.locator('#position');
+          await expect(position).toHaveText(/^Question 1 of 2, part 1 of \d+$/);
+          const initialLabel = await position.textContent();
+          const match = initialLabel.match(/^Question 1 of 2, part 1 of (\d+)$/);
+          expect(match).not.toBeNull();
+          const partCount = Number(match[1]);
+          expect(partCount).toBeGreaterThan(1);
+          console.log('Keep focus and scroll unchanged when Left is pressed on the first screen.');
+          const initialHeading = card.locator('.question-part:not([hidden])').getByRole('heading', { level: 2 });
+          await initialHeading.focus();
+          await page.keyboard.press('ArrowLeft');
+          await expect(initialHeading).toBeFocused();
+          await expect(position).toHaveText(initialLabel);
+          expect(await page.evaluate(() => window.scrollY)).toBe(0);
+          const visited = [];
+          const seenBlocks = [];
+          let answered = false;
+          let internallyScrolled = false;
+          for (let part = 1; part <= partCount; part += 1) {
+            await expect(position).toHaveText(`Question 1 of 2, part ${part} of ${partCount}`);
+            await expect(card).toBeVisible();
+            await expect(submit).toBeHidden();
+            const current = card.locator('.question-part:not([hidden])');
+            await expect(current).toHaveCount(1);
+            await expect(current).toBeVisible();
+            const fit = await current.evaluate((element) => {
+              const top = document.querySelector('.progress').getBoundingClientRect().bottom;
+              const bottom = document.querySelector('.navigation').getBoundingClientRect().top;
+              const box = element.getBoundingClientRect();
+              const blocks = [...element.querySelectorAll('.screen-column > *')].map((block) => {
+                const rect = block.getBoundingClientRect();
+                return {
+                  text: block.textContent,
+                  top: rect.top,
+                  bottom: rect.bottom,
+                  scrolls: block.scrollHeight > block.clientHeight + 1,
+                  overflow: getComputedStyle(block).overflowY
+                };
+              });
+              return { top, bottom, screenTop: box.top, screenBottom: box.bottom, blocks, scrollHeight: document.documentElement.scrollHeight, viewport: window.innerHeight, scrollY: window.scrollY };
+            });
+            expect(fit.screenTop).toBeGreaterThanOrEqual(fit.top - 1);
+            expect(fit.screenBottom).toBeLessThanOrEqual(fit.bottom + 1);
+            expect(fit.scrollHeight).toBeLessThanOrEqual(fit.viewport + 1);
+            expect(fit.scrollY).toBe(0);
+            for (const block of fit.blocks) {
+              expect(block.top).toBeGreaterThanOrEqual(fit.top - 1);
+              expect(block.bottom).toBeLessThanOrEqual(fit.bottom + 1);
+              if (block.scrolls) expect(['auto', 'scroll']).toContain(block.overflow);
+              seenBlocks.push(block.text);
+            }
+            const table = current.locator('.table-wrap');
+            if (await table.count()) {
+              console.log('Keep arrow keys inside the focusable table.');
+              await table.focus();
+              for (const key of ['ArrowLeft', 'ArrowRight']) {
+                await page.keyboard.press(key);
+                await expect(position).toHaveText(`Question 1 of 2, part ${part} of ${partCount}`);
+                await expect(table).toBeFocused();
+              }
+            }
+            const oversized = current.locator('.oversized-block');
+            if (await oversized.count()) {
+              expect(await current.locator('.screen-column > *').count()).toBe(1);
+              expect(await oversized.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeGreaterThan(1);
+              console.log(`Scroll inside the oversized block on part ${part} and keep the document stationary.`);
+              await oversized.hover();
+              await page.mouse.wheel(0, 240);
+              await expect.poll(() => oversized.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+              expect(await page.evaluate(() => window.scrollY)).toBe(0);
+              internallyScrolled = true;
+            } else {
+              await page.mouse.move(2, 450);
+              await page.mouse.wheel(0, 240);
+              expect(await page.evaluate(() => window.scrollY)).toBe(0);
+            }
+            const option = card.getByLabel('Approach 1', { exact: true });
+            if (await option.isVisible()) {
+              await option.check();
+              answered = true;
+            }
+            visited.push(await position.textContent());
+            await page.screenshot({ path: testInfo.outputPath(`long-part-${part}.png`), fullPage: true });
+            await page.locator('#next').click();
+          }
+          expect(visited).toHaveLength(partCount);
+          expect(answered).toBe(true);
+          expect(internallyScrolled).toBe(true);
+          expect(seenBlocks).toHaveLength(7);
+          expect(new Set(seenBlocks).size).toBe(seenBlocks.length);
+          const content = seenBlocks.join('\n');
+          for (const text of [question.question, ...question.context, ...question.cards.map(({ title }) => title), ...question.table.rows.flat(), ...question.flows.flatMap(({ steps }) => steps), ...question.options.map(({ label }) => label)]) expect(content).toContain(text);
+          await expect(position).toHaveText(/^Question 2 of 2(?:, part 1 of \d+)?$/);
+          console.log('Resize while answering the second question and keep that question active.');
+          await page.locator('[data-question-id="delivery"]').getByLabel('Note (optional)').fill('Keep this question active.');
+          const note = page.locator('[data-question-id="delivery"]').getByLabel('Note (optional)');
+          await page.setViewportSize({ width: 420, height: 900 });
+          await note.focus();
+          await expect(note).toBeFocused();
+          await page.setViewportSize({ width: 1280, height: 900 });
+          await expect(note).toBeFocused();
+          await expect(note).toHaveValue('Keep this question active.');
+          await expect(position).toHaveText(/^Question 2 of 2(?:, part \d+ of \d+)?$/);
+          for (let step = 0; step < 100 && !await panel.isVisible(); step += 1) await page.locator('#next').click();
+          await expect(panel).toBeVisible();
+          await expect(panel.locator('.answer-row').first()).toContainText('Approach 1');
+          const reviewHeading = page.getByRole('heading', { name: 'Check your answers' });
+          await reviewHeading.focus();
+          await page.keyboard.press('ArrowRight');
+          await expect(reviewHeading).toBeFocused();
+          await expect(position).toHaveText('Review');
+          await page.screenshot({ path: testInfo.outputPath('long-review.png'), fullPage: true });
+        }
+      } finally {
+        await new Promise((resolve, reject) => {
+          server.close((error) => error ? reject(error) : resolve());
+          server.closeAllConnections();
+        });
+      }
+    });
+  }
+});

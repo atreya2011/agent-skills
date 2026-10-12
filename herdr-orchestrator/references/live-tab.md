@@ -2,7 +2,7 @@
 
 ## Agent tabs
 
-Read [herdr-cli.md](herdr-cli.md) §Lists and targets and §Agent commands before targeting, focusing, prompting, waiting, sending keys or reading. Use a 120000 ms timeout for prompts and done-state waits, the logical key `esc` for Escape, and 120 lines from `recent-unwrapped` for reads. Follow [herdr-chat](../../herdr-chat/SKILL.md) for live-tab messages, busy tabs and reply handling.
+Read [herdr-cli.md](herdr-cli.md) §Lists and targets and §Agent commands before targeting, focusing, prompting, waiting, sending keys or reading. Use a 120000 ms timeout for done-state waits, the logical key `esc` for Escape, and 120 lines from `recent-unwrapped` for reads. Follow [herdr-chat §Steps](../../herdr-chat/SKILL.md#steps) for live-tab messages, prompt reply timeouts, busy tabs and reply handling.
 
 `agent prompt` submits text and Enter atomically and honors the tab's live
 bracketed-paste mode; `--wait` returns at the first settled `idle`, `done`, or

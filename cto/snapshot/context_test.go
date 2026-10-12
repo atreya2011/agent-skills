@@ -21,6 +21,10 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"explanatory semicolons", "Wiki: duplicate-audit.md — confirmed-events table row 1; excluded verbatim from PR #141/#142; stale ID needs refresh; 'possible coincidence' resolved", []string{"duplicate-audit.md"}},
 		{"paths and line locators", "Wiki: ~/vaults/personal/concepts/freeze-tracer.md (Origin section: negotiation, Option B, no escape hatches); concepts/annotation-format.md (spec); index.md:95. Repo: ~/project", []string{"concepts/annotation-format.md", "index.md:95", "~/vaults/personal/concepts/freeze-tracer.md"}},
 		{"daily label", "Wiki: ~/vaults/work/projects/article.md; people/author.md; daily sources/worklog/daily.md (open)", []string{"people/author.md", "sources/worklog/daily.md", "~/vaults/work/projects/article.md"}},
+		{"non-ASCII path", "wiki: articles/日本語-note.md", []string{"articles/日本語-note.md"}},
+		{"spaced filename", "wiki: articles/team plans.md", []string{"articles/team plans.md"}},
+		{"spaced directory", "wiki: articles/team plans/日本語-note.md", []string{"articles/team plans/日本語-note.md"}},
+		{"non-ASCII page", "wiki: 日本語-note.md:12", []string{"日本語-note.md:12"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {
@@ -29,7 +33,7 @@ func TestWikiAnnotationNames(t *testing.T) {
 }
 
 func TestTodoContextFiles(t *testing.T) {
-	for _, kind := range []string{"complete context", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
+	for _, kind := range []string{"complete context", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
 		t.Run(kind, func(t *testing.T) {
 			root := t.TempDir()
 			vault := filepath.Join(root, "vault")
@@ -48,6 +52,13 @@ func TestTodoContextFiles(t *testing.T) {
 			cfg := Config{Vaults: map[string]string{"work": vault, "other": foreign}, Context: ContextConfig{HandoffDir: handoffs}, OwnerPolicy: "code belongs to +cto"}
 			var wantError string
 			switch kind {
+			case "non-ASCII page", "spaced filename":
+				name := "日本語-note.md"
+				if kind == "spaced filename" {
+					name = "team plans.md"
+				}
+				require.NoError(t, os.WriteFile(filepath.Join(vault, "projects", name), []byte(text), 0o600))
+				todo.Annotations[0] = "wiki: projects/" + name
 			case "missing page":
 				todo.Annotations = []string{"wiki: absent"}
 				wantError = "found 0"
@@ -73,7 +84,7 @@ func TestTodoContextFiles(t *testing.T) {
 			assert.Equal(t, text, state.WikiPages[0].Text)
 			assert.Len(t, state.Handoffs, 3)
 			assert.Equal(t, cfg.OwnerPolicy, state.OwnerPolicy)
-			assert.Equal(t, []string{"wiki: project"}, state.Annotations)
+			assert.Equal(t, todo.Annotations[:1], state.Annotations)
 			data, err := json.Marshal(state)
 			require.NoError(t, err)
 			assert.NotContains(t, string(data), "transcript_excerpt")

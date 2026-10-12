@@ -18,7 +18,7 @@ type contextPage struct {
 
 var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^|\n]+)`)
 
-var markdownRef = regexp.MustCompile(`(?:~/|/)?[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.md(?:[:][0-9]+)?`)
+var markdownRef = regexp.MustCompile(`(?:~/|/)?[\pL\pN_.-]+(?:/[\pL\pN_. -]+)*\.md(?:[:][0-9]+)?`)
 
 func wikiNames(annotations []string) []string {
 	var names []string

@@ -20,6 +20,9 @@ child failure.
 4. **The escalation contract, verbatim**:
    > If reality contradicts the manifest — stop your unit, report the
    > contradiction in your final message, do not improvise or expand scope.
+
+   Examples of a contradiction: a module marked safe has a live dependent, or a
+   verdict looks wrong. Children never make scope decisions.
 5. **Report format for the final message**: what changed, files touched,
    verification run, escalations (empty list if none).
 6. **UNKNOWN handling**: if you hit something the manifest marks UNKNOWN, or
@@ -110,6 +113,9 @@ Report format: what changed, files touched, gate re-run result, escalations
 ```
 
 ## Model selection
+
+Most of a program's work is mechanical, so use the cheaper model for it and the
+session's own model only for entanglement surgery and judgment-heavy work.
 
 | Child type | Model |
 |------------|-------|

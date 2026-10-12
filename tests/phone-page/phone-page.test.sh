@@ -79,6 +79,7 @@ case_names=(
   'duplicate option labels'
   'two recommended options'
   'recommended option not first'
+  'recommended option after an unrecommended one'
   'string context'
   'empty context'
   'empty context item'
@@ -140,6 +141,7 @@ case_filters=(
   '.questions[0].options[1].label = .questions[0].options[0].label'
   '.questions[0].options[1].recommended = true'
   '.questions[0].options[0].recommended = false | .questions[0].options[1].recommended = true'
+  '.questions[0].multiSelect = true | .questions[0].options += [{label: "Third", description: "Add a third path.", recommended: true}]'
   '.questions[0].context = "old shape"'
   '.questions[0].context = []'
   '.questions[0].context = [""]'
@@ -199,8 +201,9 @@ case_reasons=(
   'every question must contain 2 to 6 options'
   'every question must contain 2 to 6 options'
   'option labels must be unique within each question'
-  'a question may recommend at most one option'
-  'the recommended option must be first'
+  'a question that recommends more than one option must set multiSelect to true'
+  'recommended options must come first'
+  'recommended options must come first'
   'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
   'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
   'question context must contain 1 or more non-empty strings or objects with text and non-empty items'
@@ -267,11 +270,12 @@ for index in "${!case_names[@]}"; do
   fi
 done
 
-case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows')
+case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows' 'several recommended options in a multi-choice question')
 case_filters=(
   '.questions[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .questions[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
   '.questions[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .questions[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}] | .questions[0].options[0].description = "Use v1.3.0 with a threshold of 0.60."'
   '.summary = "Add the rule and the check." | .questions[0].cards = [{title: "Rule", text: "No rule maps changes to types.", icon: "book-open"}, {title: "Check", text: "CI checks only the format."}] | .questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "docs"], ["src/", "feat or fix"]]} | del(.questions[0].flow) | .questions[0].flows = [{title: "How it reached main", steps: ["An agent opens the PR.", "CI checks the format."]}, {title: "Proposed check", steps: ["Compare the type with the paths.", {text: "Do they match?", branches: ["Pass.", "Fail."]}]}]'
+  '.questions[0].multiSelect = true | .questions[0].options[1].recommended = true'
 )
 for index in "${!case_names[@]}"; do
   name="render accepts ${case_names[index]}"

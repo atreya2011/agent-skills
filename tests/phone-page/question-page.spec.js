@@ -52,7 +52,7 @@ const spec = {
       multiSelect: true,
       options: [
         { label: 'Behavior', description: 'Check the behavior a user can see.', recommended: true },
-        { label: 'Access', description: 'Check keyboard and screen-reader access.' },
+        { label: 'Access', description: 'Check keyboard and screen-reader access.', recommended: true },
         { label: 'Layout', description: 'Check the phone and desktop layouts.' }
       ]
     },
@@ -184,6 +184,9 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await deliveryQuestion.getByLabel('Ship', { exact: true }).check();
   await deliveryQuestion.getByLabel('Note (optional)').fill('Send the result in the current thread.');
   const checksQuestion = page.locator('[data-question-id="checks"]');
+  await expect(checksQuestion.locator('.option:has(.chip) .option-label')).toHaveText(['Behavior', 'Access']);
+  await expect(checksQuestion.locator('input[data-choice]')).toHaveCount(3);
+  expect(await checksQuestion.locator('input[data-choice]').evaluateAll((inputs) => inputs.map((input) => input.type))).toEqual(['checkbox', 'checkbox', 'checkbox']);
   await checksQuestion.getByLabel('Behavior', { exact: true }).check();
   await checksQuestion.getByLabel('Access', { exact: true }).check();
 

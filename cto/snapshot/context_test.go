@@ -24,6 +24,9 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"non-ASCII path", "wiki: articles/日本語-note.md", []string{"articles/日本語-note.md"}},
 		{"spaced filename", "wiki: articles/team plans.md", []string{"articles/team plans.md"}},
 		{"spaced directory", "wiki: articles/team plans/日本語-note.md", []string{"articles/team plans/日本語-note.md"}},
+		{"spaced page", "wiki: team plans.md", []string{"team plans.md"}},
+		{"spaced first directory", "wiki: team plans/article.md", []string{"team plans/article.md"}},
+		{"combining mark", "wiki: articles/café.md", []string{"articles/café.md"}},
 		{"non-ASCII page", "wiki: 日本語-note.md:12", []string{"日本語-note.md:12"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}

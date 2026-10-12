@@ -18,7 +18,7 @@ type contextPage struct {
 
 var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^|\n]+)`)
 
-var markdownRef = regexp.MustCompile(`(?:~/|/)?[\pL\pN_.-]+(?:/[\pL\pN_. -]+)*\.md(?:[:][0-9]+)?`)
+var markdownRef = regexp.MustCompile(`[^\s,;()|]+[^\n,;()|]*?\.md(?:[:][0-9]+)?`)
 
 func wikiNames(annotations []string) []string {
 	var names []string
@@ -30,7 +30,13 @@ func wikiNames(annotations []string) []string {
 			}
 			paths := markdownRef.FindAllString(text, -1)
 			if len(paths) > 0 {
-				names = append(names, paths...)
+				for _, path := range paths {
+					// Existing annotations use "daily" as a label before sources/ paths.
+					if strings.HasPrefix(path, "daily sources/") {
+						path = strings.TrimPrefix(path, "daily ")
+					}
+					names = append(names, path)
+				}
 				continue
 			}
 			// Bare page names form the leading comma-separated list; the rest is prose.

@@ -66,7 +66,8 @@ accepted by <owner> on <date>>`
 
 ## Escalations
 
-<!-- Open items awaiting the next wave-boundary batch. Clear an entry once ruled
+<!-- Open items awaiting rulings at the next wave boundary, one question at a time
+     unless the user requests all remaining questions or runs cto. Clear an entry once ruled
      and logged above; do not leave stale entries. -->
 
 - `<unit>`: `<what contradicted the manifest>` — options: `<option A>` / `<option B>`

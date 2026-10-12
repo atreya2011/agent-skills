@@ -8,9 +8,7 @@ Seat brief delivery goes through `gauntlet/send.sh`: empty the composer with Esc
 
 Create a tab in the current workspace. Keep each tab unsplit. Label every tab by seat. Name each agent `<seat>-<issue>`, such as `implementer-5`, because herdr agent names are unique per server; that name is `<agent>` in every herdr command and script below. Rename the controlling tab `orchestrator`. A pane id is looked up only where a herdr command requires one.
 
-    herdr tab create --workspace <ws> --cwd <repo> --label <seat> --no-focus --env REPLY_SIZE_CHECK=off
-    -> result.root_pane.pane_id
-    herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>
+Read [herdr-orchestrator/references/herdr-cli.md §Tab lifecycle](../../herdr-orchestrator/references/herdr-cli.md#tab-lifecycle) before creating the tab and starting the agent. Use the current workspace, repository cwd and seat label, without focus, and set `REPLY_SIZE_CHECK=off`. Take the root pane ID from the create response.
 
 Kind and Args come from the seat's row in the seat table; see [seats.md](seats.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Before the first send to a cursor seat, read its visible screen and wait until the "Trusting workspace" prompt is gone; herdr reports the seat idle while it shows.
 
@@ -24,7 +22,7 @@ A nonzero render exit MUST be reported as `RENDER BLOCKED <template>` and MUST s
 Select one implementation issue for the run. Record its branch, base SHA, hard cap, and current changed-line count. Keep every seat brief, review range, fix wave, and delivery action scoped to that issue.
 The seat brief is the tab's scope contract; deliver it in the tab's prompt. The repo's drift-guard scope serves the staged spec contract alone.
 
-Confirm the agent has settled before prompting: `herdr tab list` shows the seat's tab with its `agent_status`, or use `herdr agent wait <agent> --until idle`. Treat a raw shell prompt as not yet a valid target.
+Confirm the agent has settled before prompting: read [herdr-orchestrator/references/herdr-cli.md §Lists and targets](../../herdr-orchestrator/references/herdr-cli.md#lists-and-targets) and [§Agent commands](../../herdr-orchestrator/references/herdr-cli.md#agent-commands), then check the tab's `agent_status` or wait for idle. Treat a raw shell prompt as not yet a valid target.
 
 Handle launch blockers before sending a seat brief:
 
@@ -85,15 +83,13 @@ Send the fresh rendered seat brief only after the composer is empty, applying th
 
 For reviewers, `watch.sh` owns the settled-state wait. Treat `blocked` as a question to answer, not a failure.
 
-For the implementer, confirm completion with a runtime-valued regex requiring:
-
-    herdr pane wait-output <pane_id> --regex "<done regex>" --timeout <milliseconds>
+For the implementer, confirm completion with a runtime-valued regex. Read [herdr-orchestrator/references/herdr-cli.md §Tab lifecycle](../../herdr-orchestrator/references/herdr-cli.md#tab-lifecycle) before watching the implementer's pane with a regex and bounded timeout.
 
 Require digits, as in `FIX DONE — [0-9]+ commits?`: a pattern for `IMPLEMENTER DONE` alone matches the template text in the seat brief. Run `herdr agent wait` alongside it for blocked or idle states; treat timeouts as outer bounds.
 
 ## Close tabs
 
-Close a spawned tab with `herdr tab close <tab_id>`, taking the id from `herdr tab list`, only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab stays open until delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
+Read [herdr-orchestrator/references/herdr-cli.md §Tab lifecycle](../../herdr-orchestrator/references/herdr-cli.md#tab-lifecycle) before closing a spawned tab, using a freshly listed tab ID, only after its output is captured, it passes [gauntlet-review/SKILL.md](../../gauntlet-review/SKILL.md) §Validate results, and an independent runtime check proves zero owned resources. The implementer tab stays open until delivery. Keep blocked tabs open for cleanup, and list every spawned tab label and closure state in the final report.
 
 ## Decisions
 

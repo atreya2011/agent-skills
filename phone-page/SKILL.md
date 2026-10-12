@@ -10,6 +10,7 @@ Use a page when a reply to the user needs more than two sentences, a diagram, a 
 For read pages and question pages, open with the bottom line, then give the reasons. Write each bullet and sub-bullet as one sentence. Put numbered points in nested sub-bullets, never as numbering in bullet text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: draw the chart on a read page or use the question spec's `flow` or `flows` field on a question page. Show parallel facts as a card grid and structured comparisons as a table instead of bullet prose. Content text is 17 px.
 
 - A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
+- Present a proposal with as little text as possible: show it mainly as flow charts, and keep bullets, cards and tables for facts a chart cannot show.
 - Fix an open page in place with `phone-page ask <spec> <id>` or `phone-page publish <file> <id>`; never publish a replacement page for content the user already has a link to. Replacing a page discards its previous submission.
 
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.

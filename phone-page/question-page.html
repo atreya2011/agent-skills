@@ -380,13 +380,15 @@
     next.addEventListener('click', () => showScreen(screen + 1));
     window.addEventListener('resize', scheduleRepack);
     document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
-    document.addEventListener('pointerup', () => {
+    const pointerReleased = () => {
       pointerDown = false;
       if (repackPending) {
         repackPending = false;
         scheduleRepack();
       }
-    }, true);
+    };
+    document.addEventListener('pointerup', pointerReleased, true);
+    document.addEventListener('pointercancel', pointerReleased, true);
     document.addEventListener('keydown', (event) => {
       if (!ready || !desktop.matches || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('textarea, input, [contenteditable], .table-wrap')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {

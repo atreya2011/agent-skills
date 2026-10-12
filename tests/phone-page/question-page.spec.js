@@ -162,7 +162,13 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await expect(routeQuestion.locator('.flow-label')).toHaveText('Flow');
   await expect(routeQuestion.locator('.flow-box')).toHaveText(spec.questions[0].flow);
   await expect(routeQuestion.locator('.flow > .flow-arrow')).toHaveText(['↓', '↓']);
-  await expect(routeQuestion.locator('.context + .flow')).toBeVisible();
+  await expect(routeQuestion.locator('.flow')).toBeVisible();
+  expect(await routeQuestion.evaluate((question) => {
+    const context = question.querySelector('.context');
+    const flow = question.querySelector('.flow');
+    return Boolean(context.compareDocumentPosition(flow) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && flow.getBoundingClientRect().top >= context.getBoundingClientRect().bottom;
+  })).toBe(true);
   await expect(routeQuestion.locator('.flow + .options')).toBeVisible();
   expect(await routeQuestion.locator('.context li').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
   expect(await routeQuestion.locator('.flow-box').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
@@ -394,6 +400,147 @@ for (const { name, width } of [
         await expect(card.locator('.flow').nth(index).locator('.flow-box')).toHaveText(flow.steps);
       }
       await page.screenshot({ path: testInfo.outputPath('content.png'), fullPage: true });
+    } finally {
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+}
+
+for (const { name, width, stepped } of [
+  { name: 'phone', width: 420, stepped: false },
+  { name: 'below desktop breakpoint', width: 959, stepped: false },
+  { name: 'desktop breakpoint', width: 960, stepped: true },
+  { name: 'wide desktop', width: 1280, stepped: true }
+]) {
+  test(`answer review and changes work on ${name}`, async ({ page }, testInfo) => {
+    const server = createServer(async (request, response) => {
+      if (request.url === '/') {
+        response.setHeader('Content-Type', 'text/html');
+        response.end(renderedPage);
+      } else if (request.url.startsWith('/assets/')) {
+        const assetName = basename(request.url);
+        response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
+        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
+      } else {
+        response.writeHead(404);
+        response.end();
+      }
+    });
+    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
+    try {
+      console.log(`Open the ${name} form and choose Direct.`);
+      await page.setViewportSize({ width, height: 1100 });
+      await page.goto(`http://localhost:${server.address().port}/`);
+      const cards = page.locator('.question-card');
+      const panel = page.locator('#answer-panel');
+      const rows = panel.locator('.answer-row');
+      const submit = page.getByRole('button', { name: 'Submit answers' });
+      await cards.nth(0).getByLabel('Direct', { exact: true }).check();
+      await page.screenshot({ path: testInfo.outputPath('first-answer.png'), fullPage: true });
+      if (stepped) {
+        await expect(submit).toBeHidden();
+        await expect(panel).toBeHidden();
+        await expect(page.getByRole('button', { name: 'Previous', exact: true })).toBeDisabled();
+        await expect(page.locator('#position')).toHaveText('Question 1 of 4');
+        const columns = await cards.nth(0).evaluate((card) => {
+          const left = card.querySelector('.question-content').getBoundingClientRect();
+          const right = card.querySelector('.question-answer').getBoundingClientRect();
+          return { left: left.x, right: right.x, topLeft: left.y, topRight: right.y };
+        });
+        expect(columns.right).toBeGreaterThan(columns.left);
+        expect(columns.topRight).toBe(columns.topLeft);
+        console.log('Walk Next through each question to Review.');
+        for (const index of [1, 2, 3]) {
+          await page.getByRole('button', { name: 'Next', exact: true }).click();
+          await expect(cards.nth(index)).toBeVisible();
+          await expect(cards.nth(index - 1)).toBeHidden();
+          await expect(cards.nth(index).getByRole('heading')).toBeFocused();
+          await expect(submit).toBeHidden();
+          await expect(page.locator('.masthead')).toBeHidden();
+          expect(await page.evaluate(() => window.scrollY)).toBe(0);
+          if (index === 1) {
+            await cards.nth(index).getByLabel('Ship', { exact: true }).check();
+            await cards.nth(index).getByLabel('Note (optional)').fill('Send it here.');
+          } else if (index === 2) {
+            await cards.nth(index).getByLabel('Behavior', { exact: true }).check();
+            await cards.nth(index).getByLabel('Access', { exact: true }).check();
+          } else {
+            await cards.nth(index).getByRole('button', { name: 'Skip this question' }).click();
+          }
+          await page.screenshot({ path: testInfo.outputPath(`question-${index + 1}.png`), fullPage: true });
+        }
+        await page.getByRole('button', { name: 'Review answers', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Check your answers' })).toBeFocused();
+        await expect(cards.filter({ visible: true })).toHaveCount(0);
+        await expect(page.locator('#position')).toHaveText('Review');
+        await expect(page.locator('#next')).toBeHidden();
+        await expect(submit).toBeVisible();
+        const box = await submit.boundingBox();
+        expect(Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThanOrEqual(1);
+        await expect(rows.nth(1)).toContainText('Send it here.');
+        await expect(rows.nth(2)).toContainText('Behavior');
+        await expect(rows.nth(2)).toContainText('Access');
+        await expect(rows.nth(3)).toContainText('Skipped');
+      } else {
+        await expect(page.getByRole('heading', { name: 'Your answers' })).toBeVisible();
+        await expect(rows.nth(1)).toContainText('Not answered');
+        await expect(submit).toBeVisible();
+        await cards.nth(1).getByLabel('Ship', { exact: true }).check();
+        await cards.nth(1).getByLabel('Note (optional)').fill('Send it here.');
+        await expect(rows.nth(1)).toContainText('Ship');
+        await expect(rows.nth(1)).toContainText('Send it here.');
+      }
+      await expect(rows).toHaveCount(spec.questions.length);
+      await expect(rows.nth(0)).toContainText('Route');
+      await expect(rows.nth(0)).toContainText(spec.questions[0].question);
+      await expect(rows.nth(0)).toContainText('Direct');
+      await page.screenshot({ path: testInfo.outputPath('answer-review.png'), fullPage: true });
+
+      console.log('Change Delivery and confirm the summary updates.');
+      await rows.nth(1).getByRole('button', { name: 'Change Delivery' }).click();
+      await expect(cards.nth(1).getByRole('heading')).toBeFocused();
+      await cards.nth(1).getByLabel('Hold', { exact: true }).check();
+      if (stepped) {
+        await expect(page.locator('#position')).toHaveText('Question 2 of 4');
+        await expect(submit).toBeHidden();
+        const columnCount = await cards.nth(1).evaluate((card) => getComputedStyle(card).gridTemplateColumns.split(' ').length);
+        expect(columnCount).toBe(1);
+        await cards.nth(1).getByLabel('Note (optional)').focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(page.locator('#position')).toHaveText('Question 2 of 4');
+        await cards.nth(1).getByRole('heading').focus();
+        await page.keyboard.press('ArrowLeft');
+        await expect(cards.nth(0).getByRole('heading')).toBeFocused();
+        await expect(page.locator('.masthead')).toBeVisible();
+        await page.keyboard.press('ArrowRight');
+        for (const index of [2, 3, 4]) await page.keyboard.press('ArrowRight');
+        await expect(panel).toBeVisible();
+      }
+      await expect(rows.nth(1)).toContainText('Hold');
+      await expect(rows.nth(1)).not.toContainText('Ship');
+      await page.screenshot({ path: testInfo.outputPath('changed-answer.png'), fullPage: true });
+
+      console.log('Select Other without text and verify submission returns to its field.');
+      await rows.nth(0).getByRole('button', { name: 'Change Route' }).click();
+      await cards.nth(0).getByLabel('Other', { exact: true }).check();
+      if (stepped) {
+        await cards.nth(0).getByRole('heading').focus();
+        for (const index of [1, 2, 3, 4]) await page.keyboard.press('ArrowRight');
+      }
+      await submit.click();
+      await expect(page.getByRole('alert')).toContainText('Write the Other response');
+      await expect(cards.nth(0).getByLabel('Other response')).toBeFocused();
+      if (stepped) await expect(page.locator('#position')).toHaveText('Question 1 of 4');
+      await cards.nth(0).getByLabel('Other response').fill('Use a staged route.');
+      if (stepped) {
+        await cards.nth(0).getByRole('heading').focus();
+        for (const index of [1, 2, 3, 4]) await page.keyboard.press('ArrowRight');
+      }
+      await expect(rows.nth(0)).toContainText('Other: Use a staged route.');
+      await page.screenshot({ path: testInfo.outputPath('other-answer.png'), fullPage: true });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      expect(accessibility.violations).toEqual([]);
     } finally {
       await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }

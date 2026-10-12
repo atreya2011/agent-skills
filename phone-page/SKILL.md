@@ -114,6 +114,10 @@ The summary, context bullets, sub-bullets, card titles and texts, table columns 
 
 The page adds Other and a note to every question. Questions may be skipped. The latest submission replaces the previous one, while unsent choices stay in browser storage.
 
+At widths of 960 px and above, each question has its own screen, followed by a **Check your answers** review screen. The first screen also shows the masthead. Questions with context, cards or a table use two columns: heading and supporting facts on the left, charts and answer controls on the right; other questions use one column. A fixed bottom bar shows Previous, the position and Next, with Review answers on the last question and no Next on review. Left and Right arrow keys navigate unless focus is in a text field; each screen change scrolls to the top and focuses its heading.
+
+Below 960 px, all questions remain on one scrolling page, followed by a live **Your answers** panel. Both summaries show each question's header, question, selected labels, Other text, skipped or unanswered state, and any note. Change opens the question on desktop or scrolls to and focuses it on a phone. Submit follows the summary, centered on desktop and full width on a phone. An empty selected Other response keeps the existing error and focuses its field, opening that question's screen on desktop. Successful submission preserves the latest-submission notice, toast and `Reply done in the chat` instruction.
+
 ## Store contract
 
 The configured store command accepts `publish <file> [tab-id]` and prints exactly one JSON line containing the new page's `id` and `url`. It accepts `update <id> <file>`, which replaces that page's content in place while keeping its id, url and asking tab, discards its submission, and prints the same JSON line. It accepts `delete <id>` and removes the page and its submission. It accepts `answers <id>` and prints the latest submission JSON, exits 3 when an existing page has no submission, or exits 4 when the page no longer exists. `update` and `delete` also exit 4 when the page no longer exists. Any other failure is nonzero.

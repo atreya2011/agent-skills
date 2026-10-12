@@ -15,7 +15,7 @@ Every phone page uses this dark system. A read page and a question page should f
 - Cards have a 24 px radius. Buttons and compact labels are pills.
 - Every foreground and background pair has at least 4.5:1 contrast. Muted text on a card is the lowest pair, at 7.2:1.
 
-Use one column with a 16 px gutter on a phone. Keep that column centered and no wider than 720 px on a desktop browser. Controls are at least 44 px high, focus is visible, and the layout never requires horizontal scrolling.
+Use one column with a 16 px gutter on a phone. Read pages keep that column centered and no wider than 720 px on a desktop browser. Question pages below 960 px scroll through all questions; at 960 px and above they show one question per screen, then a review screen, within a centered layout up to 1200 px wide. A question with context, cards or a table puts its heading and those facts in the left column, and charts, options, Other, note and Skip in the right column; other questions keep a centered single column. Only the first question screen shows the masthead. Controls are at least 44 px high, focus is visible, and the layout never requires horizontal scrolling.
 
 ## Content
 
@@ -58,7 +58,9 @@ An option is a full-width tappable card. Put its label first, its one-sentence c
 
 ### Actions and status
 
-The primary action is a lime pill. Put submission errors next to the action and move focus to the question that needs attention. After a successful submission, show its time and the exact instruction `Reply done in the chat`.
+The primary action is a lime pill. Desktop question screens have a fixed bottom bar with Previous, a position such as Question 1 of 2, and Next. Previous is disabled on the first screen; Next becomes Review answers on the last question and is hidden on review. Left and Right arrow keys navigate unless focus is in a text field. Screen changes scroll to the top and focus the heading.
+
+The desktop review heading is Check your answers; on a phone, a live Your answers panel follows the last question. Each row shows the question's header and question, selected option labels, Other text, Skipped or Not answered, and any note. Its Change button opens that question's desktop screen or scrolls to and focuses its heading on a phone. Submit appears below the rows, centered on desktop and full width on a phone. Put submission errors near the action and move focus to the question that needs attention; an empty Other response opens that question's desktop screen and focuses the field. After a successful submission, show its time and the exact instruction `Reply done in the chat`.
 
 ## Assets
 

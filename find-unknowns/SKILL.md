@@ -33,7 +33,7 @@ Skip angles that do not apply, and say which and why. Brief each subagent: "Surf
 
 Keep only real unknown unknowns: things the user, from their stated starting point, would not have known to ask about. Drop findings the user obviously knows; five sharp findings teach more than ten vague ones.
 
-Teach the findings in chat, in complete sentences: this is explanation, not a status report. For each finding:
+Explain findings in complete sentences. Follow [phone-page](../phone-page/SKILL.md) before replying with teaching or decisions exceeding two sentences or containing any diagram, table or question. For each finding:
 
 - Name it.
 - Explain what it is and how the territory actually behaves.

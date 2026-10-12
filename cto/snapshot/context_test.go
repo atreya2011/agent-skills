@@ -33,8 +33,34 @@ func TestWikiAnnotationNames(t *testing.T) {
 }
 
 func TestTodoContextFiles(t *testing.T) {
-	for _, kind := range []string{"complete context", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
-		t.Run(kind, func(t *testing.T) {
+	cases := []struct {
+		name, path, reader string
+		symlink            bool
+	}{}
+	for _, name := range []string{"complete context", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
+		cases = append(cases, struct {
+			name, path, reader string
+			symlink            bool
+		}{name: name})
+	}
+	for _, file := range []struct{ name, path string }{
+		{"environment", ".env"}, {"private key", "signing.key"}, {"certificate", "signing.pem"},
+		{"private metadata", "credentials.md"}, {"private directory", "credentials/page.md"},
+	} {
+		for _, reader := range []string{"wiki", "handoff"} {
+			for _, link := range []bool{false, true} {
+				cases = append(cases, struct {
+					name, path, reader string
+					symlink            bool
+				}{
+					name: fmt.Sprintf("%s/%s/symlink=%t", file.name, reader, link), path: file.path, reader: reader, symlink: link,
+				})
+			}
+		}
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			kind := tt.name
 			root := t.TempDir()
 			vault := filepath.Join(root, "vault")
 			handoffs := filepath.Join(root, "handoffs")
@@ -50,6 +76,40 @@ func TestTodoContextFiles(t *testing.T) {
 				require.NoError(t, os.WriteFile(filepath.Join(handoffs, name), []byte(body), 0o600))
 			}
 			cfg := Config{Vaults: map[string]string{"work": vault, "other": foreign}, Context: ContextConfig{HandoffDir: handoffs}, OwnerPolicy: "code belongs to +cto"}
+			if tt.reader != "" {
+				input := filepath.Join(root, "private input")
+				path := filepath.Join(input, tt.path)
+				require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+				require.NoError(t, os.WriteFile(path, []byte("synthetic private fixture; "+todo.UUID), 0o600))
+				requested := path
+				if tt.symlink {
+					requested = filepath.Join(input, "alias.md")
+					require.NoError(t, os.Symlink(path, requested))
+				}
+				if tt.reader == "wiki" {
+					cfg.Vaults["work"] = input
+					page, err := wikiPage(cfg, input, requested)
+					require.ErrorContains(t, err, "sensitive path")
+					if tt.symlink {
+						assert.Contains(t, err.Error(), "resolves to a sensitive path")
+					}
+					assert.Empty(t, page.Text)
+				} else {
+					cfg.Context.HandoffDir = input
+					todo.Annotations = nil
+					state, err := todoContext(cfg, &Project{}, todo, nil, "2026-10-12")
+					if filepath.Ext(path) != ".md" && !tt.symlink {
+						require.NoError(t, err)
+					} else {
+						require.ErrorContains(t, err, "sensitive path")
+						if tt.symlink {
+							assert.Contains(t, err.Error(), "resolves to a sensitive path")
+						}
+					}
+					assert.Empty(t, state.Handoffs)
+				}
+				return
+			}
 			var wantError string
 			switch kind {
 			case "non-ASCII page", "spaced filename":
@@ -140,49 +200,5 @@ func TestInputLimitErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.limit, inputLimitError(&gateHTTPError{Status: tt.status, Detail: tt.detail}))
 		})
-	}
-}
-
-func TestContextSensitiveFiles(t *testing.T) {
-	cases := []struct {
-		name, path string
-	}{
-		{"environment", ".env"}, {"private key", "signing.key"}, {"certificate", "signing.pem"},
-		{"private metadata", "credentials.md"}, {"private directory", "credentials/page.md"},
-	}
-	for _, tt := range cases {
-		for _, reader := range []string{"wiki", "handoff"} {
-			for _, link := range []bool{false, true} {
-				t.Run(fmt.Sprintf("%s/%s/symlink=%t", tt.name, reader, link), func(t *testing.T) {
-					root := t.TempDir()
-					path := filepath.Join(root, tt.path)
-					require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
-					require.NoError(t, os.WriteFile(path, []byte("synthetic private fixture; todo marker"), 0o600))
-					requested := path
-					if link {
-						requested = filepath.Join(root, "alias.md")
-						require.NoError(t, os.Symlink(path, requested))
-					}
-					cfg := Config{Vaults: map[string]string{"test": root}}
-					if reader == "wiki" {
-						page, err := wikiPage(cfg, root, requested)
-						require.ErrorContains(t, err, "sensitive path")
-						if link {
-							assert.Contains(t, err.Error(), "resolves to a sensitive path")
-						}
-						assert.Empty(t, page.Text)
-					} else {
-						cfg.Context.HandoffDir = root
-						state, err := todoContext(cfg, &Project{}, Todo{UUID: "todo marker"}, nil, "2026-10-12")
-						if filepath.Ext(path) != ".md" && !link {
-							require.NoError(t, err)
-						} else {
-							require.ErrorContains(t, err, "sensitive path")
-						}
-						assert.Empty(t, state.Handoffs)
-					}
-				})
-			}
-		}
 	}
 }

@@ -13,7 +13,7 @@ For read pages and question pages, open with the bottom line, then give the reas
 - Give each question exactly what the user needs to decide, with no wall of text and no flow-only page:
   - the recommendation with its one-line reason as the first context bullet;
   - the facts it rests on in a `table`, with numbers and sources;
-  - known limits as at most three one-line `cards`;
+  - known limits as two or three one-line `cards`, or as a table row when there is only one;
   - the process as a `flow` or `flows` chart with short boxes;
   - each option's consequence in its description.
 - Add nothing beyond those parts, and never cut a fact the decision depends on.

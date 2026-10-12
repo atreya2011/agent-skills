@@ -68,6 +68,15 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"double backtick reference", "wiki: ``notes.md``", []string{"notes.md"}},
 		{"double backtick internal tick", "wiki: ``notes `draft`.md``", []string{"notes `draft`.md"}},
 		{"triple backtick internal ticks", "wiki: ```notes ``draft``.md```", []string{"notes ``draft``.md"}},
+		{"wiki wrapper repository metadata", "wiki: [[notes.md]]. Repo: project", []string{"notes.md"}},
+		{"wiki wrapper contract metadata", "wiki: [[notes.md]]. Contract: approved", []string{"notes.md"}},
+		{"wiki wrapper other metadata", "wiki: [[notes.md]]. Owner: team", []string{"notes.md"}},
+		{"bracket wrapper metadata", "wiki: [notes.md]. Repo: project. Contract: approved", []string{"notes.md"}},
+		{"backtick wrapper metadata", "wiki: `notes.md`. Repo: project", []string{"notes.md"}},
+		{"double backtick wrapper metadata", "wiki: ``notes.md``. Contract: approved", []string{"notes.md"}},
+		{"quoted wrapper metadata", "wiki: \"notes.md\". Repo: project", []string{"notes.md"}},
+		{"single quoted wrapper metadata", "wiki: 'notes.md'. Owner: team", []string{"notes.md"}},
+		{"plain reference metadata", "wiki: notes.md. Repo: project. Contract: approved", []string{"notes.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {

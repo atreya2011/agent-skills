@@ -24,6 +24,8 @@ var markdownEnd = regexp.MustCompile(`\.md(?:[:][0-9]+)?`)
 
 var wikiSource = regexp.MustCompile(`[ \t]*\|[ \t]*src:`)
 
+var wikiMetadata = regexp.MustCompile(`^\.[ \t]+[A-Za-z][A-Za-z0-9_-]*:`)
+
 func wikiNames(annotations []string) []string {
 	var names []string
 	for _, a := range gateAnnotations(annotations) {
@@ -63,7 +65,7 @@ func referenceBoundary(rest string) bool {
 		return true
 	}
 	r, _ := utf8.DecodeRuneInString(rest)
-	return unicode.IsSpace(r) || strings.ContainsRune(",;|", r)
+	return unicode.IsSpace(r) || strings.ContainsRune(",;|", r) || wikiMetadata.MatchString(rest)
 }
 
 func markdownReference(text string) (path, rest string, ok bool) {
@@ -106,7 +108,7 @@ func markdownPaths(text string) []string {
 		}
 		paths = append(paths, path)
 		text = strings.TrimSpace(rest)
-		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") {
+		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") || wikiMetadata.MatchString(text) {
 			break
 		}
 		// Parenthetical annotations after a reference end at a list separator or field end.

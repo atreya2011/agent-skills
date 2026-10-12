@@ -88,7 +88,7 @@ func vaultFor(cfg Config, p *Project, t Todo) string {
 func sensitiveContextPath(path string) bool {
 	for _, part := range strings.Split(filepath.Clean(path), string(filepath.Separator)) {
 		name := strings.ToLower(part)
-		if name == ".env" || strings.HasSuffix(name, ".key") || strings.HasSuffix(name, ".pem") || strings.Contains(name, "credentials") {
+		if name == ".env" || strings.HasPrefix(name, ".env.") || strings.HasSuffix(name, ".key") || strings.HasSuffix(name, ".pem") || strings.Contains(name, "credentials") {
 			return true
 		}
 	}

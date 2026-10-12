@@ -48,7 +48,8 @@ func TestTodoContextFiles(t *testing.T) {
 		}{name: name})
 	}
 	for _, file := range []struct{ name, path string }{
-		{"environment", ".env"}, {"private key", "signing.key"}, {"certificate", "signing.pem"},
+		{"environment", ".env"}, {"local environment", ".env.local"}, {"production environment", ".env.production"},
+		{"environment directory", ".env.local/page.md"}, {"environment markdown", ".env.local.md"}, {"private key", "signing.key"}, {"certificate", "signing.pem"},
 		{"private metadata", "credentials.md"}, {"private directory", "credentials/page.md"},
 	} {
 		for _, reader := range []string{"wiki", "handoff"} {
@@ -138,7 +139,11 @@ func TestTodoContextFiles(t *testing.T) {
 			}
 			if tt.reader != "" {
 				input := filepath.Join(root, "private input")
+				require.NoError(t, os.MkdirAll(input, 0o700))
 				path := filepath.Join(input, tt.path)
+				if tt.reader == "handoff" && tt.symlink {
+					path = filepath.Join(root, "private target", tt.path)
+				}
 				require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 				require.NoError(t, os.WriteFile(path, []byte("synthetic private fixture; "+todo.UUID), 0o600))
 				requested := path

@@ -23,6 +23,11 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `unslop`: Edit prose to remove AI tells and restore a natural human voice.
 - `where-are-we`: Reconstruct how the current session started and where it stands now by parsing its own transcript, then report it as a short readable narrative (ASD-STE100 mechanics, blunt outcome-first voice).
 
+## Writing a skill
+
+- `SKILL.md` holds only the steps and rules every run needs, in at most 500 words.
+- Formats, examples, contracts and edge cases go in files under the skill's `references/` folder, each linked from the step that needs it.
+
 ## Local files
 
 A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cf-page-store`, `cto`, `gauntlet`, `herdr-orchestrator`, `phone-page`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.

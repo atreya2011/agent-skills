@@ -5,7 +5,7 @@ description: Talk to another agent through its herdr tab, by chat only. Use when
 
 # herdr-chat
 
-Chat is the only channel to another agent's tab.
+Chat is the only channel to another agent's tab. This skill owns message format, reply handling and busy-tab behavior; [herdr-orchestrator](../herdr-orchestrator/SKILL.md) owns tab lifecycle and CLI syntax.
 
 ## Rules
 
@@ -17,9 +17,9 @@ Chat is the only channel to another agent's tab.
 
 ## Steps
 
-1. Find the target with `herdr tab list --workspace <id>` and `herdr agent list`. Use the agent's name, or the pane ID when it has no name.
-2. Wait until it is not working: `herdr agent wait <target> --timeout 120000`.
-3. If the target is a `claude` agent, set aside any draft the user left in its input box: `herdr agent send-keys <target> ctrl+s`. Claude puts the draft back after your message is sent.
-4. Send and wait for the reply: `herdr agent prompt <target> "<message>" --wait --timeout 300000`.
-5. Read the reply: `herdr agent read <target> --source recent-unwrapped --lines 80`. If it scrolled off, ask the tab to resend it shorter.
+1. Read [herdr-orchestrator/references/herdr-cli.md §Lists and targets](../herdr-orchestrator/references/herdr-cli.md#lists-and-targets) and [§Agent commands](../herdr-orchestrator/references/herdr-cli.md#agent-commands) before finding a target or using prompt, wait, send-keys or read. Find the target in its workspace; use the owner's targeting rules.
+2. Wait until it is not working, with a 120000 ms timeout.
+3. If the target is a `claude` agent, send the logical key `ctrl+s` to set aside any user draft. Claude restores it after your message is sent.
+4. Prompt the target with the whole message and wait for the reply, with a 300000 ms timeout.
+5. Read the reply from `recent-unwrapped`, with 80 lines. If it scrolled off, ask the tab to resend it shorter.
 6. To discuss, repeat steps 3 to 5 until the question is settled, then report the outcome to the user.

@@ -155,13 +155,12 @@ func markdownPaths(text string) []string {
 		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") || wikiMetadata.MatchString(text) {
 			break
 		}
-		if strings.HasPrefix(text, "(") {
-			if end := matchingClose(text, '(', ')'); end >= 0 {
-				tail := strings.TrimSpace(text[end+1:])
-				if referenceBoundary(text[end+1:]) {
-					text = tail
-				}
+		for strings.HasPrefix(text, "(") {
+			end := matchingClose(text, '(', ')')
+			if end < 0 || !referenceBoundary(text[end+1:]) {
+				break
 			}
+			text = strings.TrimSpace(text[end+1:])
 		}
 		text = strings.TrimLeftFunc(text, func(r rune) bool { return unicode.IsSpace(r) || r == ',' || r == ';' })
 	}

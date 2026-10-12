@@ -92,6 +92,8 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"link before plain", "wiki: notes (articles/note.md) a.md", []string{"a.md", "articles/note.md"}},
 		{"nested path before link", "wiki: archive.md/article.md notes (articles/note.md)", []string{"archive.md/article.md", "articles/note.md"}},
 		{"nested notes before link", "wiki: a.md (Origin (section), details); notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
+		{"parenthesized filename after note", "wiki: a.md (spec) (draft).md", []string{"(draft).md", "a.md"}},
+		{"consecutive named notes", "wiki: a.md (spec) (approved); b.md", []string{"a.md", "b.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	forms := []struct{ name, format, path string }{
@@ -143,6 +145,22 @@ func TestWikiAnnotationNames(t *testing.T) {
 					want             []string
 				}{"metadata " + form.name + " separator " + separator + " source " + source,
 					"wiki: " + fmt.Sprintf(form.format, left) + separator + source, []string{left}})
+			}
+		}
+	}
+	for _, first := range forms {
+		for count := 1; count <= 2; count++ {
+			for _, second := range forms {
+				for _, separator := range []string{" ", ", ", "; "} {
+					left, right := fmt.Sprintf(first.path, "a.md"), fmt.Sprintf(second.path, "b.md")
+					want := []string{left, right}
+					slices.Sort(want)
+					cases = append(cases, struct {
+						name, annotation string
+						want             []string
+					}{fmt.Sprintf("consecutive %s then %s count %d separator %s", first.name, second.name, count, separator),
+						"wiki: " + fmt.Sprintf(first.format, left) + strings.Repeat(" (Origin (section), approved)", count) + separator + fmt.Sprintf(second.format, right), want})
+				}
 			}
 		}
 	}

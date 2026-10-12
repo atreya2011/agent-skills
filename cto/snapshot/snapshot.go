@@ -76,19 +76,7 @@ func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapsho
 		}
 	}
 
-	excerptFor := func(id string) string {
-		f, ok := ix.byID[id]
-		if !ok {
-			c.fail("transcript", id, errors.New("a todo cites this session but no profile holds it"))
-			return ""
-		}
-		excerpt, _, err := readTranscript(f, cfg.Thresholds.TailBytes, cfg.Thresholds.ExcerptChars)
-		if err != nil {
-			c.fail("transcript", id, err)
-		}
-		return excerpt
-	}
-	judgments := judgeAll(ctx, gate, projects, now, excerptFor)
+	judgments := judgeAll(ctx, gate, projects, now, cfg)
 
 	snap := Snapshot{
 		GeneratedAt: now.UTC(), WindowHours: cfg.Thresholds.WindowHours,
@@ -303,7 +291,7 @@ func (c *collector) readLinks(ctx context.Context, projects []*Project) {
 	var refs []linkRef
 	for _, p := range projects {
 		for ti, t := range p.Todos {
-			if t.Assignee != "cto" || !open(t) {
+			if !open(t) || (t.Assignee != "cto" && !(c.cfg.Gate.TodoContextEnabled && t.Assignee == "")) {
 				continue
 			}
 			for li, l := range t.Links {

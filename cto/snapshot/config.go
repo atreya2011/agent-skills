@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -15,12 +16,14 @@ import (
 // Config holds the settings the snapshot tool reads from the TOML blocks of
 // the local file.
 type Config struct {
-	Commands   Commands          `toml:"commands"`
-	Profiles   []Profile         `toml:"profiles"`
-	Pinned     Pinned            `toml:"pinned"`
-	Vaults     map[string]string `toml:"vaults"`
-	Thresholds Thresholds        `toml:"thresholds"`
-	Gate       GateConfig        `toml:"gate"`
+	Commands    Commands          `toml:"commands"`
+	Profiles    []Profile         `toml:"profiles"`
+	Pinned      Pinned            `toml:"pinned"`
+	Vaults      map[string]string `toml:"vaults"`
+	Thresholds  Thresholds        `toml:"thresholds"`
+	OwnerPolicy string            `toml:"-"`
+	Context     ContextConfig     `toml:"context"`
+	Gate        GateConfig        `toml:"gate"`
 }
 
 // Pinned lists the tab and workspace labels a sweep never questions. They sit
@@ -64,8 +67,9 @@ type Thresholds struct {
 // GateConfig locates the gate service and the gate-call log. The API key is
 // never configured here; it comes from the environment or the OS keyring.
 type GateConfig struct {
-	URL string `toml:"url"`
-	Log string `toml:"log"`
+	TodoContextEnabled bool   `toml:"todo_context_enabled"`
+	URL                string `toml:"url"`
+	Log                string `toml:"log"`
 }
 
 const defaultGateURL = "https://api.typesafe.ai/v1/systemone"
@@ -93,6 +97,11 @@ func loadConfig(path string) (Config, error) {
 			return Config{}, fmt.Errorf("local file %s: unknown field:\n%s", path, strict.String())
 		}
 		return Config{}, fmt.Errorf("local file %s: %w", path, err)
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if _, policy, ok := strings.Cut(line, "Assignee split:"); ok {
+			cfg.OwnerPolicy = strings.TrimSpace(policy)
+		}
 	}
 	cfg.Commands.Herdr = cmp.Or(cfg.Commands.Herdr, "herdr")
 	cfg.Commands.Gh = cmp.Or(cfg.Commands.Gh, "gh")
@@ -131,4 +140,9 @@ func (c Config) validate() error {
 		seen[p.Name] = true
 	}
 	return errors.Join(errs...)
+}
+
+// ContextConfig locates handoff files used as todo evidence.
+type ContextConfig struct {
+	HandoffDir string `toml:"handoff_dir"`
 }

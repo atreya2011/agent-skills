@@ -14,7 +14,8 @@ The CTO runs in one long-lived tab. On every sweep it rebuilds its picture from 
 - Pinned: tab and workspace labels that a sweep never questions.
 - Profiles: per profile, its name, its agent CLI kind (`claude` or `codex`) and its transcript directory.
 - Launch command: the exact shell command that starts the CTO's agent CLI.
-- Vault map: per project, the vault root, and the `llm-wiki` command.
+- Vault map: per repository, checkout route or Taskwarrior project name, the vault root, and the `llm-wiki` command. Domain aliases cover todos with no repository link.
+- Todo context: the handoff directory. Only Markdown handoffs that name the todo UUID (full or first eight characters) or a linked pull-request URL are included.
 - Cron times: the sweep interval, the waking hours and the reset time.
 - Taskwarrior: the absolute path of the Taskwarrior binary. Bare `task` can be a different tool.
 - Thresholds: the confidence cut-offs. The starting values are provisional until the ground-truth run sets them.
@@ -34,6 +35,8 @@ kind = "claude"          # or "codex"
 dir = "<transcript directory>"
 [vaults]
 "<owner/name, or the project directory>" = "<vault root>"
+[context]
+handoff_dir = "<handoff directory>"
 [thresholds]
 floor = 0.6              # below this, every verdict escalates
 low = 0.6                # low-stakes acts: an In progress line, a Queued rank
@@ -43,6 +46,7 @@ tail_bytes = 65536
 excerpt_chars = 800
 [gate]
 log = "<gate-call log path>"
+todo_context_enabled = false # enable only after a read-only known-answer evaluation passes
 ```
 
 Two rulings have a fixed format:
@@ -50,7 +54,17 @@ Two rulings have a fixed format:
 - `Dispatch default: seat table <default or a table name>; reviewers <a count, or reviewer-<name> seats separated by commas>`. The install step writes it. Every kickoff states both settings, so a dispatch never waits on the user for them.
 - `Assignee split: <the user's rule for +cos and +cto>`.
 
+The handoff setting and rollout flag require the updated binary. Prepare them in a separate local file while evaluating; adding unknown fields to the live file before upgrading the installed binary makes the previous binary reject it.
+
+The two todo gates remain disabled until `gate.todo_context_enabled` is true. Enable them only after a read-only known-answer evaluation has no confident wrong answer. A failed evaluation keeps both todo gates disabled and sends unresolved todos to the user; the session gate and proof rules continue.
+
 The API key is never in this file. The tool reads `TYPESAFE_API_KEY` from the environment, else the OS keyring entry with service `typesafe` and user `api`. Without a key every gate escalates.
+
+## Read-only evaluation
+
+Create a JSON case list with one object per todo: `{"uuid":"<full todo UUID>","gate":"todo_state"}` or `{"uuid":"<full todo UUID>","gate":"todo_owner"}`. Run `bin/cto-snapshot evaluate --cases <case list> --local-file <evaluation local file>`. It reads Taskwarrior and current linked sources, prints the exact context and judgments, and makes no Taskwarrior writes. The command bypasses the rollout flag, existing owner tags and proof rules so each requested gate is measured directly. Keep expected answers outside the input.
+
+Compare state answers with the known state and owner answers with the known owner. A substantive wrong answer at or above `thresholds.floor` fails the evaluation, even when the higher action threshold would escalate it. A confidently selected single owner for a task that needs splitting is wrong. Unknown, errors and answers below the floor go to the user. Report todo, expected answer, verdict, confidence and correct, wrong or sent to user; enable neither todo gate after a failure.
 
 ## Install
 
@@ -70,9 +84,9 @@ The crontab addresses the tab by pane ID because `/clear` starts a new agent ses
 ## Sweep
 
 1. Read the local file. If it has an Import section, do `references/import.md` now.
-2. Apply the `Assignee split` ruling on every sweep. For every open todo that has neither assignee tag and that the ruling covers, run `task <uuid> modify +cto` or `+cos`. A todo the ruling does not cover keeps no assignee tag and becomes a judgment call. If the split tags a todo whose only question was its missing assignee tag, remove `+ask`. Keep the UUID and description of every todo this sweep tags `+cos`.
-3. If this sweep tagged any todo `+cos`, send the CoS one chat message. First run `herdr agent send-keys cos ctrl+s`. Then run `herdr agent prompt cos --wait --timeout 120000` with this message, putting each todo on its own line: `AGENT MESSAGE (cto, not a human). New todos for you:\n<uuid> <description>\nAct on each within your standing rules and close it only on proof.` If the send fails, list it in the brief under Not checked.
-4. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop.
+2. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop. It reads the `Assignee split` ruling as policy for the owner gate; do not assign an owner from the title alone.
+3. Apply owner judgments as described below. Keep the UUID and description of every todo this sweep tags `+cos`. If the missing owner was its only question, remove `+ask`.
+4. If this sweep tagged any todo `+cos`, send the CoS one chat message. First run `herdr agent send-keys cos ctrl+s`. Then run `herdr agent prompt cos --wait --timeout 120000` with this message, putting each todo on its own line: `AGENT MESSAGE (cto, not a human). New todos for you:\n<uuid> <description>\nAct on each within your standing rules and close it only on proof.` If the send fails, list it in the brief under Not checked.
 5. Read `unreadable`. Each entry is a source the tool could not read. List them in the brief under Not checked. Never infer from silence: a tab, todo or project that depends on an unreadable source is reported as unchecked, and no todo changes on a bad read.
 6. Handle orchestrator messages (below).
 7. Apply the judgments below.
@@ -90,13 +104,16 @@ An orchestrator can write to the CTO tab in chat; its message starts with `AGENT
 
 The snapshot's `judgments` hold one entry per judged todo and per session. The order is rule, gate, judgment call. A rule decides with no model call. Otherwise a gate decides: a typed label with calibrated confidence. Each entry has a `verdict`. The CTO never reads transcripts itself and never overrides a verdict.
 
+- Owner, gate `todo_owner`, verdict `act`, label `cto` or `cos`: for a still-pending todo with neither owner tag, add `+cto` or `+cos` and write the judgment annotation. The owner gate uses the existing confidence floor. A user label, a mixed-owner task, a missing source, a failed call or confidence below the floor becomes a judgment call; keep it unassigned. There is no `+user` owner tag. Do not close, rewrite or dispatch a todo from an owner judgment.
 - Todo, verdict `act`, label `done`: `task <uuid> done`, then `task <uuid> annotate "<annotation>"`. Rules and gates both give an `annotation`; write it unchanged, so the verdict is recorded where the decision lands.
 - Todo, verdict `act`, label `stale`: rewrite the description from the facts in the snapshot (`task <uuid> modify`) and annotate. Keep every URL, `commit:` and `session:` reference that the old description holds.
 - Todo, verdict `act`, label `open`: change nothing. The todo is In progress or Queued.
-- A rule or an `act` verdict settles the todo. If it is tagged `+ask`, run `task <uuid> modify -ask`.
+- A proof rule or an `act` verdict from `todo_state` settles the state question. If it is tagged `+ask`, run `task <uuid> modify -ask`. An owner judgment removes `+ask` only when missing ownership was the todo's sole question.
 - Todo, verdict `escalate`: this is a judgment call. Tag it `+ask` if it is not tagged yet. Never repeat a question: annotate `ask: <one plain question> | suggested: <label> | <annotation>` only when no earlier `ask:` annotation of the todo holds the same question. A question the user already answered is asked again only when a fact in the snapshot changed since the answer, such as the state of a linked issue or pull request, a new commit, or a different tab state. If `reason` says a source is unreadable, the todo has no assignee tag, or the gate failed, put that in the question and suggest nothing.
 - Session: the label is the In progress line. An `escalate` verdict means "activity unknown".
 - Todos tagged `+cos` belong to the CoS. Never change them.
+
+Both todo gates receive the todo, current links, project tabs, linked wiki page text and matching handoff text. They never receive a transcript excerpt; `session_activity` still receives its transcript excerpt. `wiki:` links are resolved within the todo's mapped vault. Missing or ambiguous pages are named in the judgment reason, and no partial context is judged. Oversized requests report the page or handoff that crosses the service input limit instead of truncating text.
 
 The tool leaves the `ask:` and `cto ` annotations out of the gate's input, so an old question or verdict never feeds a new one. When the user answers a judgment call, apply the answer, remove `+ask` and annotate the todo with the answer.
 

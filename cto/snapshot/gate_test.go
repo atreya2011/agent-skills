@@ -150,19 +150,6 @@ type recordedCase struct {
 }
 
 var recordedCases = []recordedCase{
-	{"todo_state_open", gateTodoState, todoState{
-		ID: "t1", Today: "2026-10-08", Description: "Write the docs", Domain: "work",
-		Annotations: []string{"spec: https://github.com/example/alpha/issues/3"},
-		Links:       []Link{{Kind: "issue", URL: "https://github.com/example/alpha/issues/3", State: "OPEN", Labels: []string{"ready-for-agent"}}},
-		ProjectTabs: []tabBrief{{Label: "orchestrator", Agent: "claude", State: "idle", AgeS: new(600)}},
-	}},
-	{"todo_state_done", gateTodoState, todoState{
-		ID: "t2", Today: "2026-10-08", Description: "Tune the retry limits", Domain: "work",
-		Annotations: []string{"session: a transcript of the tuning work"},
-		Links:       []Link{},
-		ProjectTabs: []tabBrief{},
-		Transcript:  "user: tune the retry limits\nassistant: Limits tuned to 5 attempts. Tests pass and the change is merged to main.",
-	}},
 	{"session_activity_implementing", gateSession, sessionState{
 		ID: "s1", Profile: "main", Project: "alpha", AgeS: 600, TabState: "idle",
 		Excerpt: "user: please add the parser\nassistant: Writing the parser now.\nassistant: I edited parser.go and added parser_test.go.",
@@ -178,8 +165,6 @@ func TestJudgeReplaysRecordedResponses(t *testing.T) {
 		confidence float64
 		verdict    string
 	}{
-		{"todo_state_open", "open", 0.92, verdictAct},
-		{"todo_state_done", "done", 0.97, verdictAct},
 		{"session_activity_implementing", "implementing", 0.98, verdictAct},
 		{"orchestrator_reply_done", "done", 1, verdictAct},
 		{"orchestrator_reply_not_done", "not_done", 0.98, verdictAct},

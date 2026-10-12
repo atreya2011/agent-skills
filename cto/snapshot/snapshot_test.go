@@ -32,7 +32,7 @@ const (
 	todoOtherMerged = "00000000-0000-4000-8000-000000000012" // commit on the default branch, issue closed
 	todoOffsite     = "00000000-0000-4000-8000-000000000013" // untagged
 	todoQuestion    = "00000000-0000-4000-8000-000000000014" // its own question names a merged pull request
-	wantGateCalls   = 9
+	wantGateCalls   = 10
 )
 
 type scriptedAnswer struct {
@@ -43,6 +43,7 @@ type scriptedAnswer struct {
 // baseScript is the gate's answer for every subject that reaches a gate in the
 // base world; rules decide the other todos and the CoS todo is not judged.
 var baseScript = map[string]scriptedAnswer{
+	"todo_owner:" + todoOffsite:       {"unknown", .9},
 	"todo_state:" + todoDocs:          {"open", 0.9},
 	"todo_state:" + todoMerged:        {"open", 0.9},
 	"todo_state:" + todoQuestion:      {"open", 0.9},
@@ -56,7 +57,7 @@ var baseScript = map[string]scriptedAnswer{
 }
 
 var gateDefs = map[string]gateDef{
-	gateTodoState.Name: gateTodoState, gateSession.Name: gateSession, gateReply.Name: gateReply,
+	gateTodoOwner.Name: gateTodoOwner, gateTodoState.Name: gateTodoState, gateSession.Name: gateSession, gateReply.Name: gateReply,
 }
 
 // scriptedGate replays the script by gate name and the state's id, and answers
@@ -201,11 +202,11 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 			assert.Empty(t, j.Rule)
 			assert.Contains(t, seen, todoQuestion)
 		}},
-		{"an untagged todo escalates without a rule or a call", func(t *testing.T) {
+		{"an untagged todo receives the owner gate and unknown escalates", func(t *testing.T) {
 			j := s.judgment("todo", todoOffsite)
 			assert.Equal(t, verdictEscalate, j.Verdict)
-			assert.Equal(t, "no assignee tag", j.Reason)
-			assert.NotContains(t, seen, todoOffsite)
+			assert.Equal(t, "the label is unknown", j.Reason)
+			assert.Contains(t, seen, "todo_owner:"+todoOffsite)
 		}},
 		{"the gate never sees the annotations the CTO wrote", func(t *testing.T) {
 			f.mu.Lock()
@@ -239,7 +240,7 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 		{"only gate-bound subjects make a call", func(t *testing.T) {
 			assert.Len(t, f.seen(t), wantGateCalls)
 		}},
-		{"a todo that cites a session outside the window sends that session's excerpt", func(t *testing.T) {
+		{"todo state never sends a cited transcript excerpt", func(t *testing.T) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
 			var retry []byte
@@ -249,7 +250,8 @@ func TestSnapshotOfTheBaseWorld(t *testing.T) {
 				}
 			}
 			require.NotNil(t, retry)
-			assert.Contains(t, string(retry), "Limits tuned to 5 attempts.")
+			assert.NotContains(t, string(retry), "Limits tuned to 5 attempts.")
+			assert.NotContains(t, string(retry), "transcript_excerpt")
 		}},
 	}
 	for _, tt := range tests {

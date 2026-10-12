@@ -4,6 +4,7 @@
 //
 //	cto-snapshot [--local-file PATH]         print the snapshot
 //	cto-snapshot reply [--local-file PATH]   judge an orchestrator reply on standard input
+//	cto-snapshot evaluate --cases PATH [--local-file PATH]   evaluate todo gates without writes
 package main
 
 import (
@@ -48,12 +49,14 @@ func defaultLocalFile() string {
 // returns the process exit code: 0 once it prints a document, whatever it could
 // not read, and 2 for a bad invocation or a bad local file.
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, now time.Time) int {
+	evaluate := len(args) > 0 && args[0] == "evaluate"
 	reply := len(args) > 0 && args[0] == "reply"
-	if reply {
+	if reply || evaluate {
 		args = args[1:]
 	}
 	fs := flag.NewFlagSet("cto-snapshot", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	casesFile := fs.String("cases", "", "JSON evaluation cases containing uuid and gate")
 	localFile := fs.String("local-file", defaultLocalFile(), "path of the CTO local file")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -76,7 +79,13 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	gate := newGate(cfg.Gate, cfg.Thresholds, key, keyErr, logger, now)
 
 	var doc any
-	if reply {
+	if evaluate {
+		doc, err = evaluateTodos(ctx, cfg, gate, now, *casesFile)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return 2
+		}
+	} else if reply {
 		doc = judgeReply(ctx, gate, stdin)
 	} else {
 		doc = collect(ctx, cfg, gate, now)

@@ -79,10 +79,23 @@ func vaultFor(cfg Config, p *Project, t Todo) string {
 	return cfg.Vaults[best]
 }
 
+func sensitiveContextPath(path string) bool {
+	for _, part := range strings.Split(filepath.Clean(path), string(filepath.Separator)) {
+		name := strings.ToLower(part)
+		if name == ".env" || strings.HasSuffix(name, ".key") || strings.HasSuffix(name, ".pem") || strings.Contains(name, "credentials") {
+			return true
+		}
+	}
+	return false
+}
+
 func wikiPage(cfg Config, vault, name string) (contextPage, error) {
 	name = expandHome(name)
 	if before, _, ok := strings.Cut(name, ".md:"); ok {
 		name = before + ".md"
+	}
+	if sensitiveContextPath(name) {
+		return contextPage{}, fmt.Errorf("wiki page %s is a sensitive path", name)
 	}
 	if filepath.IsAbs(name) {
 		allowed := false
@@ -132,9 +145,15 @@ func wikiPage(cfg Config, vault, name string) (contextPage, error) {
 			name = matches[0]
 		}
 	}
+	if sensitiveContextPath(name) {
+		return contextPage{}, fmt.Errorf("wiki page %s is a sensitive path", name)
+	}
 	real, err := filepath.EvalSymlinks(name)
 	if err != nil {
 		return contextPage{}, fmt.Errorf("wiki page %s: %w", name, err)
+	}
+	if sensitiveContextPath(real) {
+		return contextPage{}, fmt.Errorf("wiki page %s resolves to a sensitive path", name)
 	}
 	allowed := false
 	for _, root := range cfg.Vaults {
@@ -217,7 +236,17 @@ func todoContext(cfg Config, p *Project, t Todo, tabs []tabBrief, today string) 
 		if filepath.Ext(path) != ".md" {
 			return nil
 		}
-		text, err := os.ReadFile(path)
+		if sensitiveContextPath(path) {
+			return fmt.Errorf("handoff %s is a sensitive path", path)
+		}
+		real, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return err
+		}
+		if sensitiveContextPath(real) {
+			return fmt.Errorf("handoff %s resolves to a sensitive path", path)
+		}
+		text, err := os.ReadFile(real)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json/v2"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -128,5 +129,49 @@ func TestInputLimitErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.limit, inputLimitError(&gateHTTPError{Status: tt.status, Detail: tt.detail}))
 		})
+	}
+}
+
+func TestContextSensitiveFiles(t *testing.T) {
+	cases := []struct {
+		name, path string
+	}{
+		{"environment", ".env"}, {"private key", "signing.key"}, {"certificate", "signing.pem"},
+		{"private metadata", "credentials.md"}, {"private directory", "credentials/page.md"},
+	}
+	for _, tt := range cases {
+		for _, reader := range []string{"wiki", "handoff"} {
+			for _, link := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/symlink=%t", tt.name, reader, link), func(t *testing.T) {
+					root := t.TempDir()
+					path := filepath.Join(root, tt.path)
+					require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+					require.NoError(t, os.WriteFile(path, []byte("synthetic private fixture; todo marker"), 0o600))
+					requested := path
+					if link {
+						requested = filepath.Join(root, "alias.md")
+						require.NoError(t, os.Symlink(path, requested))
+					}
+					cfg := Config{Vaults: map[string]string{"test": root}}
+					if reader == "wiki" {
+						page, err := wikiPage(cfg, root, requested)
+						require.ErrorContains(t, err, "sensitive path")
+						if link {
+							assert.Contains(t, err.Error(), "resolves to a sensitive path")
+						}
+						assert.Empty(t, page.Text)
+					} else {
+						cfg.Context.HandoffDir = root
+						state, err := todoContext(cfg, &Project{}, Todo{UUID: "todo marker"}, nil, "2026-10-12")
+						if filepath.Ext(path) != ".md" && !link {
+							require.NoError(t, err)
+						} else {
+							require.ErrorContains(t, err, "sensitive path")
+						}
+						assert.Empty(t, state.Handoffs)
+					}
+				})
+			}
+		}
 	}
 }

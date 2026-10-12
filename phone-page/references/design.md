@@ -54,7 +54,7 @@ In a question spec, `context` accepts one-sentence strings or objects `{"text": 
 
 ### Options
 
-An option is a full-width tappable card. Put its label first, its one-sentence consequence second, and the Recommended chip beside the first option when the spec marks it. Use radio buttons for one choice and checkboxes for multiple choices.
+An option is a full-width tappable card. Put its label first, its one-sentence consequence second, and a Recommended chip beside each option the spec marks. Use radio buttons for one choice and checkboxes for multiple choices.
 
 ### Actions and status
 

@@ -86,8 +86,8 @@ validate_spec() {
     elif any(.questions[].options[]; (.description | type) != "string") then "every option description must be a string"
     elif any(.questions[].options[]; has("recommended") and (.recommended | type) != "boolean") then "recommended must be a boolean"
     elif any(.questions[]; ([.options[].label] | length) != ([.options[].label] | unique | length)) then "option labels must be unique within each question"
-    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) > 1) then "a question may recommend at most one option"
-    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) == 1 and (.options[0].recommended // false) != true) then "the recommended option must be first"
+    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) > 1 and .multiSelect != true) then "a question that recommends more than one option must set multiSelect to true"
+    elif any(.questions[]; [.options[] | .recommended // false] | . != (sort | reverse)) then "recommended options must come first"
     else
       [content_texts |
         if .bullet and (.text | test("^\\s*[0-9]+[.)](\\s|$)")) then "\(.kind) must put numbered points in items: \(.text)"

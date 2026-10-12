@@ -12,7 +12,7 @@ Create a tab in the current workspace. Keep each tab unsplit. Label every tab by
     -> result.root_pane.pane_id
     herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>
 
-Kind and Args come from the seat's row in the seat table; see the Local file section of [SKILL.md](../SKILL.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Before the first send to a cursor seat, read its visible screen and wait until the "Trusting workspace" prompt is gone; herdr reports the seat idle while it shows.
+Kind and Args come from the seat's row in the seat table; see [seats.md](seats.md). `herdr agent start --kind claude` launches the canonical `claude` executable only. Before the first send to a cursor seat, read its visible screen and wait until the "Trusting workspace" prompt is gone; herdr reports the seat idle while it shows.
 
 Use a read-only allowlist where supported.
 
@@ -51,13 +51,19 @@ Report the implementer or the reviewer group as `running` after every target has
 
 ## Session goal
 
-Applies to Claude Code seats only, per the Session goal section of [SKILL.md](../SKILL.md). `send.sh` cannot carry a slash command: it requires the first line to start with `AGENT MESSAGE`. After the seat acknowledges its kickoff, send the goal through `gauntlet/goal.sh` with the condition on stdin:
+An orchestrator receives its whole assignment as one goal prompt in chat: plain text, the full condition and instructions inline. Never hand an orchestrator a Markdown file, a file path, or a pointer to a file to read as its instructions (user, 2026-10-02).
+
+After a Claude Code orchestrator, or another long-running Claude seat, acknowledges its kickoff message, its sender MUST send it `/goal <condition>` with the run's completion condition, up to 4000 characters. A Stop-hook evaluator keeps the seat working until the condition holds; `/goal clear` removes it. It needs a trusted workspace with hooks allowed. Example condition:
+
+    Every run in the program has converged, its PR is marked ready for review at the latest converged commit and was opened by the orchestrator itself, the CI result is recorded in the PR body, and completion is reported to the dispatcher. A pending user decision does not stop progress: file it as a DECISION NEEDED entry in the inbox file and continue every step that does not depend on it. Waiting on a seat or CI with a watcher armed is progress, not completion.
+
+Claude Code seats only; never send `/goal` to a codex or cursor seat. `send.sh` cannot carry a slash command: it requires the first line to start with `AGENT MESSAGE`. Send the goal through `gauntlet/goal.sh` with the condition on stdin:
 
     gauntlet/goal.sh <agent> <<'EOF'
     <condition>
     EOF
 
-`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <agent>` and exits 1. On a seat restart, follow the restart step in the Session goal section of [SKILL.md](../SKILL.md).
+`goal.sh` flattens the condition to one line, sends `/goal <condition>`, and exits 0 only when the visible screen shows `/goal active`. An empty or over-4000-character condition, a non-Claude seat, a failed prompt, or no `/goal active` within about 15 seconds prints `GOAL BLOCKED <agent>` and exits 1. After a seat restarts, re-send the goal and tell the seat to re-arm its background watchers; the exit killed them.
 
 ## Capture results
 

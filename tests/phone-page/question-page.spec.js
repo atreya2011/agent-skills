@@ -563,6 +563,8 @@ for (const { name, width, stepped } of [
       const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
       expect(accessibility.violations).toEqual([]);
     } finally {
+      // Close Chromium's open connections before waiting for the fixture server to stop.
+      await page.context().close();
       await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
   });

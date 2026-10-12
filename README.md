@@ -17,7 +17,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `herdr-orchestrator`: Survey all Claude and Codex tabs across herdr workspaces, report activity and blockers, locate tabs, or resume dead sessions.
 - `implement-issue`: Implement a GitHub issue end-to-end through a draft pull request, including commits, push, adversarial review, fixes, and PR updates.
 - `major-refactor`: Run an explicit managed program for a large or irreversible codebase change, with audits, a committed manifest, risk-ordered waves, subagents, and approval gates.
-- `no-slop-writing`: Draft or rewrite the author's public prose in a natural human voice built from a concrete scene, mismatch, artifact, or failure.
+- `no-slop-writing`: Draft or rewrite public prose using the author's actual writing and current intent as the voice reference.
 - `phone-page`: Publish designed read pages and tappable question pages for replies that need more than a short phone-friendly chat message.
 - `thermo-nuclear-code-quality-review`: Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth.
 - `unslop`: Edit prose to remove AI tells and restore a natural human voice.
@@ -30,7 +30,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 
 ## Local files
 
-A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cf-page-store`, `cto`, `gauntlet`, `herdr-orchestrator`, `phone-page`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.
+A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/local/<skill>.md`, a file this repo never tracks. Such a skill opens with a `## Local file` section that names the path, says what the file holds, and tells the agent to read it when it exists. To set up a new machine, create each file named by such a section. Skills with a local file: `adversarial-refactor-pipeline`, `cf-page-store`, `cto`, `gauntlet`, `herdr-orchestrator`, `no-slop-writing`, `phone-page`. `gauntlet` reads its seat table from `gauntlet.md`, or from `gauntlet-<name>.md` when a run names an alternate table.
 
 ## Portability check
 

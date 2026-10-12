@@ -11,7 +11,7 @@ For read pages and question pages, open with the bottom line, then give the reas
 
 - A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
 - Give each question exactly what the user needs to decide, with no wall of text and no flow-only page:
-  - the recommendation with its one-line reason as the first context bullet;
+  - the problem, what was tried, the result, and what needs deciding, then the recommendation with its one-line reason, as the first context bullets;
   - the facts it rests on in a `table`, with numbers and sources;
   - known limits as two or three one-line `cards`, or as a table row when there is only one;
   - the process as a `flow` or `flows` chart with short boxes;

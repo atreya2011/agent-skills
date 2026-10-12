@@ -79,9 +79,34 @@ func markdownReference(text string) (path, rest string, ok bool) {
 			pair.close = pair.open
 		}
 		for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
+			if pair.open == "[" && matchingClose(text, '[', ']') != end[1] {
+				continue
+			}
 			if tail, closed := strings.CutPrefix(text[end[1]:], pair.close); closed && referenceBoundary(tail) {
 				return text[len(pair.open):end[1]], tail, true
 			}
+		}
+	}
+	firstEnd := len(text)
+	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
+		if referenceBoundary(text[end[1]:]) {
+			firstEnd = end[1]
+			break
+		}
+	}
+	for i, r := range text {
+		if i >= firstEnd {
+			break
+		}
+		if r != '(' {
+			continue
+		}
+		end := matchingClose(text[i:], '(', ')')
+		if end < 0 || !referenceBoundary(text[i+end+1:]) {
+			continue
+		}
+		if path, tail, found := markdownReference(text[i+1 : i+end]); found && strings.TrimSpace(tail) == "" {
+			return path, text[i+end+1:], true
 		}
 	}
 	for _, stop := range []string{". Repo:", ". Contract:"} {
@@ -96,6 +121,22 @@ func markdownReference(text string) (path, rest string, ok bool) {
 		}
 	}
 	return "", text, false
+}
+
+func matchingClose(text string, open, close rune) int {
+	depth := 0
+	for i, r := range text {
+		switch r {
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func markdownPaths(text string) []string {

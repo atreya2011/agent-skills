@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -77,7 +78,36 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"quoted wrapper metadata", "wiki: \"notes.md\". Repo: project", []string{"notes.md"}},
 		{"single quoted wrapper metadata", "wiki: 'notes.md'. Owner: team", []string{"notes.md"}},
 		{"plain reference metadata", "wiki: notes.md. Repo: project. Contract: approved", []string{"notes.md"}},
+		{"plain label destination", "wiki: notes (articles/note.md)", []string{"articles/note.md"}},
+		{"markdown label destination", "wiki: [notes](articles/note.md)", []string{"articles/note.md"}},
+		{"label destination locator", "wiki: notes (articles/note.md:95)", []string{"articles/note.md:95"}},
+		{"multiple destinations", "wiki: notes (articles/note.md); [other](articles/other.md)", []string{"articles/note.md", "articles/other.md"}},
+		{"plain before link", "wiki: a.md notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
+		{"wrapped before link", "wiki: [[a.md]] notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
+		{"link before plain", "wiki: notes (articles/note.md) a.md", []string{"a.md", "articles/note.md"}},
+		{"nested path before link", "wiki: archive.md/article.md notes (articles/note.md)", []string{"archive.md/article.md", "articles/note.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
+	}
+	forms := []struct{ name, format, path string }{
+		{"plain", "%s", "%s"}, {"wiki", "[[%s]]", "%s"}, {"bracket", "[%s]", "%s"},
+		{"backtick", "`%s`", "%s"}, {"double backtick", "``%s``", "%s"},
+		{"double quote", "\"%s\"", "%s"}, {"single quote", "'%s'", "%s"},
+		{"label", "notes (%s)", "%s"}, {"markdown label", "[notes](%s)", "%s"},
+		{"nested", "%s", "archive.md/%s"}, {"locator", "%s", "%s:95"},
+	}
+	for _, first := range forms {
+		for _, second := range forms {
+			for _, separator := range []string{" ", ", ", "; "} {
+				left, right := fmt.Sprintf(first.path, "a.md"), fmt.Sprintf(second.path, "b.md")
+				want := []string{left, right}
+				slices.Sort(want)
+				cases = append(cases, struct {
+					name, annotation string
+					want             []string
+				}{"compatibility " + first.name + " then " + second.name + " separator " + separator,
+					"wiki: " + fmt.Sprintf(first.format, left) + separator + fmt.Sprintf(second.format, right), want})
+			}
+		}
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) { assert.Equal(t, tt.want, wikiNames([]string{tt.annotation})) })

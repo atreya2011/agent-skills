@@ -65,6 +65,9 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"compact metadata", "wiki: build-upgrade-schedule, collaborator| src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
 		{"compact metadata marker", "wiki: build-upgrade-schedule, collaborator|src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
 		{"quoted metadata text filename", "wiki: \"notes |src: draft.md\"", []string{"notes |src: draft.md"}},
+		{"double backtick reference", "wiki: ``notes.md``", []string{"notes.md"}},
+		{"double backtick internal tick", "wiki: ``notes `draft`.md``", []string{"notes `draft`.md"}},
+		{"triple backtick internal ticks", "wiki: ```notes ``draft``.md```", []string{"notes ``draft``.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {

@@ -72,6 +72,10 @@ func markdownReference(text string) (path, rest string, ok bool) {
 		if !strings.HasPrefix(text, pair.open) {
 			continue
 		}
+		if pair.open == "`" {
+			pair.open = text[:len(text)-len(strings.TrimLeft(text, "`"))]
+			pair.close = pair.open
+		}
 		for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
 			if tail, closed := strings.CutPrefix(text[end[1]:], pair.close); closed && referenceBoundary(tail) {
 				return text[len(pair.open):end[1]], tail, true

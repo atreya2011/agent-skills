@@ -87,12 +87,21 @@ func markdownReference(text string) (path, rest string, ok bool) {
 			}
 		}
 	}
+	for _, stop := range []string{". Repo:", ". Contract:"} {
+		text, _, _ = strings.Cut(text, stop)
+	}
+	if source := wikiSource.FindStringIndex(text); source != nil {
+		text = text[:source[0]]
+	}
 	firstEnd := len(text)
 	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
 		if referenceBoundary(text[end[1]:]) {
 			firstEnd = end[1]
 			break
 		}
+	}
+	if pipe := strings.IndexByte(text, '|'); pipe >= 0 {
+		firstEnd = min(firstEnd, pipe)
 	}
 	for i, r := range text {
 		if i >= firstEnd {
@@ -108,12 +117,6 @@ func markdownReference(text string) (path, rest string, ok bool) {
 		if path, tail, found := markdownReference(text[i+1 : i+end]); found && strings.TrimSpace(tail) == "" {
 			return path, text[i+end+1:], true
 		}
-	}
-	for _, stop := range []string{". Repo:", ". Contract:"} {
-		text, _, _ = strings.Cut(text, stop)
-	}
-	if source := wikiSource.FindStringIndex(text); source != nil {
-		text = text[:source[0]]
 	}
 	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
 		if referenceBoundary(text[end[1]:]) {

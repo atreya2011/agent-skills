@@ -130,6 +130,22 @@ func TestWikiAnnotationNames(t *testing.T) {
 			}
 		}
 	}
+	metadataForms := append(slices.Clone(forms), struct{ name, format, path string }{"bare", "%s", "%s"})
+	for _, form := range metadataForms {
+		for _, separator := range []string{". Repo: ", ". Contract: ", " | src: ", "| src: ", "|src: ", " | ", "|"} {
+			for _, source := range []string{"notes (work/page.md)", "[notes](work/page.md)", "[[work/page.md]]"} {
+				left := fmt.Sprintf(form.path, "a.md")
+				if form.name == "bare" {
+					left = "collaborator"
+				}
+				cases = append(cases, struct {
+					name, annotation string
+					want             []string
+				}{"metadata " + form.name + " separator " + separator + " source " + source,
+					"wiki: " + fmt.Sprintf(form.format, left) + separator + source, []string{left}})
+			}
+		}
+	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) { assert.Equal(t, tt.want, wikiNames([]string{tt.annotation})) })
 	}

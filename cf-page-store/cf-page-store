@@ -79,7 +79,7 @@ case "$command" in
     printf '\n'
     ;;
   update)
-    [[ $# -eq 2 && -f "$2" ]] || usage
+    [[ $# -eq 2 && "$1" =~ ^[[:xdigit:]]{8}-([[:xdigit:]]{4}-){3}[[:xdigit:]]{12}$ && -f "$2" ]] || usage
     status=$(request PUT "$address/api/pages/$1" "$cleanup_path" \
       --header 'Content-Type: text/html' --data-binary "@$2") || die "request failed"
     case "$status" in
@@ -92,7 +92,7 @@ case "$command" in
     esac
     ;;
   delete)
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 && "$1" =~ ^[[:xdigit:]]{8}-([[:xdigit:]]{4}-){3}[[:xdigit:]]{12}$ ]] || usage
     status=$(request DELETE "$address/api/pages/$1" "$cleanup_path") || die "request failed"
     case "$status" in
       204) ;;

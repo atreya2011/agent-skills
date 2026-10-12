@@ -124,12 +124,12 @@ append_inbox() {
 }
 
 remove_inbox_id() {
-  cleanup_path=$(mktemp "${inbox_file}.XXXXXX")
+  local inbox_path
+  inbox_path=$(mktemp "${inbox_file}.XXXXXX")
   if [[ -f "$inbox_file" ]]; then
-    awk -v id="$1" '{ n = split($NF, parts, "/") } parts[n] != id' "$inbox_file" >"$cleanup_path"
+    awk -v id="$1" '{ n = split($NF, parts, "/") } parts[n] != id' "$inbox_file" >"$inbox_path"
   fi
-  mv -- "$cleanup_path" "$inbox_file"
-  cleanup_path=""
+  mv -- "$inbox_path" "$inbox_file"
 }
 
 replace_inbox() {

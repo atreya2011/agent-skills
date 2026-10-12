@@ -385,6 +385,7 @@ for (const { name, width } of [
       await expect(card.locator('.card-text')).toHaveText(question.cards.map(({ text }) => text));
       await expect(card.locator('.card-title .lucide-check')).toBeVisible();
       await expect(card.getByRole('table')).toBeVisible();
+      await expect(card.locator('.table-wrap')).toHaveAttribute('tabindex', '0');
       await expect(card.getByRole('columnheader')).toHaveText(question.table.columns);
       await expect(card.getByRole('cell')).toHaveText(question.table.rows.flat());
       await expect(card.locator('.flow-label')).toHaveText(question.flows.map(({ title }) => title));

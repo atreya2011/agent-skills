@@ -29,7 +29,7 @@
     legend + * { clear: both; }
     h1 { margin: 0; color: #9fe870; font-size: clamp(2.5rem, 12vw, 4.75rem); line-height: .95; }
     .intro { max-width: 560px; margin: 18px 0 0; color: #a3a9a0; font-size: 1rem; line-height: 1.6; }
-    .intro.summary { color: #e8ebe6; font-size: 17px; font-weight: 500; line-height: 1.55; }
+    .intro.summary { color: #e8ebe6; font-size: 17px; font-weight: 500; line-height: 1.55; overflow-wrap: anywhere; }
     .latest { display: flex; gap: 10px; align-items: center; margin: 20px 0 0; padding: 12px 16px; border: 1px solid #2c3029; border-radius: 999px; color: #e8ebe6; background: #191b16; font-size: .875rem; }
     .latest[hidden], .other-input[hidden], .error[hidden], .toast[hidden] { display: none; }
     .latest svg { width: 18px; color: #9fe870; }
@@ -39,15 +39,15 @@
     .header { color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; }
     .count { color: #a3a9a0; font-size: .75rem; }
     h2 { margin: 0; font-size: clamp(1.5rem, 7vw, 2.1rem); line-height: 1.08; }
-    .context { margin: 12px 0 0; padding-left: 22px; color: #a3a9a0; font-size: 17px; line-height: 1.55; }
+    .context { margin: 12px 0 0; padding-left: 22px; color: #a3a9a0; font-size: 17px; line-height: 1.55; overflow-wrap: anywhere; }
     .context li + li { margin-top: 8px; }
     .context ul { margin-top: 8px; padding-left: 22px; }
     .cards { margin-top: 20px; container-type: inline-size; }
     .cards-grid { display: grid; gap: 12px; }
     .card { min-width: 0; padding: 12px 14px; border: 1px solid #2c3029; border-radius: 12px; background: #0e0f0c; }
-    .card-title { display: flex; gap: 8px; align-items: center; margin: 0 0 4px; color: #e8ebe6; font-size: 17px; font-weight: 600; line-height: 1.4; }
+    .card-title { display: flex; gap: 8px; align-items: center; margin: 0 0 4px; color: #e8ebe6; font-size: 17px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
     .card-title svg { flex: none; width: 20px; height: 20px; color: #9fe870; }
-    .card-text { margin: 0; color: #a3a9a0; font-size: 17px; line-height: 1.55; }
+    .card-text { margin: 0; color: #a3a9a0; font-size: 17px; line-height: 1.55; overflow-wrap: anywhere; }
     @container (min-width: 500px) {
       .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -58,7 +58,7 @@
     .table td { color: #a3a9a0; }
     .table td:first-child { color: #e8ebe6; font-weight: 500; }
     .flow { margin-top: 20px; container-type: inline-size; }
-    .flow-label { margin: 0 0 8px; color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; }
+    .flow-label { margin: 0 0 8px; color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; overflow-wrap: anywhere; }
     .flow-box { min-width: 0; padding: 12px 14px; border: 1px solid #2c3029; border-radius: 12px; background: #0e0f0c; color: #a3a9a0; font-size: 17px; line-height: 1.55; overflow-wrap: anywhere; }
     .flow-decision { border-color: #9fe870; color: #e8ebe6; }
     .flow-arrow { display: block; color: #9fe870; text-align: center; font-size: 24px; line-height: 32px; }
@@ -312,6 +312,7 @@
       if (question.table) {
         const wrap = document.createElement('div');
         wrap.className = 'table-wrap';
+        wrap.tabIndex = 0;
         const table = document.createElement('table');
         table.className = 'table';
         const head = document.createElement('thead');

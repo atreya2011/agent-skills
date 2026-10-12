@@ -70,8 +70,8 @@ mechanical; paying top-tier rates for it is waste.
    step 2. If the project has no meaningful regression surface, say so out loud and
    have the user explicitly accept the weaker gate. Never silently degrade a gate
    to "whatever happened to exist".
-5. Present the manifest to the user for approval (waves, gates, UNKNOWN list) via
-   AskUserQuestion. Tag the restore point (`git tag program/<slug>/wave-0`), commit
+5. Present the manifest to the user for approval (waves, gates, UNKNOWN list) on
+   a phone-page question page (`phone-page ask`). Tag the restore point (`git tag program/<slug>/wave-0`), commit
    the manifest.
 
 Two rules give the manifest its power:
@@ -131,7 +131,7 @@ For any destructive or irreversible step (prod data, schema, deletions at scale)
    to the backend (a child audits backup inventory: count, recency, retention).
 2. **Dry-run inventory**: the child produces the exact list of what it will touch —
    row counts, file lists, object IDs. Numbers, not intentions.
-3. **Human approves the inventory** via AskUserQuestion. The user approves a
+3. **Human approves the inventory** on a phone-page question page. The user approves a
    specific list, not a vague plan.
 4. **Execute exactly that inventory.** Reality diverging from the approved
    inventory mid-run is an escalation, not a judgment call.
@@ -144,7 +144,7 @@ manifest (a "safe" module has a live dependent, a verdict looks wrong), **stop y
 unit, report, don't improvise**. Individual workers never make scope decisions.
 
 The parent batches rulings at the **wave boundary**: let unaffected units continue,
-collect every needed ruling, ask the user once per wave via AskUserQuestion. Record
+collect every needed ruling, ask the user once per wave on a phone-page question page. Record
 each ruling in the manifest's rulings log. Units blocked by an unresolved ruling
 demote to a later wave — note the entanglement, move on.
 

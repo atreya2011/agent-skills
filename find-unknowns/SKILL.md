@@ -16,7 +16,7 @@ This skill ends at discovery and teaching. Stop there: hand the findings to the 
 The pass is calibrated by two facts only the user knows: what the task is, and how much they already know about the territory (both the domain and this codebase's corner of it).
 
 - If the invocation already states both ("I'm adding an auth provider but know nothing about the auth modules"), skip straight to exploration, using exactly what was already said.
-- If either is missing, ask once via `AskUserQuestion` — a single batched call, at most 3 questions (typically: what's the task, experience with the domain, familiarity with this code area). Treat this as the only intake round, then explore.
+- If either is missing, ask once on a single phone-page question page (`phone-page ask`), at most 3 questions (typically: what's the task, experience with the domain, familiarity with this code area). Treat this as the only intake round, then explore.
 
 ### 2. Explore the territory in parallel
 

@@ -7,7 +7,7 @@ description: Stage and implement one approved issue or spec into committed, cap-
 
 Take one approved implementation issue or spec from a base SHA to
 committed, cap-checked code on its own branch.
-Apply KISS and YAGNI to the build: make the least change that satisfies the spec. Prefer the standard library, native capabilities, and existing dependencies over new ones. Add only abstractions the spec requires. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil.
+Apply KISS and YAGNI to the build: make the least change that satisfies the spec. Use production-grade, battle-tested third-party libraries for solved problems; reinventing the wheel with the standard library only is evil. Add only abstractions the spec requires. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil.
 
 ## Load references
 

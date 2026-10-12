@@ -8,7 +8,7 @@ Seat brief delivery goes through `gauntlet/send.sh`: empty the composer with Esc
 
 Create a tab in the current workspace. Keep each tab unsplit. Label every tab by seat. Name each agent `<seat>-<issue>`, such as `implementer-5`, because herdr agent names are unique per server; that name is `<agent>` in every herdr command and script below. Rename the controlling tab `orchestrator`. A pane id is looked up only where a herdr command requires one.
 
-    herdr tab create --workspace <ws> --cwd <repo> --label <seat> --no-focus
+    herdr tab create --workspace <ws> --cwd <repo> --label <seat> --no-focus --env REPLY_SIZE_CHECK=off
     -> result.root_pane.pane_id
     herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>
 

@@ -6,159 +6,40 @@ disable-model-invocation: true
 
 # Change Program
 
-Run a large risky change the way a good program manager would: audit, freeze scope,
-sequence by risk, parallelize safely, gate everything, and interrupt the human only
-for decisions that genuinely need an owner. Adapted from Ryan Carson's 40-agent
-migration pattern (steal the patterns, not the tooling).
-
-The failure mode this skill exists to prevent is **context collapse**: the thing
-doing the work gradually loses the plot of the overall program. The cure is a strict
-split of roles plus durable state in the repo.
+Run a large, risky change as a managed program: audit, freeze scope, order work by risk, run children in parallel, gate every wave, and ask the user only for decisions that need an owner. Strict roles and a committed manifest keep the whole program in view. Adapted from Ryan Carson's 40-agent migration pattern.
 
 ## Step 0: Does this need a program?
 
-Full program ceremony (audit phase, manifest, waves, gates) has real cost. Before
-anything else, check:
+Run a program only when the work has an irreversible step (production data, schema migrations, published API changes, anything without a cheap undo) or exceeds one session (more than about 100 files, more than 3 independent workstreams, or several days). Otherwise say so and use ordinary subagents; declining is a valid outcome.
 
-- Does the work include an irreversible step (prod data, schema migration, published
-  API change, anything without a cheap undo)?
-- Is the scope too large for one session (roughly: >100 files, or >3 independent
-  workstreams, or multi-day)?
+## Step 1: Find program state
 
-If **neither** is true, say so plainly and do the work with ordinary subagents
-instead. Declining is a first-class outcome of this skill, not a failure.
+Program state lives only in the committed `docs/programs/<slug>/manifest.md`. On every invocation, run `ls docs/programs/*/manifest.md`. If a manifest matches, read it, report the wave in progress, pending rulings and failed gates, and resume from the next incomplete step; never rebuild state from conversation memory. Otherwise run Phase 0.
 
-## Step 1: Find program state (re-entrancy)
+## Roles
 
-This skill is re-entrant. Sessions die; the manifest doesn't. The **only** source of
-program state is `docs/programs/<slug>/manifest.md`, committed to the repo.
-
-On every invocation:
-
-1. Look for an existing manifest matching the requested program
-   (`ls docs/programs/*/manifest.md`).
-2. **Manifest exists** → read it, report current state to the user (wave in
-   progress, pending rulings, failed gates), and resume from the next incomplete
-   step. Never reconstruct state from conversation memory; the manifest wins.
-3. **No manifest** → this is a new program. Run Phase 0.
-
-## Roles: the parent writes zero code
-
-The main session is the **parent orchestrator**. Its only jobs: plan, spawn child
-subagents, review their output, sequence waves, update the manifest, and escalate to
-the user. It never edits product code itself. Every piece of actual work — audits,
-code changes, gate runs, doc updates — is done by a child spawned via the Agent
-tool. This keeps the parent's context clean enough to hold the whole program.
-
-Match the child's model to the task: `model: "sonnet"` for audits, mechanical
-edits, gate-running, and doc updates; the session's own model (omit `model`) for
-entanglement surgery and judgment-heavy work. Most of a program's work is
-mechanical; paying top-tier rates for it is waste.
+The main session is the parent orchestrator: it plans, spawns children, reviews their reports, sequences waves, updates the manifest, and escalates to the user. It never edits product code; children do every audit, code change, gate run and doc update. Read [references/child-prompts.md](references/child-prompts.md) before spawning any child.
 
 ## Phase 0: Audit, then freeze the manifest
 
-1. Split the codebase into audit slices (routes, APIs/crons, DB schema, shared
-   libraries, scripts, docs — adjust to the repo). Spawn one child per slice, in
-   parallel. Each child reports: units in its slice, a verdict per unit
-   (in-scope / out-of-scope / UNKNOWN), dependencies, and risks.
-2. Discover the project's **real verification surface**: test suites, verify/run
-   skills, e2e suites, staging environments, backup/snapshot tooling. This becomes
-   the raw material for the gate contract.
-3. Synthesize everything into one manifest at `docs/programs/<slug>/manifest.md`
-   using `references/manifest-template.md`. Assign every unit a verdict and a wave.
-4. Author the **gate contract** per wave from the verification surface found in
-   step 2. If the project has no meaningful regression surface, say so out loud and
-   have the user explicitly accept the weaker gate. Never silently degrade a gate
-   to "whatever happened to exist".
-5. Present the manifest to the user for approval (waves, gates, UNKNOWN list) on
-   a phone-page question page (`phone-page ask`). Tag the restore point (`git tag program/<slug>/wave-0`), commit
-   the manifest.
+Read [references/phase-0.md](references/phase-0.md) before Phase 0 and [references/manifest-template.md](references/manifest-template.md) before writing the manifest.
 
-Two rules give the manifest its power:
-
-- **No worker re-litigates scope.** Every child prompt states: the manifest is the
-  source of truth. Forty sessions deriving their own opinions about scope will
-  disagree; one frozen manifest cannot.
-- **UNKNOWN means stop and ask.** Anything the audit couldn't resolve is marked
-  UNKNOWN with an instruction: don't guess, get a ruling. Rulings are recorded in
-  the manifest so later sessions inherit them.
-
-## Waves: sequence by risk, not convenience
-
-Order waves from safest to most irreversible. The canonical shape (adapt as needed):
-
-| Wave | What | Risk |
-|------|------|------|
-| 0 | Audit + manifest + restore-point tag | none |
-| 1 | Changes with no live dependents | near zero |
-| 2 | Entanglement surgery on shared infrastructure | medium |
-| 3–4 | The bulk of the code changes | medium |
-| 5 | Production data changes (inventory protocol) | high |
-| 6 | Schema migrations | high |
-| 7 | Dependency pruning + docs/knowledge update | low |
-
-The point of the ordering: by the time an irreversible step runs, nothing can still
-depend on the old state — the risk has already been engineered out of it.
+The manifest is the source of truth; no child re-decides scope. Mark what the audit cannot resolve UNKNOWN, get a ruling instead of guessing, and record it in the manifest.
 
 ## Executing a wave
 
-1. Create a wave branch (`program/<slug>/wave-N`).
-2. Spawn children for the wave's units. Parallel children run with
-   `isolation: "worktree"` and **explicitly disjoint file boundaries** stated in
-   each prompt. Disjoint boundaries are what make parallelism safe — no merge
-   conflicts, no coordination between children. Use the child prompt contract in
-   `references/child-prompts.md`.
-3. Children merge back to the wave branch; the parent reviews each child's report
-   and updates unit status in the manifest.
-4. Run the wave's gate (see below). A failed gate spawns a **scoped fix child** —
-   fix exactly what the gate caught, re-run the gate.
-5. Open **one PR per wave** to the default branch. The user's PR approval is the
-   human wave gate. Update the manifest (wave status, gate log, approvals log),
-   commit it with the wave.
+1. Create the branch `program/<slug>/wave-N`.
+2. Spawn one child per unit. Parallel children use `isolation: "worktree"` and disjoint file boundaries.
+3. Children merge back to the wave branch. Review each report and update unit status in the manifest.
+4. A gate child runs the wave's gate contract. A failed gate gets a scoped fix child, then a rerun. Never mark a wave complete without its gate result in the manifest.
+5. Open one PR per wave to the default branch; the user's PR approval is the human gate. Commit the manifest's wave status, gate log and approvals log with the wave.
 
-## Gates
+Read [references/irreversible-steps.md](references/irreversible-steps.md) before any destructive or irreversible step.
 
-A gate is a child session whose only job is to run the wave's gate contract from
-the manifest and report pass/fail with evidence. Gates exist because "the diff looks
-right" is not verification — Carson's gate caught a broken customer flow that review
-missed. Never mark a wave complete without its gate result recorded in the manifest.
+## Escalation
 
-## Irreversible steps: approve the list, not the idea
+Children stop and report when reality contradicts the manifest. Let unaffected units continue, then ask the user for every needed ruling once per wave boundary on a phone-page question page. Log each ruling in the manifest. Move units that wait on a ruling to a later wave and note why.
 
-For any destructive or irreversible step (prod data, schema, deletions at scale):
+## Final wave
 
-1. **Restore point first**: git tag; plus snapshot/backup verification appropriate
-   to the backend (a child audits backup inventory: count, recency, retention).
-2. **Dry-run inventory**: the child produces the exact list of what it will touch —
-   row counts, file lists, object IDs. Numbers, not intentions.
-3. **Human approves the inventory** on a phone-page question page. The user approves a
-   specific list, not a vague plan.
-4. **Execute exactly that inventory.** Reality diverging from the approved
-   inventory mid-run is an escalation, not a judgment call.
-5. **Re-verify counts** after execution; record them in the manifest.
-
-## Escalation: children report, the parent absorbs
-
-Every child prompt includes the escalation contract: if reality contradicts the
-manifest (a "safe" module has a live dependent, a verdict looks wrong), **stop your
-unit, report, don't improvise**. Individual workers never make scope decisions.
-
-The parent batches rulings at the **wave boundary**: let unaffected units continue,
-collect every needed ruling, ask the user once per wave on a phone-page question page. Record
-each ruling in the manifest's rulings log. Units blocked by an unresolved ruling
-demote to a later wave — note the entanglement, move on.
-
-## Final wave: teach the system what changed
-
-After the change ships, spawn children to update CLAUDE.md, AGENTS.md, README,
-repo skills, and any agent knowledge base to describe the new architecture. In an
-agent-driven codebase, documentation is load-bearing infrastructure: every future
-session starts from what these files say, and stale instructions actively sabotage
-future work. Then mark the program complete in the manifest.
-
-## References
-
-- `references/manifest-template.md` — copy this structure for every new manifest.
-  Read it before Phase 0 synthesis.
-- `references/child-prompts.md` — required contract for every child prompt (scope,
-  boundaries, escalation, report format). Read it before spawning wave children.
+After the change ships, children update CLAUDE.md, AGENTS.md, README, repo skills and any agent knowledge base to describe the new architecture. Then mark the program complete in the manifest.

@@ -16,7 +16,7 @@ Stop after discovery and teaching. Let the user choose implementation, planning,
 Two facts calibrate the pass: what the task is, and how much the user knows about the domain and this codebase's part of it.
 
 - If the invocation states both, start exploring with exactly what was said.
-- If either is missing, ask once on one phone-page question page, with at most 3 questions, such as the task, experience with the domain, and familiarity with this code area. This is the only intake round; then explore.
+- If either is missing, use one phone-page intake round: ask one question at a time about the task, domain experience or code familiarity; batch at most 3 only when the user requests all remaining questions or runs cto. Then explore.
 
 ### 2. Explore in parallel
 

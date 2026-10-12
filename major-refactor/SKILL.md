@@ -38,7 +38,7 @@ Read [references/irreversible-steps.md](references/irreversible-steps.md) before
 
 ## Escalation
 
-Children stop and report when reality contradicts the manifest. Let unaffected units continue, then ask the user for every needed ruling once per wave boundary on a phone-page question page. Log each ruling in the manifest. Move units that wait on a ruling to a later wave and note why.
+Children stop and report when reality contradicts the manifest. Let unaffected units continue. At wave boundaries, ask rulings one question at a time on a phone-page question page; batch only when the user requests all remaining questions or runs cto. Log rulings in the manifest. Move waiting units to later waves and note why.
 
 ## Final wave
 

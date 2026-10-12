@@ -338,3 +338,64 @@ for (const branchCount of [2, 4]) {
     }
   });
 }
+
+for (const { name, width } of [
+  { name: 'phone', width: 420 },
+  { name: 'desktop', width: 900 }
+]) {
+  test(`summary, cards, table and named flows render on ${name}`, async ({ page }, testInfo) => {
+    const question = structuredClone(spec.questions[0]);
+    delete question.flow;
+    question.cards = [
+      { title: 'Ready route', text: 'Use the existing path.', icon: 'check' },
+      { title: 'Separate route', text: 'Create another lifecycle.' }
+    ];
+    question.table = {
+      columns: ['Route', 'Status'],
+      rows: [['Direct', 'Ready'], ['Separate', 'Needs setup']]
+    };
+    question.flows = [
+      { title: 'Direct route', steps: ['Run the checks.', 'Deliver the result.'] },
+      { title: 'Separate route', steps: ['Create the path.', 'Run the checks.', 'Deliver the result.'] }
+    ];
+    const summary = 'Choose a route after comparing its readiness and steps.';
+    const specPath = join(renderDirectory, `content-${name}.json`);
+    await writeFile(specPath, JSON.stringify({ title: spec.title, summary, questions: [question] }));
+    const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+    const server = createServer(async (request, response) => {
+      if (request.url === '/') {
+        response.setHeader('Content-Type', 'text/html');
+        response.end(html);
+      } else if (request.url.startsWith('/assets/')) {
+        const assetName = basename(request.url);
+        response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
+        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
+      } else {
+        response.writeHead(404);
+        response.end();
+      }
+    });
+    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
+    try {
+      await page.setViewportSize({ width, height: 1100 });
+      await page.goto(`http://localhost:${server.address().port}/`);
+      await expect(page.locator('.intro.summary')).toHaveText(summary);
+      const card = page.locator('.question-card');
+      await expect(card.locator('.card-title')).toHaveText(question.cards.map(({ title }) => title));
+      await expect(card.locator('.card-text')).toHaveText(question.cards.map(({ text }) => text));
+      await expect(card.locator('.card-title .lucide-check')).toBeVisible();
+      await expect(card.getByRole('table')).toBeVisible();
+      await expect(card.locator('.table-wrap')).toHaveAttribute('tabindex', '0');
+      await expect(card.getByRole('columnheader')).toHaveText(question.table.columns);
+      await expect(card.getByRole('cell')).toHaveText(question.table.rows.flat());
+      await expect(card.locator('.flow-label')).toHaveText(question.flows.map(({ title }) => title));
+      for (const [index, flow] of question.flows.entries()) {
+        await expect(card.locator('.flow').nth(index)).toBeVisible();
+        await expect(card.locator('.flow').nth(index).locator('.flow-box')).toHaveText(flow.steps);
+      }
+      await page.screenshot({ path: testInfo.outputPath('content.png'), fullPage: true });
+    } finally {
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+}

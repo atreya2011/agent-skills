@@ -22,7 +22,7 @@ Use one column with a 16 px gutter on a phone. Keep that column centered and no 
 - Before writing any page, use `git ls-files` in the current repository to find files named `glossary.md` at any path, ignoring letter case, and read any matches.
 - Use glossary terms with their exact spelling and meaning, and define each term on first use using the glossary's own definition.
 
-Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the question spec's `flow` field on a question page or draw the same chart on a read page.
+Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the question spec's `flow` or `flows` field on a question page or draw the same chart on a read page. Show parallel facts as a card grid and structured comparisons as a table; keep bullets for reasons that do not fit either.
 
 - A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
 
@@ -30,15 +30,27 @@ Use Lucide icons only when they identify meaning. Pair every icon with visible t
 
 ## Components
 
+### Summary
+
+One sentence in text color at weight 500 directly under the headline states the bottom line. On a question page the spec's `summary` renders it; on a read page write it as the first paragraph.
+
 ### Card
 
 A card groups one decision, fact or outcome. Give it a short heading and bullet content, plus a small status chip when useful. Use the lime outline only for the current or selected card.
 
+### Fact cards
+
+A grid of 2 to 6 small cards shows parallel facts such as causes, sources or constraints. Each has a canvas background inside the card, a 1 px line border, a 12 px radius, a 17 px title at weight 600 with an optional 20 px lime Lucide icon, and one 17 px muted sentence. The grid has one column on a phone and two columns when the container is at least 500 px wide. On a question page the spec's `cards` field renders it.
+
+### Table
+
+A table compares 2 to 4 columns over 1 to 8 rows at 17 px. Column headers are uppercase muted text at 0.75 rem, the first cell of each row is in text color at weight 500, other cells are muted, and rows are separated by a 1 px line. The table scrolls horizontally inside its wrapper instead of widening the page. On a question page the spec's `table` field renders it.
+
 ### Flow chart
 
-Draw every process as bordered boxes joined by down arrows under a small Flow label, with 17 px text and the existing colors. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
+Draw every process as bordered boxes joined by down arrows under a small label, with 17 px text and the existing colors. The label is `Flow` for a single chart, or the chart's title of up to 40 characters when a page shows more than one chart. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
 
-In a question spec, `context` accepts one-sentence strings or objects `{"text": "<one sentence>", "items": ["<one sentence>", ...]}` whose non-empty `items` render as nested sub-bullets. `flow` accepts one-sentence strings or objects `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with 2 to 4 branches. Each bullet, sub-bullet, flow step, branch outcome and option description has one sentence. Validation rejects `.`, `!` or `?` followed by whitespace and an uppercase letter or digit, while allowing decimals and version numbers; bullets cannot start with `1.` or `2)` numbering.
+In a question spec, `context` accepts one-sentence strings or objects `{"text": "<one sentence>", "items": ["<one sentence>", ...]}` whose non-empty `items` render as nested sub-bullets. `flow` accepts one-sentence strings or objects `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with 2 to 4 branches, and `flows` accepts 1 to 4 objects `{"title": "<up to 40 characters>", "steps": [...]}` with the same steps. A question renders context, cards, table, charts and options in that order. Each bullet, sub-bullet, card title, card text, table cell, flow title, flow step, branch outcome and option description has one sentence. Validation rejects `.`, `!` or `?` followed by whitespace and an uppercase letter or digit, while allowing decimals and version numbers; bullets cannot start with `1.` or `2)` numbering.
 
 ### Options
 

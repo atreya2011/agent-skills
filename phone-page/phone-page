@@ -20,7 +20,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: phone-page {publish <file>|ask <spec>|inbox|render <spec>|answers <id>|assets <directory>}\n' >&2
+  printf 'usage: phone-page {publish <file> [id]|ask <spec> [id]|delete <id>|inbox|render <spec>|answers <id>|assets <directory>}\n' >&2
   exit 2
 }
 
@@ -39,15 +39,32 @@ validate_spec() {
       elif type == "object" then
         (.text | nonempty) and (.branches | if type == "array" then length >= 2 and length <= 4 and all(.[]; nonempty) else false end)
       else false end;
+    def flow_steps: type == "array" and length >= 2 and all(.[]; flow_item);
+    def flow_chart: type == "object" and (.title | nonempty and length <= 40) and (.steps | flow_steps);
+    def card_item:
+      type == "object" and (.title | nonempty) and (.text | nonempty)
+      and (if has("icon") then (.icon | type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$")) else true end);
+    def table_item:
+      type == "object"
+      and (.columns | type == "array" and length >= 2 and length <= 4 and all(.[]; nonempty))
+      and (.rows | type == "array" and length >= 1 and length <= 8)
+      and ((.columns | length) as $width | all(.rows[]; type == "array" and length == $width and all(.[]; type == "string")));
+    def flow_texts:
+      if type == "string" then {kind: "flow step", text: .}
+      else {kind: "flow step", text: .text}, (.branches[] | {kind: "flow branch", text: .}) end;
     def content_texts:
-      .questions[] |
+      (.summary | select(type == "string") | {kind: "summary", text: .}),
+      (.questions[] |
       (.context[]? | if type == "string" then {kind: "context bullet", text: ., bullet: true}
         else {kind: "context bullet", text: .text, bullet: true}, (.items[] | {kind: "context sub-bullet", text: ., bullet: true}) end),
-      (.flow[]? | if type == "string" then {kind: "flow step", text: .}
-        else {kind: "flow step", text: .text}, (.branches[] | {kind: "flow branch", text: .}) end),
-      (.options[] | {kind: "option description", text: .description});
+      (.cards[]? | {kind: "card title", text: .title}, {kind: "card text", text: .text}),
+      (.table? // empty | (.columns[] | {kind: "table column", text: .}), (.rows[][] | {kind: "table cell", text: .})),
+      (.flow[]? | flow_texts),
+      (.flows[]? | {kind: "flow title", text: .title}, (.steps[] | flow_texts)),
+      (.options[] | {kind: "option description", text: .description}));
     if type != "object" then "question spec must be an object"
     elif (.title | type) != "string" then "title must be a string"
+    elif has("summary") and (.summary | nonempty | not) then "summary must be a non-empty string"
     elif (.questions | type) != "array" then "questions must be an array"
     elif (.questions | length) < 1 or (.questions | length) > 10 then "questions must contain 1 to 10 items"
     elif any(.questions[]; type != "object") then "every question must be an object"
@@ -56,7 +73,11 @@ validate_spec() {
     elif any(.questions[]; (.header | type) != "string" or (.header | length) < 1 or (.header | length) > 12) then "every header must contain 1 to 12 characters"
     elif any(.questions[]; (.question | type) != "string") then "every question must be a string"
     elif any(.questions[]; has("context") and (.context | if type == "array" then length < 1 or any(.[]; context_item | not) else true end)) then "question context must contain 1 or more non-empty strings or objects with text and non-empty items"
-    elif any(.questions[]; has("flow") and (.flow | if type == "array" then length < 2 or any(.[]; flow_item | not) else true end)) then "question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches"
+    elif any(.questions[]; has("cards") and (.cards | if type == "array" then length < 2 or length > 6 or any(.[]; card_item | not) else true end)) then "question cards must contain 2 to 6 objects with a title, a text and an optional lucide icon name"
+    elif any(.questions[]; has("table") and (.table | table_item | not)) then "question table must have 2 to 4 non-empty columns and 1 to 8 rows of one string cell per column"
+    elif any(.questions[]; has("flow") and (.flow | flow_steps | not)) then "question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches"
+    elif any(.questions[]; has("flows") and (.flows | if type == "array" then length < 1 or length > 4 or any(.[]; flow_chart | not) else true end)) then "question flows must contain 1 to 4 objects with a title of 1 to 40 characters and 2 or more steps"
+    elif any(.questions[]; has("flow") and has("flows")) then "a question may use flow or flows, not both"
     elif any(.questions[]; (.multiSelect | type) != "boolean") then "multiSelect must be a boolean"
     elif any(.questions[]; (.options | type) != "array") then "every question must have an options array"
     elif any(.questions[]; (.options | length) < 2 or (.options | length) > 6) then "every question must contain 2 to 6 options"
@@ -93,9 +114,33 @@ store() {
   "$store_command" "$@"
 }
 
+inbox_line() {
+  printf -- '- %s %s: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" "$2" >>"$inbox_file"
+}
+
 append_inbox() {
   flock -x 9
-  printf -- '- %s %s: %s\n' "$(date '+%Y-%m-%d %H:%M')" "$1" "$2" >>"$inbox_file"
+  inbox_line "$1" "$2"
+}
+
+remove_inbox_id() {
+  local inbox_path
+  inbox_path=$(mktemp "${inbox_file}.XXXXXX")
+  if [[ -f "$inbox_file" ]]; then
+    awk -v id="$1" '{ n = split($NF, parts, "/") } parts[n] != id' "$inbox_file" >"$inbox_path"
+  fi
+  mv -- "$inbox_path" "$inbox_file"
+}
+
+replace_inbox() {
+  flock -x 9
+  remove_inbox_id "$3"
+  inbox_line "$1" "$2"
+}
+
+delete_inbox() {
+  flock -x 9
+  remove_inbox_id "$1"
 }
 
 prune_inbox() {
@@ -140,25 +185,46 @@ shift
 
 case "$command" in
   publish)
-    [[ $# -eq 1 && -f "$1" ]] || usage
-    store publish "$1"
+    [[ ( $# -eq 1 || $# -eq 2 ) && -f "$1" ]] || usage
+    if [[ $# -eq 2 ]]; then
+      store update "$2" "$1"
+    else
+      store publish "$1"
+    fi
     ;;
   ask)
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 || $# -eq 2 ]] || usage
     rendered_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page.XXXXXX")
     cleanup_path=$rendered_dir
     rendered="$rendered_dir/page.html"
     render "$1" >"$rendered"
-    publish_args=(publish "$rendered")
-    if [[ -n "${HERDR_TAB_ID:-}" ]]; then
-      publish_args+=("$HERDR_TAB_ID")
+    if [[ $# -eq 2 ]]; then
+      publish_args=(update "$2" "$rendered")
+    else
+      publish_args=(publish "$rendered")
+      if [[ -n "${HERDR_TAB_ID:-}" ]]; then
+        publish_args+=("$HERDR_TAB_ID")
+      fi
     fi
     published=$(store "${publish_args[@]}")
     url=$(printf '%s\n' "$published" | jq -er '.url | select(type == "string" and length > 0)')
     title=$(jq -r '.title | gsub("[\r\n]"; " ")' "$1")
     mkdir -p -- "$(dirname -- "$inbox_file")"
-    append_inbox "$title" "$url" 9>>"$inbox_file.lock"
+    if [[ $# -eq 2 ]]; then
+      replace_inbox "$title" "$url" "$2" 9>>"$inbox_file.lock"
+    else
+      append_inbox "$title" "$url" 9>>"$inbox_file.lock"
+    fi
     printf '%s\n' "$published"
+    ;;
+  delete)
+    [[ $# -eq 1 ]] || usage
+    status=0
+    store delete "$1" || status=$?
+    [[ "$status" == 0 || "$status" == 4 ]] || exit "$status"
+    mkdir -p -- "$(dirname -- "$inbox_file")"
+    delete_inbox "$1" 9>>"$inbox_file.lock"
+    exit "$status"
     ;;
   inbox)
     [[ $# -eq 0 ]] || usage

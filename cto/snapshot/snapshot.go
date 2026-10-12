@@ -38,8 +38,7 @@ type rootResult struct {
 	isRepo bool
 }
 
-// collect reads every source, groups the facts by project and judges them. It
-// never fails: what it cannot read goes to the unreadable list.
+// collect groups source facts and judges them when gate is non-nil; unreadable sources remain listed.
 func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapshot {
 	c := &collector{cfg: cfg, r: runner{cmds: cfg.Commands}, now: now,
 		window: time.Duration(cfg.Thresholds.WindowHours) * time.Hour}
@@ -76,7 +75,10 @@ func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapsho
 		}
 	}
 
-	judgments := judgeAll(ctx, gate, projects, now, cfg)
+	var judgments []Judgment
+	if gate != nil {
+		judgments = judgeAll(ctx, gate, projects, now, cfg)
+	}
 
 	snap := Snapshot{
 		GeneratedAt: now.UTC(), WindowHours: cfg.Thresholds.WindowHours,

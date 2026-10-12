@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestTodoContextFiles(t *testing.T) {
 		name, path, reader string
 		symlink            bool
 	}{}
-	for _, name := range []string{"complete context", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
+	for _, name := range []string{"complete context", "checkout evaluation", "facts without judgments", "non-ASCII page", "spaced filename", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
 		cases = append(cases, struct {
 			name, path, reader string
 			symlink            bool
@@ -79,6 +80,62 @@ func TestTodoContextFiles(t *testing.T) {
 				require.NoError(t, os.WriteFile(filepath.Join(handoffs, name), []byte(body), 0o600))
 			}
 			cfg := Config{Vaults: map[string]string{"work": vault, "other": foreign}, Context: ContextConfig{HandoffDir: handoffs}, OwnerPolicy: "code belongs to +cto"}
+			if kind == "checkout evaluation" || kind == "facts without judgments" {
+				t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+				t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+				checkout := filepath.Join(root, "checkout")
+				require.NoError(t, os.MkdirAll(checkout, 0o700))
+				runIn(t, checkout, "git", "init", "-q", "-b", "main")
+				runIn(t, checkout, "git", "config", "user.name", "Fixture")
+				runIn(t, checkout, "git", "config", "user.email", "fixture")
+				writeFile(t, filepath.Join(checkout, "file.txt"), "synthetic content", time.Time{})
+				runIn(t, checkout, "git", "add", "file.txt")
+				runIn(t, checkout, "git", "commit", "-q", "-m", "fixture")
+				sha := runIn(t, checkout, "git", "rev-parse", "HEAD")
+				runIn(t, checkout, "git", "remote", "add", "origin", "https://github.com/example/repo.git")
+				runIn(t, checkout, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
+				runIn(t, checkout, "git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+				cfg.Commands = Commands{Git: "git", Gh: filepath.Join(root, "unavailable"), Herdr: filepath.Join(root, "unavailable"), Task: filepath.Join(root, "unavailable")}
+				cfg.Thresholds = Thresholds{WindowHours: 24, TailBytes: 4096, ExcerptChars: 1000}
+				cfg.Vaults = map[string]string{checkout: vault}
+				if kind == "facts without judgments" {
+					profile := filepath.Join(root, "profile")
+					writeFile(t, filepath.Join(profile, "projects", "fixture", sessAlpha+".jsonl"), fmt.Sprintf(`{"type":"assistant","cwd":%q,"message":{"role":"assistant","content":"synthetic turn"}}`, checkout)+"\n", testNow)
+					cfg.Profiles = []Profile{{Name: "fixture", Kind: "claude", Dir: filepath.Join(profile, "projects")}}
+					snapshot := collect(t.Context(), cfg, nil, testNow)
+					require.Len(t, snapshot.Projects, 1)
+					assert.Equal(t, checkout, snapshot.Projects[0].Root)
+					assert.Empty(t, snapshot.Judgments)
+					assert.False(t, cfg.Gate.TodoContextEnabled)
+					return
+				}
+				todo.Links[0].slug = "example/repo"
+				todo.Links = append(todo.Links, Link{Kind: "commit", SHA: sha, State: "unchecked"})
+				tabs := []Tab{{ID: "fixture-tab", Label: "fixture", Agent: "codex", State: "working", CWD: checkout}}
+				collector := &collector{cfg: cfg, r: runner{cmds: cfg.Commands}}
+				grouped := collector.groupProjects(t.Context(), tabs, nil, []Todo{todo})
+				var projects []Project
+				for _, project := range grouped {
+					projects = append(projects, *project)
+				}
+				states := make([]todoState, 2)
+				errs := make([]error, 2)
+				parallel([]Todo{todo, todo}, func(i int, item Todo) {
+					states[i], errs[i] = evaluationState(t.Context(), cfg, projects, item, "2026-10-12")
+				})
+				for _, err := range errs {
+					require.NoError(t, err)
+				}
+				assert.Equal(t, "unchecked", todo.Links[1].State)
+				state := states[0]
+				assert.Equal(t, states[0], states[1])
+				require.Len(t, state.WikiPages, 1)
+				assert.Equal(t, text, state.WikiPages[0].Text)
+				assert.Equal(t, "on_default", state.Links[1].State)
+				assert.Equal(t, []tabBrief{{Label: "fixture", Agent: "codex", State: "working"}}, state.ProjectTabs)
+				assert.False(t, cfg.Gate.TodoContextEnabled)
+				return
+			}
 			if tt.reader != "" {
 				input := filepath.Join(root, "private input")
 				path := filepath.Join(input, tt.path)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -34,6 +35,7 @@ func evaluateTodos(ctx context.Context, cfg Config, gate *Gate, now time.Time, p
 	if err != nil {
 		return nil, err
 	}
+	snapshot := collect(ctx, cfg, nil, now)
 	out := make([]evaluationResult, len(cases))
 	errs := make([]error, len(cases))
 	parallel(cases, func(i int, item evaluationCase) {
@@ -57,22 +59,13 @@ func evaluateTodos(ctx context.Context, cfg Config, gate *Gate, now time.Time, p
 			errs[i] = fmt.Errorf("unknown evaluation gate %q", item.Gate)
 			return
 		}
-		for li := range todo.Links {
-			link := &todo.Links[li]
-			if link.Kind == "issue" || link.Kind == "pr" {
-				if err := r.fillLink(ctx, link); err != nil {
-					link.Unreadable = true
-				}
-			}
-		}
-		p := &Project{ID: todo.slug(), Label: todo.Domain}
-		state, err := todoContext(cfg, p, todo, nil, now.Format(time.DateOnly))
+		state, err := evaluationState(ctx, cfg, snapshot.Projects, todo, now.Format(time.DateOnly))
 		out[i] = evaluationResult{UUID: item.UUID, State: state}
 		if err != nil {
 			out[i].Judgment = Judgment{Subject: "todo", ID: item.UUID, Gate: def.Name, Verdict: verdictEscalate, DecidedBy: decidedByError, Reason: err.Error()}
 			return
 		}
-		for _, link := range todo.Links {
+		for _, link := range state.Links {
 			if link.Unreadable {
 				err = fmt.Errorf("a source this todo cites is unreadable")
 			}
@@ -84,4 +77,34 @@ func evaluateTodos(ctx context.Context, cfg Config, gate *Gate, now time.Time, p
 		out[i].Judgment = gate.Judge(ctx, "todo", item.UUID, def, state)
 	})
 	return out, errors.Join(errs...)
+}
+
+func evaluationState(ctx context.Context, cfg Config, projects []Project, todo Todo, today string) (todoState, error) {
+	todo.Links = slices.Clone(todo.Links)
+	p := &Project{ID: todo.slug(), Label: todo.Domain}
+	for i := range projects {
+		if projects[i].ID == todo.slug() || (todo.slug() == "" && projects[i].ID == noProject) {
+			p = &projects[i]
+			break
+		}
+	}
+	r := runner{cmds: cfg.Commands}
+	for i := range todo.Links {
+		link := &todo.Links[i]
+		switch link.Kind {
+		case "issue", "pr":
+			if err := r.fillLink(ctx, link); err != nil {
+				link.Unreadable = true
+			}
+		case "commit":
+			if p.Root != "" {
+				link.State = r.onDefault(ctx, p.Root, p.DefaultBranch, link.SHA)
+			}
+		}
+	}
+	var tabs []tabBrief
+	for _, tab := range p.Tabs {
+		tabs = append(tabs, tabBrief{Label: tab.Label, Agent: tab.Agent, State: tab.State, AgeS: tab.AgeS})
+	}
+	return todoContext(cfg, p, todo, tabs, today)
 }

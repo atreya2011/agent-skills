@@ -1,0 +1,21 @@
+name: cf-page-store
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cf-page-store-tests:
+    name: cf-page-store tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cf-page-store/package-lock.json
+      - run: npm ci
+        working-directory: cf-page-store
+      - run: npm test
+        working-directory: cf-page-store

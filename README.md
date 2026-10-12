@@ -35,7 +35,7 @@ A skill that needs machine values (see `CONTEXT.md`) reads them from `~/.agents/
 
 `./portability-check.test.sh` runs the check's tests against the fixtures under `tests/fixtures/`. The tracked scan skips exactly the fixture paths that the test names, so any other file added there is scanned like the rest of the tree.
 
-CI runs the check with the built-in patterns only, and runs its tests. To run it before every push, run this once after cloning:
+The `portability` workflow runs the check with the built-in patterns only, and runs its tests in a separate job. To run it before every push, run this once after cloning:
 
 ```sh
 git config core.hooksPath .githooks
@@ -47,4 +47,4 @@ The same rule covers commit messages, pull-request text and issues: none may con
 
 ## Gauntlet tests
 
-`tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh`, `tests/gauntlet/send.test.sh` and `tests/gauntlet/receipt.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh`, the agent marker check of `gauntlet/send.sh` and `gauntlet/receipt.sh`. Each runs without a local file or a herdr server, except that `receipt.test.sh` skips without a herdr server, and CI runs them in the `gauntlet` job; the fixtures under `tests/gauntlet/` hold no machine values.
+`tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh`, `tests/gauntlet/send.test.sh` and `tests/gauntlet/receipt.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh`, the agent marker check of `gauntlet/send.sh` and `gauntlet/receipt.sh`. Each runs without a local file or a herdr server, except that `receipt.test.sh` skips without a herdr server, and the `gauntlet` workflow runs each script in a separate job; the fixtures under `tests/gauntlet/` hold no machine values.

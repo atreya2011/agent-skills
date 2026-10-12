@@ -1,0 +1,17 @@
+name: gauntlet
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gauntlet-tests:
+    name: gauntlet ${{ matrix.test }} tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test: [seats, close-decision, send, receipt]
+    steps:
+      - uses: actions/checkout@v4
+      # No herdr on the runner: send.test.sh passes without it and receipt.test.sh skips.
+      - run: tests/gauntlet/${{ matrix.test }}.test.sh

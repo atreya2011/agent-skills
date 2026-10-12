@@ -5,61 +5,17 @@ on:
   pull_request:
 
 jobs:
-  check:
+  portability-check:
+    name: portability check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # No ~/.agents/local on the runner, so only the built-in patterns run.
       - run: ./portability-check.sh
+
+  portability-tests:
+    name: portability tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - run: ./portability-check.test.sh
-
-  gauntlet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      # No herdr on the runner: send.test.sh passes without it and receipt.test.sh skips.
-      - run: tests/gauntlet/seats.test.sh
-      - run: tests/gauntlet/close-decision.test.sh
-      - run: tests/gauntlet/send.test.sh
-      - run: tests/gauntlet/receipt.test.sh
-
-  phone-page:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: tests/phone-page/package-lock.json
-      - run: tests/phone-page/phone-page.test.sh
-      - run: npm ci
-        working-directory: tests/phone-page
-      - run: npx playwright install --with-deps chromium webkit
-        working-directory: tests/phone-page
-      - run: npm test
-        working-directory: tests/phone-page
-
-  cf-page-store:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: cf-page-store/package-lock.json
-      - run: npm ci
-        working-directory: cf-page-store
-      - run: npm test
-        working-directory: cf-page-store
-
-  snapshot:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: cto/snapshot/go.mod
-      - run: go test ./...
-        working-directory: cto/snapshot

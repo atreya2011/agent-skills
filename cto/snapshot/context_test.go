@@ -29,6 +29,13 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"spaced first directory", "wiki: team plans/article.md", []string{"team plans/article.md"}},
 		{"combining mark", "wiki: articles/café.md", []string{"articles/café.md"}},
 		{"non-ASCII page", "wiki: 日本語-note.md:12", []string{"日本語-note.md:12"}},
+		{"backtick reference", "wiki: `articles/日本語-note.md`", []string{"articles/日本語-note.md"}},
+		{"double quoted reference", "wiki: \"articles/team plans.md\"", []string{"articles/team plans.md"}},
+		{"single quoted reference", "wiki: 'team plans/article.md'", []string{"team plans/article.md"}},
+		{"wiki link reference", "wiki: [[articles/team plans.md]]", []string{"articles/team plans.md"}},
+		{"separate references", "wiki: a.md b.md", []string{"a.md", "b.md"}},
+		{"mixed spaced Unicode references", "wiki: `articles/team plans.md` \"articles/日本語-note.md\" [[team plans/日本語 note.md]]", []string{"articles/team plans.md", "articles/日本語-note.md", "team plans/日本語 note.md"}},
+		{"unformatted spaced Unicode references", "wiki: articles/team plans.md articles/日本語-note.md", []string{"articles/team plans.md", "articles/日本語-note.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	for _, tt := range cases {

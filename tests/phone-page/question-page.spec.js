@@ -203,7 +203,8 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByRole('status')).toHaveText('Answers sent');
   await expect(page.getByRole('status').locator('.lucide-check-circle-2')).toBeVisible();
-  await expect(page.getByText('Reply done in the chat')).toBeVisible();
+  await expect(page.locator('#reply')).toBeVisible();
+  await expect(page.locator('#reply')).toContainText('Reply done in the chat');
   expect(postedSubmissions).toHaveLength(1);
   expect(postedSubmissions[0].answers[0]).toMatchObject({
     id: 'route',
@@ -229,7 +230,8 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await laterQuestion.getByRole('button', { name: 'Skip this question' }).click();
   await page.getByRole('button', { name: 'Submit answers' }).click();
   await expect(page.getByRole('status')).toHaveText('Answers sent');
-  await expect(page.getByText('Reply done in the chat')).toBeVisible();
+  await expect(page.locator('#reply')).toBeVisible();
+  await expect(page.locator('#reply')).toContainText('Reply done in the chat');
 
   expect(postedSubmissions).toHaveLength(2);
   const postedSubmission = postedSubmissions[1];
@@ -567,13 +569,13 @@ for (const { name, width, stepped } of [
 }
 
 test.describe('desktop form regressions', () => {
-  test.use({ isMobile: false, hasTouch: false });
+  test.use({ isMobile: false, hasTouch: false, userAgent: undefined });
 
   for (const { name, long } of [
     { name: 'Enter in Other opens Review without posting', long: false },
     { name: 'long questions split into measured parts without page scrolling', long: true }
   ]) {
-    test(`desktop ${name}`, async ({ page }, testInfo) => {
+    test(`desktop ${name}`, async ({ page, browserName }, testInfo) => {
       const question = structuredClone(spec.questions[0]);
       if (long) {
         delete question.flow;
@@ -635,6 +637,20 @@ test.describe('desktop form regressions', () => {
         await expect(card).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath('desktop-first-screen.png'), fullPage: true });
         if (!long) {
+          // The installed WebKit build has no native textarea resize handle, including on plain HTML.
+          if (browserName === 'chromium') {
+            console.log('Drag the desktop note resize handle down 150 pixels.');
+            const note = card.getByLabel('Note (optional)');
+            for (let step = 0; step < 100 && !await note.isVisible(); step += 1) await page.locator('#next').click();
+            const noteBox = await note.boundingBox();
+            expect(noteBox).not.toBeNull();
+            await page.mouse.move(noteBox.x + noteBox.width - 8, noteBox.y + noteBox.height - 8);
+            await page.mouse.down();
+            await page.mouse.move(noteBox.x + noteBox.width - 8, noteBox.y + noteBox.height + 142, { steps: 30 });
+            await page.mouse.up();
+            expect(await note.evaluate((element) => element.getBoundingClientRect().height) - noteBox.height).toBeGreaterThanOrEqual(100);
+            await page.screenshot({ path: testInfo.outputPath('note-resized.png'), fullPage: true });
+          }
           console.log('Find the answer block, select Other, and press Enter in its text field.');
           const other = card.getByLabel('Other', { exact: true });
           for (let step = 0; step < 100 && !await other.isVisible(); step += 1) await page.locator('#next').click();
@@ -667,9 +683,14 @@ test.describe('desktop form regressions', () => {
           await expect(page.getByRole('status')).toHaveText('Answers sent');
           expect(postedSubmissions).toHaveLength(1);
           expect(postedSubmissions[0].answers[0].other).toBe('Use a staged route.');
-          await expect(page.locator('#latest')).toBeVisible();
-          await expect(page.locator('#latest')).toContainText('Latest submission:');
+          const submittedAt = await page.evaluate((timestamp) => new Date(timestamp).toLocaleString(), postedSubmissions[0].submittedAt);
+          await expect(page.locator('#reply')).toHaveText(`Sent at ${submittedAt}. Reply done in the chat`);
           await page.screenshot({ path: testInfo.outputPath('review-submitted.png'), fullPage: true });
+          console.log('Reload and verify the latest submission is shown on the opening screen.');
+          await page.reload();
+          await expect(page.locator('.masthead #latest')).toBeVisible();
+          await expect(page.locator('.masthead #latest')).toContainText('Latest submission:');
+          await page.screenshot({ path: testInfo.outputPath('latest-submission.png'), fullPage: true });
         } else {
           console.log('Walk all measured parts and verify each screen fits between the fixed bars.');
           const position = page.locator('#position');

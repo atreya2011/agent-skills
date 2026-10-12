@@ -119,6 +119,7 @@
       main { position: fixed; top: var(--progress-bottom, 44px); bottom: var(--navigation-height, 77px); left: 50%; width: min(100%, 1200px); padding: 16px 24px; transform: translateX(-50%); }
       #question-form { display: flex; flex-direction: column; gap: 12px; height: 100%; }
       .questions { display: block; flex: 1; min-height: 0; }
+      .review .questions { display: none; }
       .question-card { height: 100%; max-width: 720px; margin: 0 auto; width: 100%; }
       .question-card.with-context { max-width: none; }
       .question-part { display: flex; flex-direction: column; gap: 16px; height: 100%; min-height: 0; }
@@ -130,10 +131,7 @@
       .answer-controls > .options { margin-top: 0; }
       .part-heading { margin: 0; color: #a3a9a0; font-family: Inter, sans-serif; font-size: 17px; font-weight: 500; line-height: 1.4; letter-spacing: 0; }
       .answer-panel { flex: 1; min-height: 0; overflow-y: auto; width: min(100%, 720px); margin: 0 auto; }
-      #question-form:not(.review) > .latest { display: none; }
-      .latest { flex: none; width: min(100%, 720px); margin: 0 auto; }
-      .actions { grid-template-columns: minmax(220px, 320px); justify-content: center; }
-      .actions { flex: none; margin-top: 0; }
+      .actions { grid-template-columns: minmax(220px, 320px); justify-content: center; flex: none; margin-top: 0; }
       .navigation { position: fixed; z-index: 2; bottom: 0; left: 0; display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: center; width: 100%; padding: 16px 24px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid #2c3029; background: #0e0f0c; }
       .navigation button:first-child { justify-self: start; }
       .navigation button:last-child { justify-self: end; }
@@ -157,6 +155,11 @@
       <p class="eyebrow">Your call</p>
       <h1 id="page-title" tabindex="-1"></h1>
       <p class="intro" id="intro">Choose what you want now, add context where it helps, and leave anything you want to decide later.</p>
+      <div class="latest" id="latest" hidden>
+        <i data-lucide="check-circle-2" aria-hidden="true"></i>
+        <span id="latest-text"></span>
+      </div>
+      <p class="error" id="latest-error" aria-live="polite" hidden></p>
     </header>
     <form id="question-form" novalidate>
       <div class="questions" id="questions"></div>
@@ -165,10 +168,6 @@
         <h2 id="review-heading" tabindex="-1">Your answers</h2>
         <div id="answer-rows"></div>
       </section>
-      <div class="latest" id="latest" hidden>
-        <i data-lucide="check-circle-2" aria-hidden="true"></i>
-        <span id="latest-text"></span>
-      </div>
       <div class="actions" id="actions">
         <button class="submit" id="submit" type="submit">
           <i data-lucide="send" aria-hidden="true"></i>
@@ -194,6 +193,7 @@
     const reply = document.getElementById('reply');
     const latest = document.getElementById('latest');
     const latestText = document.getElementById('latest-text');
+    const latestError = document.getElementById('latest-error');
     const toast = document.getElementById('toast');
     const progressTrack = document.getElementById('progress-track');
     const progressFill = document.getElementById('progress-fill');
@@ -215,6 +215,8 @@
     let screen = 0;
     let toastTimer;
     let layoutFrame;
+    let pointerDown = false;
+    let repackPending = false;
 
     function showScreen(index, focus = true, force = false) {
       if (!ready) return;
@@ -229,8 +231,6 @@
       screens.forEach(({ part }, partIndex) => {
         if (part) part.hidden = desktop.matches && partIndex !== screen;
       });
-      masthead.hidden = desktop.matches && screen !== 0;
-      questionsRoot.hidden = desktop.matches && review;
       form.classList.toggle('review', desktop.matches && review);
       panel.hidden = desktop.matches && !review;
       actions.hidden = desktop.matches && !review;
@@ -249,6 +249,10 @@
 
     function repack() {
       if (!ready) return;
+      if (pointerDown) {
+        repackPending = true;
+        return;
+      }
       if (!desktop.matches && packedDesktop === false) return;
       packing = true;
       packedDesktop = desktop.matches;
@@ -356,6 +360,10 @@
 
     function scheduleRepack() {
       window.cancelAnimationFrame(layoutFrame);
+      if (pointerDown) {
+        repackPending = true;
+        return;
+      }
       layoutFrame = window.requestAnimationFrame(repack);
     }
 
@@ -371,7 +379,14 @@
     previous.addEventListener('click', () => showScreen(screen - 1));
     next.addEventListener('click', () => showScreen(screen + 1));
     window.addEventListener('resize', scheduleRepack);
-    desktop.addEventListener('change', scheduleRepack);
+    document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+    document.addEventListener('pointerup', () => {
+      pointerDown = false;
+      if (repackPending) {
+        repackPending = false;
+        scheduleRepack();
+      }
+    }, true);
     document.addEventListener('keydown', (event) => {
       if (!ready || !desktop.matches || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('textarea, input, [contenteditable], .table-wrap')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -826,6 +841,7 @@
       time.textContent = new Date(submission.submittedAt).toLocaleString();
       latestText.replaceChildren(document.createTextNode('Latest submission: '), time);
       latest.hidden = false;
+      latestError.hidden = true;
     }
 
     function hideToast() {
@@ -844,7 +860,7 @@
       text.textContent = message;
       toast.replaceChildren(icon, text);
       toast.hidden = false;
-      window.lucide.createIcons();
+      window.lucide?.createIcons();
       toastTimer = window.setTimeout(() => { toast.hidden = true; }, 4000);
     }
 
@@ -857,7 +873,8 @@
         showLatest(submission);
         return submission;
       } catch {
-        reply.textContent = 'The latest submission could not be checked. Your unsent answers are still here.';
+        latestError.textContent = 'The latest submission could not be checked. Your unsent answers are still here.';
+        latestError.hidden = false;
         return null;
       }
     }
@@ -880,7 +897,7 @@
       });
       updateProgress();
       updateReview();
-      window.lucide.createIcons();
+      window.lucide?.createIcons();
       ready = true;
       repack();
       document.fonts.ready.then(scheduleRepack);
@@ -930,7 +947,7 @@
         if (!response.ok) throw new Error(`request failed with ${response.status}`);
         removeDraft();
         showLatest(submission);
-        reply.textContent = 'Reply done in the chat';
+        reply.textContent = `Sent at ${new Date(submission.submittedAt).toLocaleString()}. Reply done in the chat`;
         showToast('Answers sent', 'success');
       } catch {
         showToast('The answers were not sent. Check the connection and submit again.', 'error');

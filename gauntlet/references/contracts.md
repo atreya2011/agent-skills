@@ -39,8 +39,8 @@ Split before approval when the total exceeds the hard changed-line cap or the es
 - Over-engineering is evil. Overly defensive code is evil. Fixating on rare or fictitious edge cases is evil.
 - Simplest compliant change wins. Guards only for reachable states. Effort follows real use.
 - Destructive change is good. A regression is evil. Rule: destruction without regressions.
-- Comments: Google developer-documentation style, plain sentences on what the code does and why. Dead prose, aphorisms, flourishes: evil.
-- In touched scope, rewrite or delete garbage comments. Leaving one is evil.
+- Comment only the why the code cannot show, in one line. Mark a shortcut with a known limit as `shortcut: <the limit>, <when to upgrade>`.
+- In touched scope, fix false comments and delete comments that restate the code.
 
 ## Finding contract
 

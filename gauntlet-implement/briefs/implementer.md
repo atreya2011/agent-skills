@@ -22,7 +22,7 @@ Work rules
 - MUST read the spec, the issue, and repo instructions before editing.
 - MUST implement the issue and its acceptance checkboxes.
 - MUST edit directly in this session.
-- MUST keep comments accurate: fix stale ones in place; in scope, rewrite or delete garbage comments.
+- MUST comment only the why the code cannot show, in one line, and mark a shortcut with a known limit as `shortcut: <the limit>, <when to upgrade>`. In scope, fix false comments and delete comments that restate the code.
 - MUST write modern Go: run the use-modern-go skill's list subcommand per touched Go file. Apply its idioms for the go.mod version.
 - MUST read every persistent artifact before mutating it.
 - MUST preserve every quarantined path.

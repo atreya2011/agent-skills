@@ -152,11 +152,10 @@ func markdownPaths(text string) []string {
 		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") || wikiMetadata.MatchString(text) {
 			break
 		}
-		// Parenthetical annotations after a reference end at a list separator or field end.
 		if strings.HasPrefix(text, "(") {
-			if end := strings.IndexByte(text, ')'); end >= 0 {
+			if end := matchingClose(text, '(', ')'); end >= 0 {
 				tail := strings.TrimSpace(text[end+1:])
-				if tail == "" || strings.HasPrefix(tail, ";") || strings.HasPrefix(tail, ",") {
+				if referenceBoundary(text[end+1:]) {
 					text = tail
 				}
 			}

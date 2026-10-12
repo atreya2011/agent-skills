@@ -82,10 +82,16 @@ func TestWikiAnnotationNames(t *testing.T) {
 		{"markdown label destination", "wiki: [notes](articles/note.md)", []string{"articles/note.md"}},
 		{"label destination locator", "wiki: notes (articles/note.md:95)", []string{"articles/note.md:95"}},
 		{"multiple destinations", "wiki: notes (articles/note.md); [other](articles/other.md)", []string{"articles/note.md", "articles/other.md"}},
+		{"nested metadata", "wiki: a.md (Origin (section), details); b.md", []string{"a.md", "b.md"}},
+		{"deep metadata", "wiki: a.md (Origin (section (detail)), details); b.md", []string{"a.md", "b.md"}},
+		{"nested metadata comma separator", "wiki: a.md (Origin (section), details), b.md", []string{"a.md", "b.md"}},
+		{"nested metadata terminal", "wiki: a.md (Origin (section), details)", []string{"a.md"}},
+		{"formatted nested metadata", "wiki: [[a.md]] (Origin (section), details); `b.md`", []string{"a.md", "b.md"}},
 		{"plain before link", "wiki: a.md notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
 		{"wrapped before link", "wiki: [[a.md]] notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
 		{"link before plain", "wiki: notes (articles/note.md) a.md", []string{"a.md", "articles/note.md"}},
 		{"nested path before link", "wiki: archive.md/article.md notes (articles/note.md)", []string{"archive.md/article.md", "articles/note.md"}},
+		{"nested notes before link", "wiki: a.md (Origin (section), details); notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
 		{"own question excluded", "ask: wiki: old-verdict", nil},
 	}
 	forms := []struct{ name, format, path string }{
@@ -106,6 +112,21 @@ func TestWikiAnnotationNames(t *testing.T) {
 					want             []string
 				}{"compatibility " + first.name + " then " + second.name + " separator " + separator,
 					"wiki: " + fmt.Sprintf(first.format, left) + separator + fmt.Sprintf(second.format, right), want})
+			}
+		}
+	}
+	for _, first := range forms {
+		for depth := 1; depth <= 3; depth++ {
+			for _, separator := range []string{" ", ", ", "; "} {
+				left := fmt.Sprintf(first.path, "a.md")
+				want := []string{left, "b.md"}
+				slices.Sort(want)
+				note := strings.Repeat("(Origin ", depth) + "section" + strings.Repeat(")", depth)
+				cases = append(cases, struct {
+					name, annotation string
+					want             []string
+				}{fmt.Sprintf("balanced %s depth %d separator %s", first.name, depth, separator),
+					"wiki: " + fmt.Sprintf(first.format, left) + " " + note + separator + "b.md", want})
 			}
 		}
 	}

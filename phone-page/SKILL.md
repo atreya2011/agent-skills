@@ -17,9 +17,7 @@ For read pages and question pages, open with the bottom line, then give the reas
   - the process as a `flow` or `flows` chart with short boxes;
   - each option's consequence in its description.
 - Add nothing beyond those parts, and never cut a fact the decision depends on.
-- Write every sentence to Grice's [maxim of quantity](https://en.wikipedia.org/wiki/Cooperative_principle#Maxim_of_quantity): state the one fact the reader needs and drop the setup around it.
-  - Write `The GitHub API needs a token to post a comment on an issue.`
-  - Not `The page is a static site on GitHub Pages with no GitHub token, and the GitHub API needs one to post a comment.`
+- Follow Grice's [maxim of quantity](https://en.wikipedia.org/wiki/Cooperative_principle#Maxim_of_quantity).
 - Fix an open page in place with `phone-page ask <spec> <id>` or `phone-page publish <file> <id>`; never publish a replacement page for content the user already has a link to. Replacing a page discards its previous submission.
 
 Read [references/design.md](references/design.md) before making a read page. Use `phone-page ask` for a question page; do not hand-write its form.

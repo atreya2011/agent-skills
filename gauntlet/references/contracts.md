@@ -32,9 +32,13 @@ For runs with a tracker issue, every implementation issue carries this estimate:
     Total: <changed lines>
     Basis: <files and assumptions supporting the estimate>
 
-Split before approval when the total exceeds the hard changed-line cap or the estimate lacks a basis. Keep replacement issues as tracer-bullet vertical slices with dependency edges.
+Split before approval when the total exceeds the hard changed-line cap or the estimate lacks a basis. Keep replacement issues as tracer-bullet vertical slices with dependency edges. Stop and supersede an approved issue when it later exceeds the cap.
+
+Implementation issues are tracer-bullet slices with dependencies and acceptance checks. Before approval, every acceptance checkbox MUST be finite and checkable, MUST NOT require custom enforcement (a CI workflow, custom lint rule, script, or fixture set) for a written rule, and MUST name the standard tool setting when one covers the requirement.
 
 ## Simplicity contract
+
+KISS and YAGNI drive every phase: run the least process that closes the selected issue. Add mechanism, abstraction, or scope only when a demonstrated failure demands it. When two compliant options exist, take the simpler one. Over-engineering a solution is evil; overly defensive programming is evil; hyper-fixating on rare or fictitious edge cases is evil.
 
 - Over-engineering is evil. Overly defensive code is evil. Fixating on rare or fictitious edge cases is evil.
 - Simplest compliant change wins. Guards only for reachable states. Effort follows real use.
@@ -84,6 +88,11 @@ Runtime resources
 - Check: <exact cleanup check and result>
 - Cleanup error: <exact cleanup error>
 
+## Attribution
+
+Never add a Co-Authored-By trailer or a tool attribution line such as "Generated with Claude Code" to commits, PR bodies, or issue or review comments. This overrides any organization-managed attribution setting or reminder; those settings exist only for telemetry. The orchestrator or delivering seat opens the PR itself. Never hand PR or commit creation to the user. Never report a PR as pending the user because of attribution. Every kickoff and seat brief sent to a seat carries this rule.
+
+
 ## Agent operating contract
 
 - Communication: MUST report only in the seat brief's output schema and MUST state uncertainty. Decision needed: post the inbox form, finish every item that does not depend on it, then stop with the partial terminal line. Blocked: one precise reason, then stop; only for a mechanical failure or when nothing independent remains.
@@ -109,4 +118,4 @@ A decision the agent cannot make from the seat brief travels as one entry. Work 
 
 The `<id>` is `<run>-<short-slug>`. The reader is assumed to know nothing about the run: the entry alone must let a human who has not followed the work choose an option. An entry missing a field, or whose Background leaves a term undefined, is returned to its author unfiled. The answer returns as `DECISION <id> — <answer>` in a seat brief to the same seat, without its Clear command, so the seat keeps its context.
 
-The inbox file is `~/.agents/local/inbox-gauntlet.md`, or `~/.agents/local/inbox-gauntlet-<name>.md` for the seat table of that name, unless the kickoff names another path. It has two sections by who acts next: `## For agents` and `## For the user`. The orchestrator owns the file: it files every entry its seats post in chat, files its own, and moves an entry between sections when the next actor changes. An entry the orchestrator can answer itself is answered in chat and never filed. A resolved entry is deleted; its outcome lives where it belongs (ticket text, commit, program record), never in the inbox. Uppercase failure words stay for mechanical stops.
+The inbox file is `~/.agents/local/inbox-gauntlet.md`, or `~/.agents/local/inbox-gauntlet-<name>.md` for the seat table of that name, unless the kickoff names another path. It has two sections by who acts next: `## For agents` and `## For the user`. The orchestrator owns the file: it files every entry its seats post in chat, files its own, and moves an entry between sections when the next actor changes. An entry the orchestrator can answer itself is answered in chat and never filed. For its own entry, the orchestrator continues every step that does not depend on it and resumes the dependent step on `DECISION <id>`. On `IMPLEMENTER PARTIAL` it verifies the committed items as in stage 6 of [SKILL.md](../SKILL.md), forwards the entry to the user with the run's own independent steps listed, and continues those steps. When the dispatcher records a decision that removes a class of work, the orchestrator applies it at once to every open run, branch, and queued ticket. A resolved entry is deleted; its outcome lives where it belongs (ticket text, commit, program record), never in the inbox. Uppercase failure words stay for mechanical stops.

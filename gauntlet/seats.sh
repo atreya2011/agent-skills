@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reads the run's seat table, as the Local file section of SKILL.md defines it,
+# Reads the run's seat table, as references/seats.md defines it,
 # and prints one line per seat to launch: the seat, its kind, its args and its
 # clear command, separated by tabs. The lines come in launch order: the
 # implementer, then the chosen reviewers. The orchestrator is the session that

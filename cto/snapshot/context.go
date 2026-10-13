@@ -121,15 +121,6 @@ func wikiPage(cfg Config, vault, name string) (contextPage, error) {
 	if sensitiveContextPath(name) {
 		return contextPage{}, fmt.Errorf("wiki page %s is a sensitive path", name)
 	}
-	allowed := false
-	for _, root := range cfg.Vaults {
-		if within(root, name) && (vault == "" || root == vault) {
-			allowed = true
-		}
-	}
-	if !allowed {
-		return contextPage{}, fmt.Errorf("wiki page %s is outside the project's configured vault", name)
-	}
 	real, err := filepath.EvalSymlinks(name)
 	if err != nil {
 		return contextPage{}, fmt.Errorf("wiki page %s: %w", name, err)
@@ -137,7 +128,7 @@ func wikiPage(cfg Config, vault, name string) (contextPage, error) {
 	if sensitiveContextPath(real) {
 		return contextPage{}, fmt.Errorf("wiki page %s resolves to a sensitive path", name)
 	}
-	allowed = false
+	allowed := false
 	for _, root := range cfg.Vaults {
 		realRoot, err := filepath.EvalSymlinks(root)
 		if err == nil && (vault == "" || root == vault) && within(realRoot, real) {

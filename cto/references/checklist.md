@@ -9,5 +9,5 @@ Cron, tab setup and the notification need a live herdr, so check them once by ha
 - A blocked CTO tab gets nothing: block the tab on a question, wait for a scheduled time, and confirm no prompt arrived.
 - Each sweep: at every scheduled time the tab clears its context (a staged `/clear` is submitted by the Enter), restores the `cto` agent name, then runs a full sweep. The brief that follows uses current sources.
 - The notification: start a tab that asks a question and leave it blocked. The next sweep raises one notification naming it, and the brief lists it under Needs you.
-- Tab cleanup: an idle, unpinned workspace with an orchestrator is asked by chat and its tabs close only after an explicit done. A pinned workspace is never asked.
+- Tab cleanup: an idle, unpinned workspace with an orchestrator uses the workspace reply gate; every other idle or done, unpinned agent tab in an unpinned workspace is asked directly and closes alone only after an explicit done passes the gate. Pinned tabs, pinned workspaces and the CTO's own tab are never asked or closed.
 - Dispatch: a ready todo gets a workspace, an orchestrator, a kickoff, a goal and a `run:` annotation, and the next sweep does not dispatch it again. A todo that is not ready is listed in Queued instead.

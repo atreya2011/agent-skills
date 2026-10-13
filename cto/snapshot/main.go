@@ -3,7 +3,7 @@
 // writes to herdr, Taskwarrior, git, GitHub, a transcript or a vault.
 //
 //	cto-snapshot [--local-file PATH]         print the snapshot
-//	cto-snapshot reply [--local-file PATH]   judge an orchestrator reply on standard input
+//	cto-snapshot reply [--local-file PATH]   judge an agent reply on standard input
 //	cto-snapshot evaluate --cases PATH [--local-file PATH]   evaluate todo gates without writes
 package main
 
@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	// maxReplyBytes bounds the orchestrator reply the reply gate reads. The
+	// maxReplyBytes bounds the agent reply the reply gate reads. The
 	// last bytes are kept, because a reply ends with its verdict.
 	maxReplyBytes = 16 << 10
 	// runTimeout bounds one call of the tool, so a hung source or gate cannot
@@ -98,8 +98,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	return 0
 }
 
-// judgeReply asks the orchestrator_reply gate what an orchestrator's chat reply
-// says about its tabs. A reply that is empty after trimming escalates without a
+// judgeReply asks the orchestrator_reply gate what an agent's chat reply
+// says about its tab or tabs. A reply that is empty after trimming escalates without a
 // call; a long reply is cut to its last maxReplyBytes.
 func judgeReply(ctx context.Context, gate *Gate, stdin io.Reader) Judgment {
 	data, err := io.ReadAll(stdin)

@@ -37,6 +37,10 @@ const pageHeaders = {
   "referrer-policy": "no-referrer",
 };
 const html = "<!doctype html><html><head><title>Question</title></head><body>Choose</body></html>";
+const legacyPages = [
+  { id: "legacy-read-page", createdAt: "2026-01-01 12:00:00" },
+  { id: "legacy-question-page", createdAt: "2026-02-01 12:00:00" },
+];
 
 let privateKey: CryptoKey;
 
@@ -74,7 +78,19 @@ async function publish(assertion: string, tabId?: string) {
 
 beforeAll(async () => {
   privateKey = await importPKCS8(env.TEST_SIGNING_KEY, "RS256");
+  await applyD1Migrations(env.DB, env.TEST_MIGRATIONS.slice(0, 2));
+  await env.DB.batch(legacyPages.map(({ id, createdAt }) =>
+    env.DB.prepare("INSERT INTO pages (id, title, html, created_at) VALUES (?, ?, ?, ?)")
+      .bind(id, "Legacy", html, createdAt)));
   await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
+});
+
+describe("migrations", () => {
+  it.each(legacyPages)("backfills publication time for $id", async ({ id, createdAt }) => {
+    expect(await env.DB.prepare("SELECT created_at, published_at FROM pages WHERE id = ?").bind(id).first())
+      .toEqual({ created_at: createdAt, published_at: createdAt });
+    await env.DB.prepare("DELETE FROM pages WHERE id = ?").bind(id).run();
+  });
 });
 
 describe("pages", () => {
@@ -82,6 +98,8 @@ describe("pages", () => {
     const assertion = await token();
     const page = await publish(assertion);
     expect(page.url).toBe(`https://store.invalid/p/${page.id}`);
+    expect(await env.DB.prepare("SELECT published_at = created_at AS publication_recorded FROM pages WHERE id = ?")
+      .bind(page.id).first()).toEqual({ publication_recorded: 1 });
 
     const response = await request(`/p/${page.id}`, {}, assertion);
     expect(response.status).toBe(200);
@@ -229,40 +247,45 @@ describe("submissions", () => {
 });
 
 describe("scheduled cleanup", () => {
-  it("deletes only pages whose last submission is more than three days old", async () => {
+  it.each([
+    { name: "expired unanswered", publicationAge: 8, submissionAge: null, republish: false, pageStatus: 404, answerStatus: 404 },
+    { name: "recent unanswered", publicationAge: 6, submissionAge: null, republish: false, pageStatus: 200, answerStatus: 404 },
+    { name: "republished unanswered", publicationAge: 8, submissionAge: null, republish: true, pageStatus: 200, answerStatus: 404 },
+    { name: "republished answered", publicationAge: 8, submissionAge: 4, republish: true, pageStatus: 200, answerStatus: 404 },
+    { name: "expired answered", publicationAge: 0, submissionAge: 4, republish: false, pageStatus: 404, answerStatus: 404 },
+    { name: "recent answered", publicationAge: 8, submissionAge: 1, republish: false, pageStatus: 200, answerStatus: 200 },
+  ])("applies retention to a $name page", async ({ publicationAge, submissionAge, republish, pageStatus, answerStatus }) => {
     const assertion = await token();
-    const expired = await publish(assertion);
-    const recent = await publish(assertion);
-    const unanswered = await publish(assertion);
+    const page = await publish(assertion);
+    await env.DB.prepare("UPDATE pages SET created_at = datetime('now', '-30 days'), published_at = datetime('now', ?) WHERE id = ?")
+      .bind(`-${publicationAge} days`, page.id).run();
 
-    for (const page of [expired, recent]) {
+    if (submissionAge !== null) {
       const response = await request(`/p/${page.id}/answers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",
       }, assertion);
       expect(response.status).toBe(204);
+      await env.DB.prepare("UPDATE submissions SET submitted_at = datetime('now', ?) WHERE page_id = ?")
+        .bind(`-${submissionAge} days`, page.id).run();
     }
-    await env.DB.batch([
-      env.DB.prepare("UPDATE submissions SET submitted_at = datetime('now', '-4 days') WHERE page_id = ?")
-        .bind(expired.id),
-      env.DB.prepare("UPDATE submissions SET submitted_at = datetime('now', '-1 day') WHERE page_id = ?")
-        .bind(recent.id),
-    ]);
+    if (republish) {
+      const response = await request(`/api/pages/${page.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "text/html" },
+        body: html,
+      }, assertion);
+      expect(response.status).toBe(200);
+      expect(await env.DB.prepare("SELECT published_at > datetime('now', '-1 minute') AS publication_refreshed, created_at < datetime('now', '-7 days') AS creation_preserved FROM pages WHERE id = ?")
+        .bind(page.id).first()).toEqual({ publication_refreshed: 1, creation_preserved: 1 });
+    }
 
     await worker.scheduled(createScheduledController(), env);
+    expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(pageStatus);
+    expect((await request(`/p/${page.id}/answers`, {}, assertion)).status).toBe(answerStatus);
     expect(await env.DB.prepare("SELECT page_id FROM submissions WHERE page_id = ?")
-      .bind(expired.id)
-      .first()).toBeNull();
-
-    for (const [page, pageStatus, answerStatus] of [
-      [expired, 404, 404],
-      [recent, 200, 200],
-      [unanswered, 200, 404],
-    ] as const) {
-      expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(pageStatus);
-      expect((await request(`/p/${page.id}/answers`, {}, assertion)).status).toBe(answerStatus);
-    }
+      .bind(page.id).first()).toEqual(answerStatus === 200 ? { page_id: page.id } : null);
   });
 });
 

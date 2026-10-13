@@ -135,7 +135,7 @@ app.post("/api/pages", async (c) => {
   }
 
   const id = crypto.randomUUID();
-  await c.env.DB.prepare("INSERT INTO pages (id, title, html, herdr_tab_id) VALUES (?, ?, ?, ?)")
+  await c.env.DB.prepare("INSERT INTO pages (id, title, html, herdr_tab_id, published_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)")
     .bind(id, page.title, page.html, tabId ?? null)
     .run();
 
@@ -155,7 +155,7 @@ app.put("/api/pages/:id", async (c) => {
   }
 
   await c.env.DB.batch([
-    c.env.DB.prepare("UPDATE pages SET title = ?, html = ? WHERE id = ?").bind(page.title, page.html, id),
+    c.env.DB.prepare("UPDATE pages SET title = ?, html = ?, published_at = CURRENT_TIMESTAMP WHERE id = ?").bind(page.title, page.html, id),
     c.env.DB.prepare("DELETE FROM submissions WHERE page_id = ?").bind(id),
   ]);
   return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href });
@@ -264,10 +264,6 @@ export default {
     const expired = await env.DB.prepare(
       "SELECT page_id FROM submissions WHERE submitted_at < datetime('now', '-3 days')",
     ).all<{ page_id: string }>();
-    if (expired.results.length === 0) {
-      return;
-    }
-
     const pageIds = JSON.stringify(expired.results.map(({ page_id }) => page_id));
     await env.DB.batch([
       env.DB.prepare(
@@ -276,6 +272,9 @@ export default {
       env.DB.prepare(
         "DELETE FROM pages WHERE id IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM submissions WHERE page_id = pages.id)",
       ).bind(pageIds),
+      env.DB.prepare(
+        "DELETE FROM pages WHERE published_at < datetime('now', '-7 days') AND NOT EXISTS (SELECT 1 FROM submissions WHERE page_id = pages.id)",
+      ),
     ]);
   },
 } satisfies ExportedHandler<Env>;

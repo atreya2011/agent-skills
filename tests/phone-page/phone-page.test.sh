@@ -270,6 +270,148 @@ for index in "${!case_names[@]}"; do
   fi
 done
 
+cat >"$tmp/read.json" <<'JSON'
+{
+  "title": "Read the route",
+  "summary": "Use the existing route for delivery.",
+  "sections": [{
+    "heading": "Delivery context",
+    "context": ["Take the direct route.", "It changes the least."],
+    "flow": ["Make the change.", "Verify it."]
+  }]
+}
+JSON
+
+name='render preserves a read spec'
+rendered=$($command_path render "$tmp/read.json")
+embedded=$(printf '%s\n' "$rendered" | sed -n 's#.*<script type="application/json" id="spec">\(.*\)</script>.*#\1#p')
+if [[ "$(printf '%s' "$embedded" | jq -cS .)" != "$(jq -cS . "$tmp/read.json")" ]]; then
+  fail "$name" 'embedded spec differs from the input'
+else
+  pass "$name"
+fi
+
+for index in "${!case_names[@]}"; do
+  case "${case_filters[index]}" in
+    *'.questions[0].context'*|*'.questions[0].cards'*|*'.questions[0].table'*|*'.questions[0].flow'*|*'.summary'*) ;;
+    *) continue ;;
+  esac
+  name="read rejects ${case_names[index]} using the shared block rules"
+  filter=${case_filters[index]//.questions/.sections}
+  reason=${case_reasons[index]//question/section}
+  jq "$filter" "$tmp/read.json" >"$tmp/invalid-read.json"
+  for operation in render read; do
+    status=0
+    output=$($command_path "$operation" "$tmp/invalid-read.json" 2>&1) || status=$?
+    if [[ "$status" != 1 ]]; then
+      fail "$name" "$operation exit $status, want 1"
+    elif [[ "$output" != *"$reason"* ]]; then
+      fail "$name" "$operation missing reason '$reason' in: $output"
+    else
+      pass "$operation $name"
+    fi
+  done
+done
+
+read_case_names=(
+  'a non-object spec'
+  'a non-string title'
+  'a missing summary'
+  'a non-string summary'
+  'non-array sections'
+  'no sections'
+  'eleven sections'
+  'a non-object section'
+  'a missing heading'
+  'an empty heading'
+  'a non-string heading'
+  'section options'
+  'both questions and sections'
+)
+read_case_filters=(
+  '[]'
+  '.title = 1'
+  'del(.summary)'
+  '.summary = 1'
+  '.sections = {}'
+  '.sections = []'
+  '.sections = [range(0; 11) | {heading: "Context"}]'
+  '.sections = [1]'
+  'del(.sections[0].heading)'
+  '.sections[0].heading = ""'
+  '.sections[0].heading = 1'
+  '.sections[0].options = []'
+  '.questions = []'
+)
+read_case_reasons=(
+  'spec must be an object'
+  'title must be a string'
+  'summary must be a non-empty string'
+  'summary must be a non-empty string'
+  'sections must be an array'
+  'sections must contain 1 to 10 items'
+  'sections must contain 1 to 10 items'
+  'every section must be an object'
+  'every section heading must be a non-empty string'
+  'every section heading must be a non-empty string'
+  'every section heading must be a non-empty string'
+  'read sections must not have options'
+  'a page spec may use questions or sections, not both'
+)
+for index in "${!read_case_names[@]}"; do
+  jq "${read_case_filters[index]}" "$tmp/read.json" >"$tmp/invalid-read.json"
+  for operation in render read; do
+    name="$operation rejects ${read_case_names[index]}"
+    status=0
+    output=$($command_path "$operation" "$tmp/invalid-read.json" 2>&1) || status=$?
+    if [[ "$status" != 1 ]]; then
+      fail "$name" "exit $status, want 1"
+    elif [[ "$output" != *"${read_case_reasons[index]}"* ]]; then
+      fail "$name" "missing reason '${read_case_reasons[index]}' in: $output"
+    else
+      pass "$name"
+    fi
+  done
+done
+
+name='read rejects a question spec before publishing'
+status=0
+output=$($command_path read "$tmp/valid.json" 2>&1) || status=$?
+if [[ "$status" != 1 || "$output" != *'read command requires a read spec'* ]]; then
+  fail "$name" "unexpected result ($status): $output"
+else
+  pass "$name"
+fi
+
+name='ask rejects a read spec before publishing'
+status=0
+output=$($command_path ask "$tmp/read.json" 2>&1) || status=$?
+if [[ "$status" != 1 || "$output" != *'question command requires a question spec'* ]]; then
+  fail "$name" "unexpected result ($status): $output"
+else
+  pass "$name"
+fi
+
+read_case_names=('one section without optional blocks' 'ten sections' 'nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows')
+read_case_filters=(
+  '.sections = [{heading: "Delivery"}]'
+  '.sections = [range(0; 10) | {heading: "Delivery", context: ["Use the current path."]}]'
+  '.sections[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .sections[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
+  '.summary = "Use v1.3.0 with a threshold of 0.60." | .sections[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .sections[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}]'
+  '.sections[0].cards = [{title: "Rule", text: "No rule maps changes to types.", icon: "book-open"}, {title: "Check", text: "CI checks only the format."}] | .sections[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "docs"], ["src/", "feat or fix"]]} | del(.sections[0].flow) | .sections[0].flows = [{title: "How it reached main", steps: ["An agent opens the PR.", "CI checks the format."]}, {title: "Proposed check", steps: ["Compare the type with the paths.", {text: "Do they match?", branches: ["Pass.", "Fail."]}]}]'
+)
+for index in "${!read_case_names[@]}"; do
+  name="render accepts a read spec with ${read_case_names[index]}"
+  jq "${read_case_filters[index]}" "$tmp/read.json" >"$tmp/accepted-read.json"
+  status=0
+  $command_path render "$tmp/accepted-read.json" >"$tmp/accepted-read.html" || status=$?
+  if [[ "$status" != 0 ]]; then
+    fail "$name" "exit $status, want 0"
+  else
+    pass "$name"
+  fi
+done
+
 case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows' 'several recommended options in a multi-choice question')
 case_filters=(
   '.questions[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .questions[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
@@ -536,7 +678,7 @@ status=0
 output=$($command_path assets "$tmp/assets" 2>&1) || status=$?
 if [[ "$status" != 1 ]]; then
   fail "$name" "exit $status, want 1"
-elif [[ "$output" != *'checksum mismatch for tailwind-browser.js'* ]]; then
+elif [[ "$output" != *'checksum mismatch for alpine-csp.min.js'* ]]; then
   fail "$name" "missing mismatch reason in: $output"
 else
   pass "$name"

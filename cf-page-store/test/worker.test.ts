@@ -171,7 +171,7 @@ describe("pages", () => {
 
 describe("assets", () => {
   it("serves a manifest asset through the assets binding", async () => {
-    const response = await request("/assets/tailwind-browser.js", {}, await token());
+    const response = await request("/assets/alpine-csp.min.js", {}, await token());
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("test asset\n");
   });

@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
 script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
-template="$script_dir/question-page.html"
+template="$script_dir/page.html"
 manifest="$script_dir/assets.json"
 local_file=${PHONE_PAGE_LOCAL_FILE:-"$HOME/.agents/local/phone-page.md"}
 inbox_file=${PHONE_PAGE_INBOX_FILE:-"$HOME/.agents/local/inbox.md"}
@@ -20,88 +20,21 @@ die() {
 }
 
 usage() {
-  printf 'usage: phone-page {publish <file> [id]|ask <spec> [id]|delete <id>|inbox|render <spec>|answers <id>|assets <directory>}\n' >&2
+  printf 'usage: phone-page {publish <file> [id]|ask <spec> [id]|read <spec> [id]|delete <id>|inbox|render <spec>|answers <id>|assets <directory>}\n' >&2
   exit 2
 }
 
 validate_spec() {
-  local spec=$1 reason
-  jq -e . "$spec" >/dev/null 2>&1 || die "question spec is not valid JSON"
-  reason=$(jq -r '
-    def nonempty: type == "string" and length > 0;
-    def context_item:
-      if type == "string" then nonempty
-      elif type == "object" then
-        (.text | nonempty) and (.items | if type == "array" then length > 0 and all(.[]; nonempty) else false end)
-      else false end;
-    def flow_item:
-      if type == "string" then nonempty
-      elif type == "object" then
-        (.text | nonempty) and (.branches | if type == "array" then length >= 2 and length <= 4 and all(.[]; nonempty) else false end)
-      else false end;
-    def flow_steps: type == "array" and length >= 2 and all(.[]; flow_item);
-    def flow_chart: type == "object" and (.title | nonempty and length <= 40) and (.steps | flow_steps);
-    def card_item:
-      type == "object" and (.title | nonempty) and (.text | nonempty)
-      and (if has("icon") then (.icon | type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$")) else true end);
-    def table_item:
-      type == "object"
-      and (.columns | type == "array" and length >= 2 and length <= 4 and all(.[]; nonempty))
-      and (.rows | type == "array" and length >= 1 and length <= 8)
-      and ((.columns | length) as $width | all(.rows[]; type == "array" and length == $width and all(.[]; type == "string")));
-    def flow_texts:
-      if type == "string" then {kind: "flow step", text: .}
-      else {kind: "flow step", text: .text}, (.branches[] | {kind: "flow branch", text: .}) end;
-    def content_texts:
-      (.summary | select(type == "string") | {kind: "summary", text: .}),
-      (.questions[] |
-      (.context[]? | if type == "string" then {kind: "context bullet", text: ., bullet: true}
-        else {kind: "context bullet", text: .text, bullet: true}, (.items[] | {kind: "context sub-bullet", text: ., bullet: true}) end),
-      (.cards[]? | {kind: "card title", text: .title}, {kind: "card text", text: .text}),
-      (.table? // empty | (.columns[] | {kind: "table column", text: .}), (.rows[][] | {kind: "table cell", text: .})),
-      (.flow[]? | flow_texts),
-      (.flows[]? | {kind: "flow title", text: .title}, (.steps[] | flow_texts)),
-      (.options[] | {kind: "option description", text: .description}));
-    if type != "object" then "question spec must be an object"
-    elif (.title | type) != "string" then "title must be a string"
-    elif has("summary") and (.summary | nonempty | not) then "summary must be a non-empty string"
-    elif (.questions | type) != "array" then "questions must be an array"
-    elif (.questions | length) < 1 or (.questions | length) > 10 then "questions must contain 1 to 10 items"
-    elif any(.questions[]; type != "object") then "every question must be an object"
-    elif any(.questions[]; (.id | type) != "string") then "every question id must be a string"
-    elif ([.questions[].id] | length) != ([.questions[].id] | unique | length) then "question ids must be unique"
-    elif any(.questions[]; (.header | type) != "string" or (.header | length) < 1 or (.header | length) > 12) then "every header must contain 1 to 12 characters"
-    elif any(.questions[]; (.question | type) != "string") then "every question must be a string"
-    elif any(.questions[]; has("context") and (.context | if type == "array" then length < 1 or any(.[]; context_item | not) else true end)) then "question context must contain 1 or more non-empty strings or objects with text and non-empty items"
-    elif any(.questions[]; has("cards") and (.cards | if type == "array" then length < 2 or length > 6 or any(.[]; card_item | not) else true end)) then "question cards must contain 2 to 6 objects with a title, a text and an optional lucide icon name"
-    elif any(.questions[]; has("table") and (.table | table_item | not)) then "question table must have 2 to 4 non-empty columns and 1 to 8 rows of one string cell per column"
-    elif any(.questions[]; has("flow") and (.flow | flow_steps | not)) then "question flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches"
-    elif any(.questions[]; has("flows") and (.flows | if type == "array" then length < 1 or length > 4 or any(.[]; flow_chart | not) else true end)) then "question flows must contain 1 to 4 objects with a title of 1 to 40 characters and 2 or more steps"
-    elif any(.questions[]; has("flow") and has("flows")) then "a question may use flow or flows, not both"
-    elif any(.questions[]; (.multiSelect | type) != "boolean") then "multiSelect must be a boolean"
-    elif any(.questions[]; (.options | type) != "array") then "every question must have an options array"
-    elif any(.questions[]; (.options | length) < 2 or (.options | length) > 6) then "every question must contain 2 to 6 options"
-    elif any(.questions[].options[]; type != "object") then "every option must be an object"
-    elif any(.questions[].options[]; (.label | type) != "string") then "every option label must be a string"
-    elif any(.questions[].options[]; (.description | type) != "string") then "every option description must be a string"
-    elif any(.questions[].options[]; has("recommended") and (.recommended | type) != "boolean") then "recommended must be a boolean"
-    elif any(.questions[]; ([.options[].label] | length) != ([.options[].label] | unique | length)) then "option labels must be unique within each question"
-    elif any(.questions[]; ([.options[] | select(.recommended == true)] | length) > 1 and .multiSelect != true) then "a question that recommends more than one option must set multiSelect to true"
-    elif any(.questions[]; [.options[] | .recommended // false] | . != (sort | reverse)) then "recommended options must come first"
-    else
-      [content_texts |
-        if .bullet and (.text | test("^\\s*[0-9]+[.)](\\s|$)")) then "\(.kind) must put numbered points in items: \(.text)"
-        elif (.text | test("[.!?]\\s+[A-Z0-9]")) then "\(.kind) must contain one sentence: \(.text)"
-        else empty end] | .[0] // ""
-    end
-  ' "$spec")
+  local spec=$1 expected=${2:-} reason
+  jq -e . "$spec" >/dev/null 2>&1 || die "${expected:-question} spec is not valid JSON"
+  reason=$(jq -r --arg expected "$expected" -f "$script_dir/validate.jq" "$spec")
   [[ -z "$reason" ]] || die "$reason"
 }
 
 render() {
-  local spec=$1
-  [[ -f "$spec" ]] || die "question spec does not exist: $spec"
-  validate_spec "$spec"
+  local spec=$1 expected=${2:-}
+  [[ -f "$spec" ]] || die "${expected:-question} spec does not exist: $spec"
+  validate_spec "$spec" "$expected"
   jq -jc . "$spec" | jq -Rrs --rawfile template "$template" \
     'gsub("<"; "\\u003c") as $spec | $template | split("__PHONE_PAGE_SPEC__") | join($spec)'
 }
@@ -192,28 +125,32 @@ case "$command" in
       store publish "$1"
     fi
     ;;
-  ask)
+  ask|read)
     [[ $# -eq 1 || $# -eq 2 ]] || usage
     rendered_dir=$(mktemp -d "${TMPDIR:-/tmp}/phone-page.XXXXXX")
     cleanup_path=$rendered_dir
     rendered="$rendered_dir/page.html"
-    render "$1" >"$rendered"
+    page_type=question
+    [[ "$command" != read ]] || page_type=read
+    render "$1" "$page_type" >"$rendered"
     if [[ $# -eq 2 ]]; then
       publish_args=(update "$2" "$rendered")
     else
       publish_args=(publish "$rendered")
-      if [[ -n "${HERDR_TAB_ID:-}" ]]; then
+      if [[ "$command" == ask && -n "${HERDR_TAB_ID:-}" ]]; then
         publish_args+=("$HERDR_TAB_ID")
       fi
     fi
     published=$(store "${publish_args[@]}")
-    url=$(printf '%s\n' "$published" | jq -er '.url | select(type == "string" and length > 0)')
-    title=$(jq -r '.title | gsub("[\r\n]"; " ")' "$1")
-    mkdir -p -- "$(dirname -- "$inbox_file")"
-    if [[ $# -eq 2 ]]; then
-      replace_inbox "$title" "$url" "$2" 9>>"$inbox_file.lock"
-    else
-      append_inbox "$title" "$url" 9>>"$inbox_file.lock"
+    if [[ "$command" == ask ]]; then
+      url=$(printf '%s\n' "$published" | jq -er '.url | select(type == "string" and length > 0)')
+      title=$(jq -r '.title | gsub("[\r\n]"; " ")' "$1")
+      mkdir -p -- "$(dirname -- "$inbox_file")"
+      if [[ $# -eq 2 ]]; then
+        replace_inbox "$title" "$url" "$2" 9>>"$inbox_file.lock"
+      else
+        append_inbox "$title" "$url" 9>>"$inbox_file.lock"
+      fi
     fi
     printf '%s\n' "$published"
     ;;

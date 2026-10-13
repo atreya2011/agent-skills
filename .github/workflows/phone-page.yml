@@ -2,7 +2,21 @@ name: phone-page
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/phone-page.yml'
+      - 'tests/phone-page/**'
+      - 'phone-page/phone-page'
+      - 'phone-page/question-page.html'
+      - 'phone-page/assets.json'
   pull_request:
+    paths:
+      - '.github/workflows/phone-page.yml'
+      - 'tests/phone-page/**'
+      - 'phone-page/phone-page'
+      - 'phone-page/question-page.html'
+      - 'phone-page/assets.json'
 
 jobs:
   phone-page-shell-tests:

@@ -2,7 +2,33 @@ name: cf-page-store
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/src/**'
+      - 'cf-page-store/test/**'
+      - 'cf-page-store/migrations/**'
+      - 'cf-page-store/package.json'
+      - 'cf-page-store/package-lock.json'
+      - 'cf-page-store/bun.lock'
+      - 'cf-page-store/tsconfig.json'
+      - 'cf-page-store/vitest.config.ts'
+      - 'cf-page-store/wrangler.test.jsonc'
+      - 'phone-page/assets.json'
   pull_request:
+    paths:
+      - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/src/**'
+      - 'cf-page-store/test/**'
+      - 'cf-page-store/migrations/**'
+      - 'cf-page-store/package.json'
+      - 'cf-page-store/package-lock.json'
+      - 'cf-page-store/bun.lock'
+      - 'cf-page-store/tsconfig.json'
+      - 'cf-page-store/vitest.config.ts'
+      - 'cf-page-store/wrangler.test.jsonc'
+      - 'phone-page/assets.json'
 
 jobs:
   cf-page-store-tests:

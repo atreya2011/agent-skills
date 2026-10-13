@@ -118,7 +118,7 @@ func TestLoadConfig(t *testing.T) {
 // TestSkillExampleParses keeps the settings example in the skill text valid:
 // the tool must accept the block the Local file section tells users to write.
 func TestSkillExampleParses(t *testing.T) {
-	c, err := loadConfig(filepath.Join("..", "SKILL.md"))
+	c, err := loadConfig(filepath.Join("..", "references", "local-file.md"))
 	require.NoError(t, err)
 	assert.Equal(t, 0.8, c.Thresholds.High)
 	require.Len(t, c.Profiles, 1)

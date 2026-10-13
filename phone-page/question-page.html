@@ -125,6 +125,8 @@
       .question-part { display: flex; flex-direction: column; gap: 16px; height: 100%; min-height: 0; }
       .part-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; flex: 1; min-height: 0; }
       .with-context .part-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .with-context .part-columns.single-column { grid-template-columns: minmax(0, 1fr); width: calc((100% - 24px) / 2); align-self: center; }
+      .single-column .screen-column:empty { display: none; }
       .screen-column { display: flex; flex-direction: column; gap: 20px; min-width: 0; min-height: 0; }
       .screen-column > * { flex: none; margin-top: 0; margin-bottom: 0; }
       .screen-column > .oversized-block { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -271,11 +273,16 @@
       main.style.setProperty('--progress-bottom', `${document.querySelector('.progress').getBoundingClientRect().bottom}px`);
       main.style.setProperty('--navigation-height', `${document.querySelector('.navigation').getBoundingClientRect().height}px`);
       screens = [];
-      questionLayouts.forEach(({ card, content, answer, blocks, contentBlocks, answerBlocks }, index) => {
+      questionLayouts.forEach(({ card, content, answer, blocks, contentBlocks, answerBlocks, lists }, index) => {
         card.hidden = false;
         blocks.forEach((block) => block.classList.remove('oversized-block'));
         content.replaceChildren(...contentBlocks);
         answer.replaceChildren(...answerBlocks);
+        lists.forEach(({ list, items, parent, nextSibling }) => {
+          list.classList.remove('oversized-block');
+          list.replaceChildren(...items);
+          parent.insertBefore(list, nextSibling);
+        });
         card.replaceChildren(content, answer);
         if (!desktop.matches) {
           screens.push({ questionIndex: index, partIndex: 0, total: 1 });
@@ -310,8 +317,14 @@
           parts.push(part);
         }
         startPart();
-        const questionBlocks = index === 0 ? [masthead, ...blocks] : blocks;
-        questionBlocks.forEach((block) => {
+        const desktopBlocks = blocks.flatMap((block) => {
+          const nested = lists.filter(({ parent }) => parent === block);
+          nested.forEach(({ list }) => list.remove());
+          return [block, ...nested.map(({ list }) => list)];
+        });
+        const questionBlocks = index === 0 ? [masthead, ...desktopBlocks] : desktopBlocks;
+        function placeBlock(block) {
+          if (columnIndex === columns.length) startPart();
           let placed = false;
           while (!placed) {
             const column = columns[columnIndex];
@@ -338,9 +351,42 @@
               }
             }
           }
-          if (columnIndex === columns.length && block !== questionBlocks.at(-1)) startPart();
+        }
+        questionBlocks.forEach((block) => {
+          if (!block.matches('ul')) {
+            placeBlock(block);
+            return;
+          }
+          const bullets = [...block.children];
+          block.replaceChildren();
+          let fragment = block;
+          bullets.forEach((bullet) => {
+            if (!fragment.children.length) {
+              fragment.append(bullet);
+              placeBlock(fragment);
+            } else {
+              fragment.append(bullet);
+              if (fragment.getBoundingClientRect().bottom > columns[columnIndex].getBoundingClientRect().bottom + .5) {
+                bullet.remove();
+                fragment = block.cloneNode(false);
+                fragment.classList.remove('oversized-block');
+                fragment.append(bullet);
+                if (columnIndex + 1 < columns.length) columnIndex++;
+                else startPart();
+                placeBlock(fragment);
+              }
+            }
+            if (fragment.classList.contains('oversized-block')) {
+              fragment = block.cloneNode(false);
+              fragment.classList.remove('oversized-block');
+            }
+          });
         });
-        parts.forEach((element, position) => screens.push({ questionIndex: index, partIndex: position, total: parts.length, part: element }));
+        parts.forEach((element, position) => {
+          const grid = element.querySelector('.part-columns');
+          grid.classList.toggle('single-column', grid.children.length === 2 && !grid.lastElementChild.children.length);
+          screens.push({ questionIndex: index, partIndex: position, total: parts.length, part: element });
+        });
       });
       const activeScreen = screens.findIndex(({ part }) => part?.contains(active));
       const target = activeScreen >= 0 ? activeScreen : screens.findIndex((item) => item.questionIndex === questionIndex && item.partIndex === Math.min(partIndex, item.total - 1));
@@ -776,7 +822,10 @@
       });
       const contentBlocks = [...content.children];
       const answerBlocks = [...answer.children];
-      questionLayouts.push({ card, content, answer, contentBlocks, answerBlocks, blocks: [...contentBlocks, ...answerBlocks] });
+      const blocks = [...contentBlocks, ...answerBlocks];
+      const lists = blocks.flatMap((block) => block.matches('ul') ? [block] : [...block.children].filter((child) => child.matches('ul')))
+        .map((list) => ({ list, items: [...list.children], parent: list.parentElement, nextSibling: list.nextSibling }));
+      questionLayouts.push({ card, content, answer, contentBlocks, answerBlocks, blocks, lists });
       let noteHeight = note.getBoundingClientRect().height;
       new ResizeObserver(() => {
         const height = note.getBoundingClientRect().height;

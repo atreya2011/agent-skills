@@ -603,10 +603,14 @@
     {
       "subject": "todo",
       "id": "00000000-0000-4000-8000-000000000013",
-      "confidence": 0,
+      "confidence": 0.9,
       "verdict": "escalate",
-      "decided_by": "error",
-      "reason": "no assignee tag"
+      "decided_by": "gate",
+      "reason": "the label is unknown",
+      "gate": "todo_owner",
+      "label": "unknown",
+      "hash": "HASH",
+      "annotation": "cto todo_owner unknown 0.90 escalate HASH8 2026-10-08"
     },
     {
       "subject": "todo",

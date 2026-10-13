@@ -165,7 +165,7 @@ func newWorld(t *testing.T, gateURL string) *world {
 		"[[profiles]]\nname = \"alias\"\nkind = \"claude\"\ndir = \"{{root}}/claude-alias/projects\"\n\n"+
 		"[[profiles]]\nname = \"codex\"\nkind = \"codex\"\ndir = \"{{root}}/codex-main/sessions\"\n\n"+
 		"[thresholds]\nfloor = 0.6\nlow = 0.6\nhigh = 0.8\nwindow_hours = 6\ntail_bytes = 65536\nexcerpt_chars = 400\n\n"+
-		"[gate]\n%slog = \"{{root}}/state/gate.log\"\n```\n",
+		"[gate]\ntodo_context_enabled = true\n%slog = \"{{root}}/state/gate.log\"\n```\n",
 		filepath.Join(bin, "task"), filepath.Join(bin, "herdr"), filepath.Join(bin, "gh"), gate))
 	writeFile(t, w.Local, local, time.Time{})
 	return w

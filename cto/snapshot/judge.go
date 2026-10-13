@@ -35,15 +35,17 @@ type tabBrief struct {
 
 // todoState is what the todo_state gate sees about one todo.
 type todoState struct {
-	ID          string     `json:"id"`
-	Today       string     `json:"today"`
-	Description string     `json:"description"`
-	Domain      string     `json:"domain,omitempty"`
-	Due         time.Time  `json:"due,omitzero"`
-	Annotations []string   `json:"annotations"`
-	Links       []Link     `json:"links"`
-	ProjectTabs []tabBrief `json:"project_tabs"`
-	Transcript  string     `json:"transcript_excerpt,omitempty"`
+	ID          string        `json:"id"`
+	Today       string        `json:"today"`
+	Description string        `json:"description"`
+	Domain      string        `json:"domain,omitempty"`
+	Due         time.Time     `json:"due,omitzero"`
+	Annotations []string      `json:"annotations"`
+	Links       []Link        `json:"links"`
+	ProjectTabs []tabBrief    `json:"project_tabs"`
+	WikiPages   []contextPage `json:"wiki_pages,omitempty"`
+	OwnerPolicy string        `json:"ownership_policy,omitempty"`
+	Handoffs    []contextPage `json:"handoffs,omitempty"`
 }
 
 // sessionState is what the session_activity gate sees about one session.
@@ -62,12 +64,8 @@ func gateAnnotations(all []string) []string {
 	return slices.DeleteFunc(slices.Clone(all), ownAnnotation)
 }
 
-// judgeAll returns one judgment per judged todo and per session, in the order
-// of the projects. An untagged todo escalates, because it has no assignee yet.
-// Rules decide first. A todo with an unreadable link source
-// escalates without a gate call. Everything else goes to a gate, in parallel.
-// excerptFor returns the transcript excerpt of a session a todo cites.
-func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Time, excerptFor func(id string) string) []Judgment {
+// judgeAll applies existing proof rules, then enabled todo gates and unchanged session gates.
+func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Time, cfg Config) []Judgment {
 	today := now.Format(time.DateOnly)
 	var jobs []func() Judgment
 	fixed := func(j Judgment) { jobs = append(jobs, func() Judgment { return j }) }
@@ -82,11 +80,11 @@ func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Tim
 			if !judged(t) {
 				continue
 			}
-			if t.Assignee == "" {
+			if t.Assignee == "" && (!cfg.Gate.TodoContextEnabled || t.Status != "pending") {
 				fixed(Judgment{Subject: "todo", ID: t.UUID, Verdict: verdictEscalate, DecidedBy: decidedByError, Reason: "no assignee tag"})
 				continue
 			}
-			if j, ok := ruleJudgment(t, today); ok {
+			if j, ok := ruleJudgment(t, today); ok && t.Assignee != "" {
 				fixed(j)
 				continue
 			}
@@ -95,14 +93,20 @@ func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Tim
 					DecidedBy: decidedByError, Reason: "a source this todo cites is unreadable"})
 				continue
 			}
-			state := todoState{
-				ID: t.UUID, Today: today, Description: t.Description, Domain: t.Domain, Due: t.Due,
-				Annotations: gateAnnotations(t.Annotations), Links: t.Links, ProjectTabs: tabs,
+			def := gateTodoState
+			if t.Assignee == "" {
+				def = gateTodoOwner
 			}
-			if t.SessionID != "" {
-				state.Transcript = excerptFor(t.SessionID)
+			if !cfg.Gate.TodoContextEnabled {
+				fixed(Judgment{Subject: "todo", ID: t.UUID, Gate: def.Name, Verdict: verdictEscalate, DecidedBy: decidedByError, Reason: "todo context gates disabled pending evaluation"})
+				continue
 			}
-			jobs = append(jobs, func() Judgment { return gate.Judge(ctx, "todo", t.UUID, gateTodoState, state) })
+			state, err := todoContext(cfg, p, t, tabs, today)
+			if err != nil {
+				fixed(Judgment{Subject: "todo", ID: t.UUID, Gate: def.Name, Verdict: verdictEscalate, DecidedBy: decidedByError, Reason: err.Error()})
+				continue
+			}
+			jobs = append(jobs, func() Judgment { return gate.Judge(ctx, "todo", t.UUID, def, state) })
 		}
 		for _, s := range p.Sessions {
 			if s.Excerpt == "" {

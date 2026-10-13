@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -57,7 +58,7 @@ var (
 	gateTodoState = gateDef{
 		Name: "todo_state",
 		Instructions: "A todo is tracked in Taskwarrior. Compare it with the facts in the state: its text and annotations, " +
-			"the linked pull requests, issues and commits, the tabs of its project and the transcript excerpt. " +
+			"the linked pull requests, issues and commits, the tabs of its project, linked wiki pages and matching handoff files. " +
 			"Judge only from the state. Which label describes the todo now?",
 		Criteria: map[string]string{
 			"done":    "The facts show the work is finished.",
@@ -67,6 +68,17 @@ var (
 		},
 		Unknown: "unknown",
 		High:    []string{"done", "stale"},
+	}
+	gateTodoOwner = gateDef{
+		Name:         "todo_owner",
+		Instructions: "Who owns the remaining work in this todo? Judge only from the todo and its evidence. Use ownership_policy in the state for the CTO and CoS responsibility split. The user owns personal decisions, approvals, physical actions and work requiring their identity. Choose unknown when the work requires different owners or the evidence does not decide. A technical subject alone does not make personal approval or physical work the CTO responsibility.",
+		Criteria: map[string]string{
+			"user":    "The user must personally decide, approve or perform the remaining work.",
+			"cto":     "The CTO can carry out the remaining work under ownership_policy.",
+			"cos":     "The CoS can carry out the remaining work under ownership_policy.",
+			"unknown": "The evidence is insufficient or the todo needs splitting between owners.",
+		},
+		Unknown: "unknown",
 	}
 	gateSession = gateDef{
 		Name:         "session_activity",
@@ -261,7 +273,7 @@ func (g *Gate) ask(ctx context.Context, state any, d gateDef) (answer, string, e
 		return answer{}, hash, fmt.Errorf("read gate response: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return answer{}, hash, fmt.Errorf("gate returned HTTP %d", resp.StatusCode)
+		return answer{}, hash, &gateHTTPError{Status: resp.StatusCode, Detail: string(data)}
 	}
 	var parsed response
 	if err := json.Unmarshal(data, &parsed); err != nil {
@@ -314,11 +326,16 @@ func validateAnswer(d gateDef, raw rawAnswer) (answer, error) {
 // unknown label and any confidence below the floor or the label's threshold.
 func (g *Gate) verdict(d gateDef, label string, confidence float64) (string, string) {
 	need := g.th.Low
+	if d.Name == gateTodoOwner.Name {
+		need = g.th.Floor
+	}
 	if slices.Contains(d.High, label) {
 		need = g.th.High
 	}
 	need = max(need, g.th.Floor)
 	switch {
+	case d.Name == gateTodoOwner.Name && label == "user":
+		return verdictEscalate, "the user owns this todo"
 	case label == d.Unknown:
 		return verdictEscalate, "the label is " + label
 	case confidence < need:
@@ -335,6 +352,9 @@ func (g *Gate) Judge(ctx context.Context, subject, id string, d gateDef, state a
 	j.Hash = hash
 	if err != nil {
 		j.Reason = err.Error()
+		if state, ok := state.(todoState); ok && inputLimitError(err) {
+			j.Reason = g.limitPage(ctx, state, d, err)
+		}
 	} else {
 		j.Label, j.Confidence, j.DecidedBy = a.Label, a.Confidence, decidedByGate
 		j.Verdict, j.Reason = g.verdict(d, a.Label, a.Confidence)
@@ -358,4 +378,59 @@ func openGateLog(path string) (*slog.Logger, *os.File, error) {
 		return nil, nil, fmt.Errorf("gate log: %w", err)
 	}
 	return slog.New(slog.NewJSONHandler(f, nil)), f, nil
+}
+
+// gateHTTPError retains validation details so oversized context can be identified.
+type gateHTTPError struct {
+	Status int
+	Detail string
+}
+
+func (e *gateHTTPError) Error() string {
+	if e.Detail == "" {
+		return fmt.Sprintf("gate returned HTTP %d", e.Status)
+	}
+	return fmt.Sprintf("gate returned HTTP %d: %s", e.Status, e.Detail)
+}
+
+func inputLimitError(err error) bool {
+	e, ok := errors.AsType[*gateHTTPError](err)
+	if !ok || (e.Status != 422 && e.Status != 413 && e.Status != 400) {
+		return false
+	}
+	detail := strings.ToLower(e.Detail)
+	return e.Status == 413 || strings.Contains(detail, "token") || strings.Contains(detail, "context length") || strings.Contains(detail, "too large") || strings.Contains(detail, "maximum context")
+}
+
+// limitPage diagnoses a rejected request without using a shortened context for a verdict.
+func (g *Gate) limitPage(ctx context.Context, state todoState, d gateDef, original error) string {
+	wiki, handoffs := state.WikiPages, state.Handoffs
+	state.WikiPages, state.Handoffs = nil, nil
+	_, _, err := g.ask(ctx, state, d)
+	if inputLimitError(err) {
+		return "TypeSafe input limit exceeded by todo facts before any wiki or handoff page; no text truncated"
+	}
+	if err != nil {
+		return original.Error() + "; cannot identify the page: " + err.Error()
+	}
+	for _, group := range []struct {
+		pages []contextPage
+		wiki  bool
+	}{{wiki, true}, {handoffs, false}} {
+		for _, page := range group.pages {
+			if group.wiki {
+				state.WikiPages = append(state.WikiPages, page)
+			} else {
+				state.Handoffs = append(state.Handoffs, page)
+			}
+			_, _, err := g.ask(ctx, state, d)
+			if inputLimitError(err) {
+				return "TypeSafe input limit exceeded when adding page " + page.Path + "; no text truncated"
+			}
+			if err != nil {
+				return original.Error() + "; cannot identify the page after " + page.Path + ": " + err.Error()
+			}
+		}
+	}
+	return original.Error() + "; no text truncated; page limit could not be reproduced"
 }

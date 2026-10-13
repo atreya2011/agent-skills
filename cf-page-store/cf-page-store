@@ -106,7 +106,7 @@ case "$command" in
     script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
     client_id=$(keyring_value service-token-id)
     client_secret=$(keyring_value service-token-secret)
-    printf '%s\n' "$client_id" "$client_secret" | node "$script_dir/listen.mjs" "$address"
+    printf '%s\n' "$client_id" "$client_secret" | bun "$script_dir/listen.mjs" "$address"
     ;;
   answers)
     [[ $# -eq 1 ]] || usage

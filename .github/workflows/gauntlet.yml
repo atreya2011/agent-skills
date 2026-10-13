@@ -2,7 +2,23 @@ name: gauntlet
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/gauntlet.yml'
+      - 'tests/gauntlet/**'
+      - 'gauntlet/seats.sh'
+      - 'gauntlet/close-decision.sh'
+      - 'gauntlet/send.sh'
+      - 'gauntlet/receipt.sh'
   pull_request:
+    paths:
+      - '.github/workflows/gauntlet.yml'
+      - 'tests/gauntlet/**'
+      - 'gauntlet/seats.sh'
+      - 'gauntlet/close-decision.sh'
+      - 'gauntlet/send.sh'
+      - 'gauntlet/receipt.sh'
 
 jobs:
   gauntlet-tests:

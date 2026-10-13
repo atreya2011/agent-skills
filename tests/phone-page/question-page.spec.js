@@ -1,15 +1,13 @@
-import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { $ } from 'bun';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 const origin = 'https://phone-page.example';
 const pageUrl = `${origin}/p/questions`;
-const testDirectory = dirname(fileURLToPath(import.meta.url));
+const testDirectory = import.meta.dir;
 const root = resolve(testDirectory, '../..');
 const command = join(root, 'phone-page/phone-page');
 
@@ -75,12 +73,12 @@ let renderDirectory;
 test.beforeAll(async () => {
   renderDirectory = await mkdtemp(join(tmpdir(), 'phone-page-render-'));
   const specPath = join(renderDirectory, 'spec.json');
-  await writeFile(specPath, JSON.stringify(spec));
-  renderedPage = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+  await Bun.write(specPath, JSON.stringify(spec));
+  renderedPage = await $`${command} render ${specPath}`.text();
 });
 
 test.afterAll(async () => {
-  await rm(renderDirectory, { recursive: true, force: true });
+  await $`rm -rf ${renderDirectory}`;
 });
 
 test('answers work on a phone and the page remains accessible', async ({ page }) => {
@@ -106,7 +104,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     }
 
     if (url.pathname.startsWith('/assets/') && request.method() === 'GET') {
-      const name = basename(url.pathname);
+      const name = (await $`basename ${url.pathname}`.text()).trimEnd();
       const contentTypes = {
         '.js': 'text/javascript',
         '.woff2': 'font/woff2'
@@ -115,7 +113,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
       await route.fulfill({
         status: 200,
         contentType: contentTypes[extension],
-        body: await readFile(join(assetsDirectory, name))
+        body: Buffer.from(await Bun.file(join(assetsDirectory, name)).bytes())
       });
       return;
     }
@@ -298,26 +296,28 @@ for (const branchCount of [2, 4]) {
     question.context = ['Take the direct route.', { text: 'Keep the change small.', items }];
     question.flow = ['Run the checks.', { text: 'Did the checks pass?', branches }];
     const specPath = join(renderDirectory, `branches-${branchCount}.json`);
-    await writeFile(specPath, JSON.stringify({ title: 'Choose a route', questions: [question] }));
-    const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
-    const server = createServer(async (request, response) => {
-      if (request.url === '/') {
-        response.setHeader('Content-Type', 'text/html');
-        response.end(html);
-      } else if (request.url.startsWith('/assets/')) {
-        const name = basename(request.url);
-        response.setHeader('Content-Type', name.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
-        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, name)));
-      } else {
-        response.writeHead(404);
-        response.end();
+    await Bun.write(specPath, JSON.stringify({ title: 'Choose a route', questions: [question] }));
+    const html = await $`${command} render ${specPath}`.text();
+    const server = Bun.serve({
+      hostname: 'localhost',
+      port: 0,
+      async fetch(request) {
+        const pathname = new URL(request.url).pathname;
+        if (pathname === '/') {
+          return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+        } else if (pathname.startsWith('/assets/')) {
+          const name = (await $`basename ${pathname}`.text()).trimEnd();
+          return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, name)), {
+            headers: { 'Content-Type': name.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
+          });
+        }
+        return new Response(null, { status: 404 });
       }
     });
-    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
     try {
       for (const width of [420, 900]) {
         await page.setViewportSize({ width, height: 1100 });
-        await page.goto(`http://localhost:${server.address().port}/`);
+        await page.goto(`http://localhost:${server.port}/`);
         const card = page.locator('.question-card');
         await expect(card.locator('.context > li')).toHaveCount(2);
         await expect(card.locator('.context > li').last()).toContainText('Keep the change small.');
@@ -345,7 +345,7 @@ for (const branchCount of [2, 4]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       }
     } finally {
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await server.stop(true);
     }
   });
 }
@@ -371,25 +371,27 @@ for (const { name, width } of [
     ];
     const summary = 'Choose a route after comparing its readiness and steps.';
     const specPath = join(renderDirectory, `content-${name}.json`);
-    await writeFile(specPath, JSON.stringify({ title: spec.title, summary, questions: [question] }));
-    const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
-    const server = createServer(async (request, response) => {
-      if (request.url === '/') {
-        response.setHeader('Content-Type', 'text/html');
-        response.end(html);
-      } else if (request.url.startsWith('/assets/')) {
-        const assetName = basename(request.url);
-        response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
-        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
-      } else {
-        response.writeHead(404);
-        response.end();
+    await Bun.write(specPath, JSON.stringify({ title: spec.title, summary, questions: [question] }));
+    const html = await $`${command} render ${specPath}`.text();
+    const server = Bun.serve({
+      hostname: 'localhost',
+      port: 0,
+      async fetch(request) {
+        const pathname = new URL(request.url).pathname;
+        if (pathname === '/') {
+          return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+        } else if (pathname.startsWith('/assets/')) {
+          const assetName = (await $`basename ${pathname}`.text()).trimEnd();
+          return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
+            headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
+          });
+        }
+        return new Response(null, { status: 404 });
       }
     });
-    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
     try {
       await page.setViewportSize({ width, height: 1100 });
-      await page.goto(`http://localhost:${server.address().port}/`);
+      await page.goto(`http://localhost:${server.port}/`);
       await expect(page.locator('.intro.summary')).toHaveText(summary);
       const card = page.locator('.question-card');
       await expect(card.locator('.card-title')).toHaveText(question.cards.map(({ title }) => title));
@@ -406,7 +408,7 @@ for (const { name, width } of [
       }
       await page.screenshot({ path: testInfo.outputPath('content.png'), fullPage: true });
     } finally {
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await server.stop(true);
     }
   });
 }
@@ -418,24 +420,26 @@ for (const { name, width, stepped } of [
   { name: 'wide desktop', width: 1280, stepped: true }
 ]) {
   test(`answer review and changes work on ${name}`, async ({ page }, testInfo) => {
-    const server = createServer(async (request, response) => {
-      if (request.url === '/') {
-        response.setHeader('Content-Type', 'text/html');
-        response.end(renderedPage);
-      } else if (request.url.startsWith('/assets/')) {
-        const assetName = basename(request.url);
-        response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
-        response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
-      } else {
-        response.writeHead(404);
-        response.end();
+    const server = Bun.serve({
+      hostname: 'localhost',
+      port: 0,
+      async fetch(request) {
+        const pathname = new URL(request.url).pathname;
+        if (pathname === '/') {
+          return new Response(renderedPage, { headers: { 'Content-Type': 'text/html' } });
+        } else if (pathname.startsWith('/assets/')) {
+          const assetName = (await $`basename ${pathname}`.text()).trimEnd();
+          return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
+            headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
+          });
+        }
+        return new Response(null, { status: 404 });
       }
     });
-    await new Promise((resolve) => server.listen(0, 'localhost', resolve));
     try {
       console.log(`Open the ${name} form and choose Direct.`);
       await page.setViewportSize({ width, height: 1100 });
-      await page.goto(`http://localhost:${server.address().port}/`);
+      await page.goto(`http://localhost:${server.port}/`);
       const cards = page.locator('.question-card');
       const panel = page.locator('#answer-panel');
       const rows = panel.locator('.answer-row');
@@ -568,7 +572,7 @@ for (const { name, width, stepped } of [
     } finally {
       // Close Chromium's open connections before waiting for the fixture server to stop.
       await page.context().close();
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await server.stop(true);
     }
   });
 }
@@ -604,38 +608,36 @@ test.describe('desktop form regressions', () => {
       }
       const fixture = { title: 'Choose the next move', questions: long ? [question, structuredClone(spec.questions[1])] : [question] };
       const specPath = join(renderDirectory, `${long ? 'long' : 'enter'}-desktop.json`);
-      await writeFile(specPath, JSON.stringify(fixture));
-      const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+      await Bun.write(specPath, JSON.stringify(fixture));
+      const html = await $`${command} render ${specPath}`.text();
       const postedSubmissions = [];
       let latestSubmission;
-      const server = createServer(async (request, response) => {
-        if (request.url === '/') {
-          response.setHeader('Content-Type', 'text/html');
-          response.end(html);
-        } else if (request.url.startsWith('/assets/')) {
-          const assetName = basename(request.url);
-          response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
-          response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
-        } else if (request.url === '/answers' && request.method === 'POST') {
-          let body = '';
-          for await (const chunk of request) body += chunk;
-          latestSubmission = JSON.parse(body);
-          postedSubmissions.push(latestSubmission);
-          response.writeHead(204);
-          response.end();
-        } else if (request.url === '/answers' && latestSubmission) {
-          response.setHeader('Content-Type', 'application/json');
-          response.end(JSON.stringify(latestSubmission));
-        } else {
-          response.writeHead(404);
-          response.end();
+      const server = Bun.serve({
+        hostname: 'localhost',
+        port: 0,
+        async fetch(request) {
+          const pathname = new URL(request.url).pathname;
+          if (pathname === '/') {
+            return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+          } else if (pathname.startsWith('/assets/')) {
+            const assetName = (await $`basename ${pathname}`.text()).trimEnd();
+            return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
+              headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
+            });
+          } else if (pathname === '/answers' && request.method === 'POST') {
+            latestSubmission = await request.json();
+            postedSubmissions.push(latestSubmission);
+            return new Response(null, { status: 204 });
+          } else if (pathname === '/answers' && latestSubmission) {
+            return Response.json(latestSubmission);
+          }
+          return new Response(null, { status: 404 });
         }
       });
-      await new Promise((resolve) => server.listen(0, 'localhost', resolve));
       try {
         console.log(`Open the desktop form at 1440 by 900: ${name}.`);
         await page.setViewportSize({ width: 1440, height: 900 });
-        await page.goto(`http://localhost:${server.address().port}/`);
+        await page.goto(`http://localhost:${server.port}/`);
         const card = page.locator('[data-question-id="route"]');
         const panel = page.locator('#answer-panel');
         const submit = page.getByRole('button', { name: 'Submit answers' });
@@ -807,6 +809,7 @@ test.describe('desktop form regressions', () => {
           await note.focus();
           await expect(note).toBeFocused();
           await page.setViewportSize({ width: 1280, height: 900 });
+          await expect(panel).toBeHidden();
           await expect(note).toBeFocused();
           await expect(note).toHaveValue('Keep this question active.');
           await expect(position).toHaveText(/^Question 2 of 2(?:, part \d+ of \d+)?$/);
@@ -821,10 +824,7 @@ test.describe('desktop form regressions', () => {
           await page.screenshot({ path: testInfo.outputPath('long-review.png'), fullPage: true });
         }
       } finally {
-        await new Promise((resolve, reject) => {
-          server.close((error) => error ? reject(error) : resolve());
-          server.closeAllConnections();
-        });
+        await server.stop(true);
       }
     });
   }
@@ -849,26 +849,28 @@ test.describe('desktop list packing', () => {
         items: Array.from({ length: tall && index === tallIndex ? 35 : 2 }, (_, item) => `Keep detail ${index + 1}-${item + 1} with its requirement.`)
       }));
       const specPath = join(renderDirectory, `packing-${count}-${width}-${Boolean(tall)}.json`);
-      await writeFile(specPath, JSON.stringify({ title: 'Choose the next move', questions: [question] }));
-      const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
-      const server = createServer(async (request, response) => {
-        if (request.url === '/') {
-          response.setHeader('Content-Type', 'text/html');
-          response.end(html);
-        } else if (request.url.startsWith('/assets/')) {
-          const assetName = basename(request.url);
-          response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
-          response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
-        } else {
-          response.writeHead(404);
-          response.end();
+      await Bun.write(specPath, JSON.stringify({ title: 'Choose the next move', questions: [question] }));
+      const html = await $`${command} render ${specPath}`.text();
+      const server = Bun.serve({
+        hostname: 'localhost',
+        port: 0,
+        async fetch(request) {
+          const pathname = new URL(request.url).pathname;
+          if (pathname === '/') {
+            return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+          } else if (pathname.startsWith('/assets/')) {
+            const assetName = (await $`basename ${pathname}`.text()).trimEnd();
+            return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
+              headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
+            });
+          }
+          return new Response(null, { status: 404 });
         }
       });
-      await new Promise((resolve) => server.listen(0, 'localhost', resolve));
       try {
         console.log(`Open the unchanged phone layout before checking ${name}.`);
         await page.setViewportSize({ width: 420, height: 900 });
-        await page.goto(`http://localhost:${server.address().port}/`);
+        await page.goto(`http://localhost:${server.port}/`);
         const card = page.locator('.question-card');
         const context = card.locator('.context');
         await expect(context).toHaveCount(1);
@@ -970,7 +972,7 @@ test.describe('desktop list packing', () => {
         }
       } finally {
         await page.context().close();
-        await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+        await server.stop(true);
       }
     });
   }

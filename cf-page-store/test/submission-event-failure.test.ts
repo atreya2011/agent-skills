@@ -1,6 +1,6 @@
 import { applyD1Migrations, createExecutionContext, runInDurableObject, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import type { D1Migration } from "@cloudflare/vitest-pool-workers";
+import type { D1Migration } from "@cloudflare/vitest-plugin";
 import { importPKCS8, SignJWT } from "jose";
 import { beforeAll, expect, it } from "vitest";
 import worker, { type PageEvents } from "../src/index";

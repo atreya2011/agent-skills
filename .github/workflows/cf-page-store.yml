@@ -2,20 +2,50 @@ name: cf-page-store
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/src/**'
+      - 'cf-page-store/test/**'
+      - 'cf-page-store/migrations/**'
+      - 'cf-page-store/package.json'
+      - 'cf-page-store/package-lock.json'
+      - 'cf-page-store/bun.lock'
+      - 'cf-page-store/tsconfig.json'
+      - 'cf-page-store/vitest.config.ts'
+      - 'cf-page-store/wrangler.test.jsonc'
+      - 'phone-page/assets.json'
   pull_request:
+    paths:
+      - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/src/**'
+      - 'cf-page-store/test/**'
+      - 'cf-page-store/migrations/**'
+      - 'cf-page-store/package.json'
+      - 'cf-page-store/package-lock.json'
+      - 'cf-page-store/bun.lock'
+      - 'cf-page-store/tsconfig.json'
+      - 'cf-page-store/vitest.config.ts'
+      - 'cf-page-store/wrangler.test.jsonc'
+      - 'phone-page/assets.json'
 
 jobs:
   cf-page-store-tests:
     name: cf-page-store tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: cf-page-store/package-lock.json
-      - run: npm ci
+          bun-version: latest
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('cf-page-store/bun.lock') }}
+      - run: bun install --frozen-lockfile
         working-directory: cf-page-store
-      - run: npm test
+      - run: bun run test
+        working-directory: cf-page-store
+      - run: bun run typecheck
         working-directory: cf-page-store

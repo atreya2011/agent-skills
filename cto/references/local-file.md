@@ -8,7 +8,7 @@
 - Launch command: the exact shell command that starts the CTO's agent CLI.
 - Vault map: per repository, checkout route or Taskwarrior project name, the vault root, and the `llm-wiki` command. Domain aliases cover todos with no repository link.
 - Todo context: the handoff directory. Only Markdown handoffs that name the todo UUID (full or first eight characters) or a linked pull-request URL are included.
-- Cron times: the sweep interval, the waking hours and the reset time.
+- Cron times: the sweep interval and the waking hours.
 - Taskwarrior: the absolute path of the Taskwarrior binary. Bare `task` can be a different tool.
 - Thresholds: the confidence cut-offs. The starting values are provisional until the ground-truth run sets them.
 - Rulings: standing instructions from the user, one bullet each, dated.

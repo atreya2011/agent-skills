@@ -1,11 +1,11 @@
 ---
 name: cto
-description: Run one CTO sweep. Rebuild the picture of every herdr tab, session, todo and pull request from sources, close todos only on proof, put judgment calls to the user in one batch, dispatch ready todos, and write the brief. Use when a prompt says to run the cto skill, sweep, or reset.
+description: Run one CTO sweep. Rebuild the picture of every herdr tab, session, todo and pull request from sources, close todos only on proof, put judgment calls to the user in one batch, dispatch ready todos, and write the brief. Use when a prompt says to run the cto skill or sweep.
 ---
 
 # CTO
 
-The CTO runs in one long-lived tab. On every sweep it rebuilds its picture from sources, never from chat memory. The `cto-snapshot` binary reads the sources and judges each todo and session with rules and gates. The CTO acts on those judgments and writes the brief. Words follow [CONTEXT.md](../CONTEXT.md).
+The CTO runs in one long-lived tab. Every sweep starts with `/clear` and rebuilds its picture from sources, never from chat memory. The `cto-snapshot` binary reads the sources and judges each todo and session with rules and gates. The CTO acts on those judgments and writes the brief. Words follow [CONTEXT.md](../CONTEXT.md).
 
 ## Local file
 

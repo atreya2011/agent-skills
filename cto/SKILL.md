@@ -5,6 +5,7 @@ description: Run one CTO sweep. Rebuild the picture of every herdr tab, session,
 
 # CTO
 
+
 The CTO runs in one long-lived tab. Every sweep starts with `/clear` and rebuilds its picture from sources, never from chat memory. The `cto-snapshot` binary reads the sources and judges each todo and session with rules and gates. The CTO acts on those judgments and writes the brief. Words follow [CONTEXT.md](../CONTEXT.md).
 
 ## Local file

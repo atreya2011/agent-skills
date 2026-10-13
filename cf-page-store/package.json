@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "test": "bun --bun vitest run",
+    "typecheck": "bun --bun tsc --noEmit"
   },
   "dependencies": {
     "hono": "4.13.13",
@@ -16,6 +16,7 @@
     "@cloudflare/vitest-pool-workers": "0.23.0",
     "@cloudflare/workers-types": "5.20261010.1",
     "@msw/cloudflare": "0.2.0",
+    "@types/bun": "1.4.3",
     "msw": "3.0.3",
     "typescript": "7.0.2",
     "vitest": "4.1.11",

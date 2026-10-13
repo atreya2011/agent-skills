@@ -17,14 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: tests/phone-page/package-lock.json
-      - run: npm ci
+          bun-version: latest
+      - uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('tests/phone-page/bun.lock') }}
+      - run: bun install --frozen-lockfile
         working-directory: tests/phone-page
-      - run: npx playwright install --with-deps chromium webkit
+      - run: bun --bun playwright install --with-deps chromium webkit
         working-directory: tests/phone-page
-      - run: npm test
+      - run: bun run test
         working-directory: tests/phone-page

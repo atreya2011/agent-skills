@@ -345,7 +345,10 @@ for (const branchCount of [2, 4]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       }
     } finally {
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
     }
   });
 }
@@ -406,7 +409,10 @@ for (const { name, width } of [
       }
       await page.screenshot({ path: testInfo.outputPath('content.png'), fullPage: true });
     } finally {
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
     }
   });
 }
@@ -568,7 +574,10 @@ for (const { name, width, stepped } of [
     } finally {
       // Close Chromium's open connections before waiting for the fixture server to stop.
       await page.context().close();
-      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
     }
   });
 }

@@ -9,14 +9,14 @@ jobs:
     name: phone-page shell tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: tests/phone-page/phone-page.test.sh
 
   phone-page-playwright-tests:
     name: phone-page Playwright tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest

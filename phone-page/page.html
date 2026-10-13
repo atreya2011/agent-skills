@@ -396,7 +396,7 @@
           get progressLabel() { return `${this.answeredCount} of ${this.questionCount} answered`; },
           get progressStyle() { return { width: `${this.questionCount ? this.answeredCount / this.questionCount * 100 : 0}%` }; },
           get reviewTitle() { return this.desktopMode ? 'Check your answers' : 'Your answers'; },
-          get reviewing() { return this.screen === this.screens.length; },
+          get reviewing() { return this.ready && this.screen === this.screens.length; },
           get nextLabel() { return this.screen === this.screens.length - 1 ? 'Review answers' : 'Next'; },
           get position() {
             if (!this.ready) return '';

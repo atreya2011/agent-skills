@@ -7,8 +7,8 @@
     },
     {
       "name": "lucide.min.js",
-      "url": "https://cdn.jsdelivr.net/npm/lucide@1.54.0/dist/umd/lucide.min.js",
-      "sha256": "0317cd85e86e59189cbc4b94cd0912ed248d0c923967ac2243389d90647e92c4"
+      "url": "https://cdn.jsdelivr.net/npm/lucide@1.55.0/dist/umd/lucide.min.js",
+      "sha256": "48b3b5d82216bbe1d0c49dea480ed38fca8420c275c98f20505e3f9556f6b1d1"
     },
     {
       "name": "figtree-900.woff2",

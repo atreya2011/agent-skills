@@ -1,4 +1,4 @@
-import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import { defineConfig } from "vitest/config";
 
@@ -17,6 +17,10 @@ export default defineConfig(async () => {
   });
   const migrations = await readD1Migrations("./migrations");
   return {
+    test: {
+      // Workerd cannot read Vitest's host filesystem module cache.
+      fsModuleCache: false,
+    },
     plugins: [
       {
         name: "access-key-server",

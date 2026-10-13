@@ -809,6 +809,7 @@ test.describe('desktop form regressions', () => {
           await note.focus();
           await expect(note).toBeFocused();
           await page.setViewportSize({ width: 1280, height: 900 });
+          await expect(panel).toBeHidden();
           await expect(note).toBeFocused();
           await expect(note).toHaveValue('Keep this question active.');
           await expect(position).toHaveText(/^Question 2 of 2(?:, part \d+ of \d+)?$/);

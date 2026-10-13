@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -16,156 +15,64 @@ import (
 
 func TestWikiAnnotationNames(t *testing.T) {
 	cases := []struct {
-		name, annotation string
-		want             []string
+		name, note, wantError string
+		files, want           []string
 	}{
-		{"bare list", "wiki: build-upgrade-schedule, collaborator | src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
-		{"explanatory semicolons", "Wiki: duplicate-audit.md — confirmed-events table row 1; excluded verbatim from PR #141/#142; stale ID needs refresh; 'possible coincidence' resolved", []string{"duplicate-audit.md"}},
-		{"paths and line locators", "Wiki: ~/vaults/personal/concepts/freeze-tracer.md (Origin section: negotiation, Option B, no escape hatches); concepts/annotation-format.md (spec); index.md:95. Repo: ~/project", []string{"concepts/annotation-format.md", "index.md:95", "~/vaults/personal/concepts/freeze-tracer.md"}},
-		{"daily label", "Wiki: ~/vaults/work/projects/article.md; people/author.md; daily sources/worklog/daily.md (open)", []string{"people/author.md", "sources/worklog/daily.md", "~/vaults/work/projects/article.md"}},
-		{"non-ASCII path", "wiki: articles/日本語-note.md", []string{"articles/日本語-note.md"}},
-		{"spaced filename", "wiki: articles/team plans.md", []string{"articles/team plans.md"}},
-		{"spaced directory", "wiki: articles/team plans/日本語-note.md", []string{"articles/team plans/日本語-note.md"}},
-		{"spaced page", "wiki: team plans.md", []string{"team plans.md"}},
-		{"spaced first directory", "wiki: team plans/article.md", []string{"team plans/article.md"}},
-		{"combining mark", "wiki: articles/café.md", []string{"articles/café.md"}},
-		{"non-ASCII page", "wiki: 日本語-note.md:12", []string{"日本語-note.md:12"}},
-		{"backtick reference", "wiki: `articles/日本語-note.md`", []string{"articles/日本語-note.md"}},
-		{"double quoted reference", "wiki: \"articles/team plans.md\"", []string{"articles/team plans.md"}},
-		{"single quoted reference", "wiki: 'team plans/article.md'", []string{"team plans/article.md"}},
-		{"wiki link reference", "wiki: [[articles/team plans.md]]", []string{"articles/team plans.md"}},
-		{"separate references", "wiki: a.md b.md", []string{"a.md", "b.md"}},
-		{"mixed spaced Unicode references", "wiki: `articles/team plans.md` \"articles/日本語-note.md\" [[team plans/日本語 note.md]]", []string{"articles/team plans.md", "articles/日本語-note.md", "team plans/日本語 note.md"}},
-		{"unformatted spaced Unicode references", "wiki: articles/team plans.md articles/日本語-note.md", []string{"articles/team plans.md", "articles/日本語-note.md"}},
-		{"apostrophe filename", "wiki: team's notes.md", []string{"team's notes.md"}},
-		{"brackets filename", "wiki: notes [draft].md", []string{"notes [draft].md"}},
-		{"leading brackets filename", "wiki: [draft] notes.md", []string{"[draft] notes.md"}},
-		{"literal opening quotes", "wiki: \"draft\" notes.md", []string{"\"draft\" notes.md"}},
-		{"literal opening backticks", "wiki: `draft` notes.md", []string{"`draft` notes.md"}},
-		{"literal opening wiki brackets", "wiki: [[draft]] notes.md", []string{"[[draft]] notes.md"}},
-		{"quotes filename", "wiki: notes \"draft\".md", []string{"notes \"draft\".md"}},
-		{"backticks filename", "wiki: notes `draft`.md", []string{"notes `draft`.md"}},
-		{"parentheses filename", "wiki: notes (draft).md", []string{"notes (draft).md"}},
-		{"comma filename", "wiki: notes, draft.md", []string{"notes, draft.md"}},
-		{"semicolon filename", "wiki: notes; draft.md", []string{"notes; draft.md"}},
-		{"pipe filename", "wiki: notes|draft.md", []string{"notes|draft.md"}},
-		{"quoted apostrophe filename", "wiki: 'team's notes.md'", []string{"team's notes.md"}},
-		{"quoted quote filename", "wiki: \"team \"draft\" notes.md\"", []string{"team \"draft\" notes.md"}},
-		{"wrapped bracket filename", "wiki: [[notes [draft].md]]", []string{"notes [draft].md"}},
-		{"wrapped mixed punctuation", "wiki: [[日本語/team's \"draft\" `v2` [plan] (review), final; note.md]]", []string{"日本語/team's \"draft\" `v2` [plan] (review), final; note.md"}},
-		{"nested markdown directory", "wiki: archive.md/article.md", []string{"archive.md/article.md"}},
-		{"nested markdown suffix", "wiki: archive.md-backup/article.md", []string{"archive.md-backup/article.md"}},
-		{"nested markdown directories", "wiki: archive.md/history.md/article.md:95", []string{"archive.md/history.md/article.md:95"}},
-		{"wrapped nested markdown directory", "wiki: [[archive.md/team's [draft] notes.md]]", []string{"archive.md/team's [draft] notes.md"}},
-		{"wrapped spaced extensions", "wiki: \"a.md b.md\"", []string{"a.md b.md"}},
-		{"wrapped locator", "wiki: `team's notes.md:95`", []string{"team's notes.md:95"}},
-		{"multiple punctuated references", "wiki: a.md, team's notes.md; [[archive.md/notes [draft].md]]", []string{"a.md", "archive.md/notes [draft].md", "team's notes.md"}},
-		{"locator-shaped directory", "wiki: archive.md:95/article.md", []string{"archive.md:95/article.md"}},
-		{"single bracket reference", "wiki: [notes.md]", []string{"notes.md"}},
-		{"single bracket punctuated reference", "wiki: [notes [draft].md]", []string{"notes [draft].md"}},
-		{"compact metadata", "wiki: build-upgrade-schedule, collaborator| src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
-		{"compact metadata marker", "wiki: build-upgrade-schedule, collaborator|src: work/page.md", []string{"build-upgrade-schedule", "collaborator"}},
-		{"quoted metadata text filename", "wiki: \"notes |src: draft.md\"", []string{"notes |src: draft.md"}},
-		{"double backtick reference", "wiki: ``notes.md``", []string{"notes.md"}},
-		{"double backtick internal tick", "wiki: ``notes `draft`.md``", []string{"notes `draft`.md"}},
-		{"triple backtick internal ticks", "wiki: ```notes ``draft``.md```", []string{"notes ``draft``.md"}},
-		{"wiki wrapper repository metadata", "wiki: [[notes.md]]. Repo: project", []string{"notes.md"}},
-		{"wiki wrapper contract metadata", "wiki: [[notes.md]]. Contract: approved", []string{"notes.md"}},
-		{"wiki wrapper other metadata", "wiki: [[notes.md]]. Owner: team", []string{"notes.md"}},
-		{"bracket wrapper metadata", "wiki: [notes.md]. Repo: project. Contract: approved", []string{"notes.md"}},
-		{"backtick wrapper metadata", "wiki: `notes.md`. Repo: project", []string{"notes.md"}},
-		{"double backtick wrapper metadata", "wiki: ``notes.md``. Contract: approved", []string{"notes.md"}},
-		{"quoted wrapper metadata", "wiki: \"notes.md\". Repo: project", []string{"notes.md"}},
-		{"single quoted wrapper metadata", "wiki: 'notes.md'. Owner: team", []string{"notes.md"}},
-		{"plain reference metadata", "wiki: notes.md. Repo: project. Contract: approved", []string{"notes.md"}},
-		{"plain label destination", "wiki: notes (articles/note.md)", []string{"articles/note.md"}},
-		{"markdown label destination", "wiki: [notes](articles/note.md)", []string{"articles/note.md"}},
-		{"label destination locator", "wiki: notes (articles/note.md:95)", []string{"articles/note.md:95"}},
-		{"multiple destinations", "wiki: notes (articles/note.md); [other](articles/other.md)", []string{"articles/note.md", "articles/other.md"}},
-		{"nested metadata", "wiki: a.md (Origin (section), details); b.md", []string{"a.md", "b.md"}},
-		{"deep metadata", "wiki: a.md (Origin (section (detail)), details); b.md", []string{"a.md", "b.md"}},
-		{"nested metadata comma separator", "wiki: a.md (Origin (section), details), b.md", []string{"a.md", "b.md"}},
-		{"nested metadata terminal", "wiki: a.md (Origin (section), details)", []string{"a.md"}},
-		{"formatted nested metadata", "wiki: [[a.md]] (Origin (section), details); `b.md`", []string{"a.md", "b.md"}},
-		{"plain before link", "wiki: a.md notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
-		{"wrapped before link", "wiki: [[a.md]] notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
-		{"link before plain", "wiki: notes (articles/note.md) a.md", []string{"a.md", "articles/note.md"}},
-		{"nested path before link", "wiki: archive.md/article.md notes (articles/note.md)", []string{"archive.md/article.md", "articles/note.md"}},
-		{"nested notes before link", "wiki: a.md (Origin (section), details); notes (articles/note.md)", []string{"a.md", "articles/note.md"}},
-		{"parenthesized filename after note", "wiki: a.md (spec) (draft).md", []string{"(draft).md", "a.md"}},
-		{"consecutive named notes", "wiki: a.md (spec) (approved); b.md", []string{"a.md", "b.md"}},
-		{"own question excluded", "ask: wiki: old-verdict", nil},
-	}
-	forms := []struct{ name, format, path string }{
-		{"plain", "%s", "%s"}, {"wiki", "[[%s]]", "%s"}, {"bracket", "[%s]", "%s"},
-		{"backtick", "`%s`", "%s"}, {"double backtick", "``%s``", "%s"},
-		{"double quote", "\"%s\"", "%s"}, {"single quote", "'%s'", "%s"},
-		{"label", "notes (%s)", "%s"}, {"markdown label", "[notes](%s)", "%s"},
-		{"nested", "%s", "archive.md/%s"}, {"locator", "%s", "%s:95"},
-	}
-	for _, first := range forms {
-		for _, second := range forms {
-			for _, separator := range []string{" ", ", ", "; "} {
-				left, right := fmt.Sprintf(first.path, "a.md"), fmt.Sprintf(second.path, "b.md")
-				want := []string{left, right}
-				slices.Sort(want)
-				cases = append(cases, struct {
-					name, annotation string
-					want             []string
-				}{"compatibility " + first.name + " then " + second.name + " separator " + separator,
-					"wiki: " + fmt.Sprintf(first.format, left) + separator + fmt.Sprintf(second.format, right), want})
-			}
-		}
-	}
-	for _, first := range forms {
-		for depth := 1; depth <= 3; depth++ {
-			for _, separator := range []string{" ", ", ", "; "} {
-				left := fmt.Sprintf(first.path, "a.md")
-				want := []string{left, "b.md"}
-				slices.Sort(want)
-				note := strings.Repeat("(Origin ", depth) + "section" + strings.Repeat(")", depth)
-				cases = append(cases, struct {
-					name, annotation string
-					want             []string
-				}{fmt.Sprintf("balanced %s depth %d separator %s", first.name, depth, separator),
-					"wiki: " + fmt.Sprintf(first.format, left) + " " + note + separator + "b.md", want})
-			}
-		}
-	}
-	metadataForms := append(slices.Clone(forms), struct{ name, format, path string }{"bare", "%s", "%s"})
-	for _, form := range metadataForms {
-		for _, separator := range []string{". Repo: ", ". Contract: ", " | src: ", "| src: ", "|src: ", " | ", "|"} {
-			for _, source := range []string{"notes (work/page.md)", "[notes](work/page.md)", "[[work/page.md]]"} {
-				left := fmt.Sprintf(form.path, "a.md")
-				if form.name == "bare" {
-					left = "collaborator"
-				}
-				cases = append(cases, struct {
-					name, annotation string
-					want             []string
-				}{"metadata " + form.name + " separator " + separator + " source " + source,
-					"wiki: " + fmt.Sprintf(form.format, left) + separator + source, []string{left}})
-			}
-		}
-	}
-	for _, first := range forms {
-		for count := 1; count <= 2; count++ {
-			for _, second := range forms {
-				for _, separator := range []string{" ", ", ", "; "} {
-					left, right := fmt.Sprintf(first.path, "a.md"), fmt.Sprintf(second.path, "b.md")
-					want := []string{left, right}
-					slices.Sort(want)
-					cases = append(cases, struct {
-						name, annotation string
-						want             []string
-					}{fmt.Sprintf("consecutive %s then %s count %d separator %s", first.name, second.name, count, separator),
-						"wiki: " + fmt.Sprintf(first.format, left) + strings.Repeat(" (Origin (section), approved)", count) + separator + fmt.Sprintf(second.format, right), want})
-				}
-			}
-		}
+		{"relative path", "wiki: articles/日本語 team notes.md", "", []string{"articles/日本語 team notes.md", "archive/日本語 team notes.md"}, []string{"articles/日本語 team notes.md"}},
+		{"filename", "wiki: page.md", "", []string{"articles/page.md"}, []string{"articles/page.md"}},
+		{"stem", "wiki: page", "", []string{"articles/page.md"}, []string{"articles/page.md"}},
+		{"home path", "", "", []string{"articles/page.md"}, []string{"articles/page.md"}},
+		{"prose punctuation", "wiki: See [[page.md]] (Origin (section), approved); ignore unrelated prose", "", []string{"articles/page.md"}, []string{"articles/page.md"}},
+		{"two pages", "wiki: page and other.md", "", []string{"articles/page.md", "notes/other.md"}, []string{"articles/page.md", "notes/other.md"}},
+		{"non-page word", "wiki: page-extension page_suffix page.md.extra /other/page.md", "found 0", []string{"articles/page.md"}, nil},
+		{"ambiguous name", "wiki: page.md", "found 2", []string{"page.md", "archive/page.md"}, nil},
+		{"outside vault", "", "found 0", []string{"articles/page.md"}, nil},
+		{"secret path", "wiki: credentials.md", "sensitive path", []string{"credentials.md"}, nil},
 	}
 	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) { assert.Equal(t, tt.want, wikiNames([]string{tt.annotation})) })
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tt.name == "home path" {
+				home, err := os.UserHomeDir()
+				require.NoError(t, err)
+				root, err = os.MkdirTemp(home, "wiki-fixture-")
+				require.NoError(t, err)
+				t.Cleanup(func() { require.NoError(t, os.RemoveAll(root)) })
+			}
+			vault := filepath.Join(root, "vault")
+			for _, name := range tt.files {
+				path := filepath.Join(vault, name)
+				require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+				require.NoError(t, os.WriteFile(path, []byte("synthetic page"), 0o600))
+			}
+			note := tt.note
+			if tt.name == "home path" {
+				note = "wiki: ~/" + filepath.Base(root) + "/vault/articles/page.md"
+			}
+			if tt.name == "outside vault" {
+				outside := filepath.Join(root, "outside", "page.md")
+				require.NoError(t, os.MkdirAll(filepath.Dir(outside), 0o700))
+				require.NoError(t, os.WriteFile(outside, []byte("synthetic outside page"), 0o600))
+				note = "wiki: " + outside
+			}
+			cfg := Config{Vaults: map[string]string{"work": vault}}
+			todo := Todo{Domain: "work", Annotations: []string{note}}
+			state, err := todoContext(cfg, &Project{}, todo, nil, "2026-10-12")
+			if tt.wantError != "" {
+				require.ErrorContains(t, err, tt.wantError)
+				assert.Empty(t, state.WikiPages)
+				return
+			}
+			require.NoError(t, err)
+			var names []string
+			for _, page := range state.WikiPages {
+				name, err := filepath.Rel(vault, page.Path)
+				require.NoError(t, err)
+				names = append(names, name)
+				assert.Equal(t, "synthetic page", page.Text)
+			}
+			assert.Equal(t, tt.want, names)
+		})
 	}
 }
 
@@ -174,7 +81,7 @@ func TestTodoContextFiles(t *testing.T) {
 		name, path, reader string
 		symlink            bool
 	}{}
-	for _, name := range []string{"complete context", "checkout evaluation", "facts without judgments", "non-ASCII page", "spaced filename", "apostrophe filename", "brackets filename", "nested markdown directory", "locator-shaped directory", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
+	for _, name := range []string{"complete context", "checkout evaluation", "facts without judgments", "missing page", "ambiguous name", "cross-vault symlink", "missing handoff directory"} {
 		cases = append(cases, struct {
 			name, path, reader string
 			symlink            bool
@@ -310,15 +217,6 @@ func TestTodoContextFiles(t *testing.T) {
 			}
 			var wantError string
 			switch kind {
-			case "non-ASCII page", "spaced filename", "apostrophe filename", "brackets filename", "nested markdown directory", "locator-shaped directory":
-				name := map[string]string{
-					"non-ASCII page": "日本語-note.md", "spaced filename": "team plans.md",
-					"apostrophe filename": "team's notes.md", "brackets filename": "notes [draft].md",
-					"nested markdown directory": "archive.md/article.md", "locator-shaped directory": "archive.md:95/article.md",
-				}[kind]
-				require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(vault, "projects", name)), 0o700))
-				require.NoError(t, os.WriteFile(filepath.Join(vault, "projects", name), []byte(text), 0o600))
-				todo.Annotations[0] = "wiki: projects/" + name
 			case "missing page":
 				todo.Annotations = []string{"wiki: absent"}
 				wantError = "found 0"

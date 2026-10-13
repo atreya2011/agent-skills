@@ -9,8 +9,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 )
 
 type contextPage struct {
@@ -20,151 +18,62 @@ type contextPage struct {
 
 var wikiRef = regexp.MustCompile(`(?i)\bwiki:\s*([^\n]+)`)
 
-var markdownEnd = regexp.MustCompile(`\.md(?:[:][0-9]+)?`)
-
-var wikiSource = regexp.MustCompile(`[ \t]*\|[ \t]*src:`)
-
-var wikiMetadata = regexp.MustCompile(`^\.[ \t]+[A-Za-z][A-Za-z0-9_-]*:`)
-
-func wikiNames(annotations []string) []string {
-	var names []string
-	for _, a := range gateAnnotations(annotations) {
-		for _, match := range wikiRef.FindAllStringSubmatch(a, -1) {
-			text := match[1]
-			paths := markdownPaths(text)
-			if len(paths) > 0 {
-				for _, path := range paths {
-					// Existing annotations use "daily" as a label before sources/ paths.
-					if strings.HasPrefix(path, "daily sources/") {
-						path = strings.TrimPrefix(path, "daily ")
-					}
-					names = append(names, path)
-				}
-				continue
-			}
-			for _, stop := range []string{". Repo:", ". Contract:", "|"} {
-				text, _, _ = strings.Cut(text, stop)
-			}
-			// Bare page names form the leading comma-separated list; the rest is prose.
-			text, _, _ = strings.Cut(text, " — ")
-			text, _, _ = strings.Cut(text, " (")
-			for name := range strings.SplitSeq(text, ",") {
-				fields := strings.Fields(name)
-				if len(fields) == 1 {
-					names = append(names, fields[0])
-				}
-			}
+func wikiNotes(annotations []string) []string {
+	var notes []string
+	for _, annotation := range gateAnnotations(annotations) {
+		for _, match := range wikiRef.FindAllStringSubmatch(annotation, -1) {
+			notes = append(notes, match[1])
 		}
 	}
-	slices.Sort(names)
-	return slices.Compact(names)
+	return notes
 }
 
-func referenceBoundary(rest string) bool {
-	if rest == "" {
-		return true
+func wikiPages(vault, note string, absoluteOnly bool) ([]string, error) {
+	aliases := map[string][]string{}
+	err := filepath.WalkDir(vault, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() && (entry.Name() == ".git" || strings.HasPrefix(entry.Name(), ".")) && path != vault {
+			return filepath.SkipDir
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".md" {
+			return nil
+		}
+		rel, err := filepath.Rel(vault, path)
+		if err != nil {
+			return err
+		}
+		names := []string{path}
+		if !absoluteOnly {
+			names = append(names, rel, entry.Name(), strings.TrimSuffix(entry.Name(), ".md"))
+		}
+		for _, name := range names {
+			if !slices.Contains(aliases[name], path) {
+				aliases[name] = append(aliases[name], path)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	r, _ := utf8.DecodeRuneInString(rest)
-	return unicode.IsSpace(r) || strings.ContainsRune(",;|", r) || wikiMetadata.MatchString(rest)
-}
-
-func markdownReference(text string) (path, rest string, ok bool) {
-	// A marker is formatting only when its matching closer follows the whole reference.
-	for _, pair := range []struct{ open, close string }{{"[[", "]]"}, {"[", "]"}, {"`", "`"}, {"\"", "\""}, {"'", "'"}} {
-		if !strings.HasPrefix(text, pair.open) {
+	if home, err := os.UserHomeDir(); err == nil {
+		note = strings.ReplaceAll(note, "~/", home+string(filepath.Separator))
+	}
+	var pages []string
+	for name, matches := range aliases {
+		pattern := regexp.MustCompile(`(^|[^\pL\p{Nd}_./-])` + regexp.QuoteMeta(name) + `($|[^\pL\p{Nd}_./-])`)
+		if !pattern.MatchString(note) {
 			continue
 		}
-		if pair.open == "`" {
-			pair.open = text[:len(text)-len(strings.TrimLeft(text, "`"))]
-			pair.close = pair.open
+		if len(matches) != 1 {
+			return nil, fmt.Errorf("wiki page %s: found %d matching pages in %s", name, len(matches), vault)
 		}
-		for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
-			if pair.open == "[" && matchingClose(text, '[', ']') != end[1] {
-				continue
-			}
-			if tail, closed := strings.CutPrefix(text[end[1]:], pair.close); closed && referenceBoundary(tail) {
-				return text[len(pair.open):end[1]], tail, true
-			}
-		}
+		pages = append(pages, matches[0])
 	}
-	for _, stop := range []string{". Repo:", ". Contract:"} {
-		text, _, _ = strings.Cut(text, stop)
-	}
-	if source := wikiSource.FindStringIndex(text); source != nil {
-		text = text[:source[0]]
-	}
-	firstEnd := len(text)
-	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
-		if referenceBoundary(text[end[1]:]) {
-			firstEnd = end[1]
-			break
-		}
-	}
-	if pipe := strings.IndexByte(text, '|'); pipe >= 0 {
-		firstEnd = min(firstEnd, pipe)
-	}
-	for i, r := range text {
-		if i >= firstEnd {
-			break
-		}
-		if r != '(' {
-			continue
-		}
-		end := matchingClose(text[i:], '(', ')')
-		if end < 0 || !referenceBoundary(text[i+end+1:]) {
-			continue
-		}
-		if path, tail, found := markdownReference(text[i+1 : i+end]); found && strings.TrimSpace(tail) == "" {
-			return path, text[i+end+1:], true
-		}
-	}
-	for _, end := range markdownEnd.FindAllStringIndex(text, -1) {
-		if referenceBoundary(text[end[1]:]) {
-			return text[:end[1]], text[end[1]:], true
-		}
-	}
-	return "", text, false
-}
-
-func matchingClose(text string, open, close rune) int {
-	depth := 0
-	for i, r := range text {
-		switch r {
-		case open:
-			depth++
-		case close:
-			depth--
-			if depth == 0 {
-				return i
-			}
-		}
-	}
-	return -1
-}
-
-func markdownPaths(text string) []string {
-	var paths []string
-	text = strings.TrimSpace(text)
-	for text != "" {
-		path, rest, ok := markdownReference(text)
-		if !ok {
-			break
-		}
-		paths = append(paths, path)
-		text = strings.TrimSpace(rest)
-		if strings.HasPrefix(text, "—") || strings.HasPrefix(text, "|") || wikiMetadata.MatchString(text) {
-			break
-		}
-		for strings.HasPrefix(text, "(") {
-			end := matchingClose(text, '(', ')')
-			if end < 0 || !referenceBoundary(text[end+1:]) {
-				break
-			}
-			text = strings.TrimSpace(text[end+1:])
-		}
-		text = strings.TrimLeftFunc(text, func(r rune) bool { return unicode.IsSpace(r) || r == ',' || r == ';' })
-	}
-	return paths
+	slices.Sort(pages)
+	return slices.Compact(pages), nil
 }
 
 func within(root, path string) bool {
@@ -316,30 +225,43 @@ func handoffMatches(text string, t Todo) bool {
 func todoContext(cfg Config, p *Project, t Todo, tabs []tabBrief, today string) (todoState, error) {
 	state := todoState{ID: t.UUID, Today: today, Description: t.Description, Domain: t.Domain, Due: t.Due,
 		Annotations: gateAnnotations(t.Annotations), Links: t.Links, ProjectTabs: tabs, OwnerPolicy: cfg.OwnerPolicy}
-	names := wikiNames(t.Annotations)
+	notes := wikiNotes(t.Annotations)
 	vault := vaultFor(cfg, p, t)
 	if vault == "" {
-		for _, name := range names {
-			name = expandHome(name)
-			if filepath.IsAbs(name) {
-				for _, root := range cfg.Vaults {
-					if within(root, name) {
-						if vault != "" && vault != root {
-							return state, fmt.Errorf("wiki pages span different vaults")
-						}
-						vault = root
+		for _, note := range notes {
+			for _, root := range cfg.Vaults {
+				matches, err := wikiPages(root, note, true)
+				if err != nil {
+					return state, err
+				}
+				if len(matches) != 0 {
+					if vault != "" && vault != root {
+						return state, fmt.Errorf("wiki pages span different vaults")
 					}
+					vault = root
 				}
 			}
 		}
 	}
-	for _, name := range names {
-		page, err := wikiPage(cfg, vault, name)
+	for _, note := range notes {
+		if vault == "" {
+			return state, fmt.Errorf("wiki note: no vault route for this todo")
+		}
+		names, err := wikiPages(vault, note, false)
 		if err != nil {
 			return state, err
 		}
-		if !slices.ContainsFunc(state.WikiPages, func(p contextPage) bool { return p.Path == page.Path }) {
-			state.WikiPages = append(state.WikiPages, page)
+		if len(names) == 0 {
+			return state, fmt.Errorf("wiki note %q: found 0 matching pages in %s", note, vault)
+		}
+		for _, name := range names {
+			page, err := wikiPage(cfg, vault, name)
+			if err != nil {
+				return state, err
+			}
+			if !slices.ContainsFunc(state.WikiPages, func(p contextPage) bool { return p.Path == page.Path }) {
+				state.WikiPages = append(state.WikiPages, page)
+			}
 		}
 	}
 	if cfg.Context.HandoffDir == "" {

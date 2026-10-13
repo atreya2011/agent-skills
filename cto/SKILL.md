@@ -113,7 +113,7 @@ The snapshot's `judgments` hold one entry per judged todo and per session. The o
 - Session: the label is the In progress line. An `escalate` verdict means "activity unknown".
 - Todos tagged `+cos` belong to the CoS. Never change them.
 
-Both todo gates receive the todo, current links, project tabs, linked wiki page text and matching handoff text. They never receive a transcript excerpt; `session_activity` still receives its transcript excerpt. `wiki:` links are resolved within the todo's mapped vault. Missing or ambiguous pages are named in the judgment reason, and no partial context is judged. Oversized requests report the page or handoff that crosses the service input limit instead of truncating text.
+Both todo gates receive the todo, current links, project tabs, linked wiki page text and matching handoff text. They never receive a transcript excerpt; `session_activity` still receives its transcript excerpt. `wiki:` notes match actual markdown files in the todo's mapped vault by whole path or filename with or without `.md`; punctuation and prose need no reference grammar. A note with no matching page or an ambiguous filename reports an error, and no partial context is judged. Oversized requests report the page or handoff that crosses the service input limit instead of truncating text.
 
 The tool leaves the `ask:` and `cto ` annotations out of the gate's input, so an old question or verdict never feeds a new one. When the user answers a judgment call, apply the answer, remove `+ask` and annotate the todo with the answer.
 

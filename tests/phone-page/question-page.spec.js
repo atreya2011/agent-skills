@@ -729,11 +729,16 @@ test.describe('desktop form regressions', () => {
               const box = element.getBoundingClientRect();
               const blocks = [...element.querySelectorAll('.screen-column > *')].map((block) => {
                 const rect = block.getBoundingClientRect();
+                const range = document.createRange();
+                range.selectNodeContents(block);
+                const text = range.getBoundingClientRect();
                 return {
                   text: block.textContent,
                   top: rect.top,
                   bottom: rect.bottom,
-                  scrolls: block.scrollHeight > block.clientHeight + 1,
+                  textTop: text.top,
+                  textBottom: text.bottom,
+                  scrolls: block.classList.contains('oversized-block'),
                   overflow: getComputedStyle(block).overflowY
                 };
               });
@@ -747,6 +752,10 @@ test.describe('desktop form regressions', () => {
               expect(block.top).toBeGreaterThanOrEqual(fit.top - 1);
               expect(block.bottom).toBeLessThanOrEqual(fit.bottom + 1);
               if (block.scrolls) expect(['auto', 'scroll']).toContain(block.overflow);
+              else {
+                expect(block.textTop).toBeGreaterThanOrEqual(fit.top - 1);
+                expect(block.textBottom).toBeLessThanOrEqual(fit.bottom + 1);
+              }
               seenBlocks.push(block.text);
             }
             const table = current.locator('.table-wrap');
@@ -786,7 +795,7 @@ test.describe('desktop form regressions', () => {
           expect(visited).toHaveLength(partCount);
           expect(answered).toBe(true);
           expect(internallyScrolled).toBe(true);
-          expect(seenBlocks).toHaveLength(7);
+          expect(seenBlocks).toHaveLength(7 + await card.locator('.context').count());
           expect(new Set(seenBlocks).size).toBe(seenBlocks.length);
           const content = seenBlocks.join('\n');
           for (const text of [question.question, ...question.context, ...question.cards.map(({ title }) => title), ...question.table.rows.flat(), ...question.flows.flatMap(({ steps }) => steps), ...question.options.map(({ label }) => label)]) expect(content).toContain(text);
@@ -816,6 +825,152 @@ test.describe('desktop form regressions', () => {
           server.close((error) => error ? reject(error) : resolve());
           server.closeAllConnections();
         });
+      }
+    });
+  }
+});
+
+test.describe('desktop list packing', () => {
+  test.use({ isMobile: false, hasTouch: false });
+
+  for (const { name, width, count, tall, tallIndex = 2 } of [
+    { name: 'seven bullets use both columns', width: 1440, count: 7 },
+    { name: 'bullets split at the desktop breakpoint', width: 960, count: 7 },
+    { name: 'bullets continue onto another screen', width: 1440, count: 18 },
+    { name: 'a tall bullet owns a scrolling screen', width: 1440, count: 7, tall: true },
+    { name: 'an oversized first bullet leaves later bullets splittable', width: 1440, count: 18, tall: true, tallIndex: 0 },
+    { name: 'an empty right column centers the content', width: 1440, count: 1 }
+  ]) {
+    test(name, async ({ page }, testInfo) => {
+      const question = structuredClone(spec.questions[0]);
+      delete question.flow;
+      question.context = Array.from({ length: count }, (_, index) => ({
+        text: `Consider requirement ${index + 1} before delivery.`,
+        items: Array.from({ length: tall && index === tallIndex ? 35 : 2 }, (_, item) => `Keep detail ${index + 1}-${item + 1} with its requirement.`)
+      }));
+      const specPath = join(renderDirectory, `packing-${count}-${width}-${Boolean(tall)}.json`);
+      await writeFile(specPath, JSON.stringify({ title: 'Choose the next move', questions: [question] }));
+      const html = execFileSync(command, ['render', specPath], { encoding: 'utf8' });
+      const server = createServer(async (request, response) => {
+        if (request.url === '/') {
+          response.setHeader('Content-Type', 'text/html');
+          response.end(html);
+        } else if (request.url.startsWith('/assets/')) {
+          const assetName = basename(request.url);
+          response.setHeader('Content-Type', assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript');
+          response.end(await readFile(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)));
+        } else {
+          response.writeHead(404);
+          response.end();
+        }
+      });
+      await new Promise((resolve) => server.listen(0, 'localhost', resolve));
+      try {
+        console.log(`Open the unchanged phone layout before checking ${name}.`);
+        await page.setViewportSize({ width: 420, height: 900 });
+        await page.goto(`http://localhost:${server.address().port}/`);
+        const card = page.locator('.question-card');
+        const context = card.locator('.context');
+        await expect(context).toHaveCount(1);
+        await expect(context.locator(':scope > li')).toHaveCount(count);
+        const phoneContent = await card.locator('.question-content').innerHTML();
+        await page.screenshot({ path: testInfo.outputPath('packing-phone-before.png'), fullPage: true });
+
+        for (const pass of ['initial', 'repacked']) {
+          const height = count === 1 ? 1400 : 900;
+          console.log(`Pack ${name} at ${width} by ${height} (${pass}).`);
+          await page.setViewportSize({ width, height });
+          await expect(card.locator('.question-part').first()).toBeVisible();
+          await expect(card.locator('.context > li')).toHaveText(question.context.map(({ text, items }) => text + items.join('')));
+          await page.screenshot({ path: testInfo.outputPath(`packing-${pass}-desktop.png`), fullPage: true });
+          const first = card.locator('.question-part').first();
+          if (count === 7 && !tall) {
+            await expect(first.locator('.screen-column').first().locator('.context > li')).not.toHaveCount(0);
+            await expect(first.locator('.screen-column').last().locator('.context > li')).not.toHaveCount(0);
+            await expect(first.locator('.context > li')).toHaveCount(count);
+          }
+          if (count === 18 && !tall) {
+            expect(await card.locator('.question-part:has(.context)').count()).toBeGreaterThan(1);
+            await expect(first.locator('.screen-column').first().locator('.context > li')).not.toHaveCount(0);
+            await expect(first.locator('.screen-column').last().locator('.context > li')).not.toHaveCount(0);
+          }
+          const parts = await card.locator('.question-part').count();
+          let sawCentered = false;
+          let sawOversized = false;
+          for (let index = 0; index < parts; index += 1) {
+            console.log(`Inspect the bullets and column geometry on ${pass} screen ${index + 1}.`);
+            const part = card.locator('.question-part').nth(index);
+            await expect(part).toBeVisible();
+            const layout = await part.evaluate((element) => {
+              const grid = element.querySelector('.part-columns');
+              const columns = [...grid.children];
+              const left = columns[0].getBoundingClientRect();
+              const bounds = grid.parentElement.getBoundingClientRect();
+              return {
+                rightEmpty: columns[1].children.length === 0,
+                offset: Math.abs((left.left + left.right) / 2 - (bounds.left + bounds.right) / 2),
+                blocks: [...element.querySelectorAll('.screen-column > *')].map((block) => ({
+                  overflow: block.getBoundingClientRect().bottom - block.parentElement.getBoundingClientRect().bottom,
+                  oversized: block.classList.contains('oversized-block')
+                })),
+                lists: [...element.querySelectorAll('.context')].map((list) => ({
+                  font: getComputedStyle(list).fontSize,
+                  indent: getComputedStyle(list).paddingLeft,
+                  marker: getComputedStyle(list).listStyleType,
+                  scrolls: list.scrollHeight > list.clientHeight + 1,
+                  items: [...list.children].map((bullet) => ({
+                    text: bullet.firstChild.textContent,
+                    sub: [...bullet.querySelectorAll('ul > li')].map((item) => item.textContent),
+                    indent: getComputedStyle(bullet.querySelector('ul')).paddingLeft
+                  }))
+                }))
+              };
+            });
+            if (layout.rightEmpty) {
+              expect(layout.offset).toBeLessThanOrEqual(1);
+              sawCentered = true;
+            }
+            for (const block of layout.blocks) expect(block.overflow).toBeLessThanOrEqual(1);
+            for (const list of layout.lists) {
+              expect(list).toMatchObject({ font: '17px', indent: '22px', marker: 'disc' });
+              for (const bullet of list.items) {
+                expect(bullet.indent).toBe('22px');
+                expect(bullet.sub).toEqual(question.context.find(({ text }) => text === bullet.text).items);
+              }
+              if (list.scrolls) {
+                expect(tall).toBe(true);
+                expect(list.items).toHaveLength(1);
+                expect(list.items[0].text).toBe(question.context[tallIndex].text);
+                expect(layout.blocks).toEqual([{ overflow: expect.any(Number), oversized: true }]);
+                console.log('Scroll the tall bullet without scrolling the desktop document.');
+                const oversized = part.locator('.oversized-block');
+                await oversized.hover();
+                await page.mouse.wheel(0, 240);
+                await expect.poll(() => oversized.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+                sawOversized = true;
+              }
+            }
+            expect(await page.evaluate(() => window.scrollY)).toBe(0);
+            await page.screenshot({ path: testInfo.outputPath(`packing-${pass}-${index + 1}.png`), fullPage: true });
+            await page.locator('#next').click();
+          }
+          expect(sawOversized).toBe(Boolean(tall));
+          if (count === 1 || tall) expect(sawCentered).toBe(true);
+
+          console.log('Return to the phone layout and verify the original list and nested bullets are restored.');
+          await page.setViewportSize({ width: 420, height: 900 });
+          await expect(card.locator('.question-part')).toHaveCount(0);
+          await expect(context).toHaveCount(1);
+          await expect(context.locator(':scope > li')).toHaveCount(count);
+          expect(await card.locator('.question-content').innerHTML()).toBe(phoneContent);
+          await expect(card.locator('.oversized-block')).toHaveCount(0);
+          await page.screenshot({ path: testInfo.outputPath(`packing-phone-${pass}.png`), fullPage: true });
+          console.log('Select the question from the phone summary before the next desktop packing pass.');
+          await page.locator('.answer-row .change').click();
+        }
+      } finally {
+        await page.context().close();
+        await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
       }
     });
   }

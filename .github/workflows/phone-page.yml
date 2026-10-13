@@ -8,14 +8,16 @@ on:
       - '.github/workflows/phone-page.yml'
       - 'tests/phone-page/**'
       - 'phone-page/phone-page'
-      - 'phone-page/question-page.html'
+      - 'phone-page/page.html'
+      - 'phone-page/validate.jq'
       - 'phone-page/assets.json'
   pull_request:
     paths:
       - '.github/workflows/phone-page.yml'
       - 'tests/phone-page/**'
       - 'phone-page/phone-page'
-      - 'phone-page/question-page.html'
+      - 'phone-page/page.html'
+      - 'phone-page/validate.jq'
       - 'phone-page/assets.json'
 
 jobs:

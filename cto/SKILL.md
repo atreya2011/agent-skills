@@ -5,153 +5,31 @@ description: Run one CTO sweep. Rebuild the picture of every herdr tab, session,
 
 # CTO
 
-The CTO runs in one long-lived tab. On every sweep it rebuilds its picture from sources, never from chat memory. The `cto-snapshot` binary reads the sources and judges each todo and session with rules and gates. The CTO acts on those judgments and writes the brief. Words follow `CONTEXT.md`.
+The CTO runs in one long-lived tab. On every sweep it rebuilds its picture from sources, never from chat memory. The `cto-snapshot` binary reads the sources and judges each todo and session with rules and gates. The CTO acts on those judgments and writes the brief. Words follow [CONTEXT.md](../CONTEXT.md).
 
 ## Local file
 
-`~/.agents/local/cto.md` holds every machine value. Read it at the start of every sweep. It has one section per field:
-
-- Pinned: tab and workspace labels that a sweep never questions.
-- Profiles: per profile, its name, its agent CLI kind (`claude` or `codex`) and its transcript directory.
-- Launch command: the exact shell command that starts the CTO's agent CLI.
-- Vault map: per repository, checkout route or Taskwarrior project name, the vault root, and the `llm-wiki` command. Domain aliases cover todos with no repository link.
-- Todo context: the handoff directory. Only Markdown handoffs that name the todo UUID (full or first eight characters) or a linked pull-request URL are included.
-- Cron times: the sweep interval, the waking hours and the reset time.
-- Taskwarrior: the absolute path of the Taskwarrior binary. Bare `task` can be a different tool.
-- Thresholds: the confidence cut-offs. The starting values are provisional until the ground-truth run sets them.
-- Rulings: standing instructions from the user, one bullet each, dated.
-
-The tool reads its settings from fenced `toml` blocks in these sections and rejects an unknown field. The blocks join into one document, so put each bare key under a table:
-
-```toml
-[commands]               # task is required; herdr, gh and git default to their bare names
-task = "<absolute path>"
-[pinned]
-tabs = ["<tab label>"]
-workspaces = ["<workspace label>"]
-[[profiles]]
-name = "<profile name>"
-kind = "claude"          # or "codex"
-dir = "<transcript directory>"
-[vaults]
-"<owner/name, or the project directory>" = "<vault root>"
-[context]
-handoff_dir = "<handoff directory>"
-[thresholds]
-floor = 0.6              # below this, every verdict escalates
-low = 0.6                # low-stakes acts: an In progress line, a Queued rank
-high = 0.8               # high-stakes acts: closing or rewriting a todo
-window_hours = 6         # sessions written within this window are read
-tail_bytes = 65536
-excerpt_chars = 800
-[gate]
-log = "<gate-call log path>"
-todo_context_enabled = false # enable only after a read-only known-answer evaluation passes
-```
-
-Two rulings have a fixed format:
-
-- `Dispatch default: seat table <default or a table name>; reviewers <a count, or reviewer-<name> seats separated by commas>`. The install step writes it. Every kickoff states both settings, so a dispatch never waits on the user for them.
-- `Assignee split: <the user's rule for +cos and +cto>`.
-
-The handoff setting and rollout flag require the updated binary. Prepare them in a separate local file while evaluating; adding unknown fields to the live file before upgrading the installed binary makes the previous binary reject it.
-
-The two todo gates remain disabled until `gate.todo_context_enabled` is true. Enable them only after a read-only known-answer evaluation has no confident wrong answer. A failed evaluation keeps both todo gates disabled and sends unresolved todos to the user; the session gate and proof rules continue.
-
-The API key is never in this file. The tool reads `TYPESAFE_API_KEY` from the environment, else the OS keyring entry with service `typesafe` and user `api`. Without a key every gate escalates.
+`~/.agents/local/cto.md` holds every machine value. Read it at the start of every sweep. Before configuring or interpreting its fields, read [references/local-file.md](references/local-file.md).
 
 ## Read-only evaluation
 
-Create a JSON case list with one object per todo: `{"uuid":"<full todo UUID>","gate":"todo_state"}` or `{"uuid":"<full todo UUID>","gate":"todo_owner"}`. Run `bin/cto-snapshot evaluate --cases <case list> --local-file <evaluation local file>`. It reads Taskwarrior and current linked sources, prints the exact context and judgments, and makes no Taskwarrior writes. The command bypasses the rollout flag, existing owner tags and proof rules so each requested gate is measured directly. Keep expected answers outside the input.
-
-Compare state answers with the known state and owner answers with the known owner. A substantive wrong answer at or above `thresholds.floor` fails the evaluation, even when the higher action threshold would escalate it. A confidently selected single owner for a task that needs splitting is wrong. Unknown, errors and answers below the floor go to the user. Report todo, expected answer, verdict, confidence and correct, wrong or sent to user; enable neither todo gate after a failure.
+Before evaluating or enabling the todo gates, read [references/evaluation.md](references/evaluation.md). Keep both disabled until a read-only known-answer evaluation passes; a confident wrong answer keeps both disabled.
 
 ## Install
 
-1. Build the tool: `go build -o ../bin/cto-snapshot .` from this skill's `snapshot` directory.
-2. Store the API key once. On Linux: `secret-tool store --label=typesafe service typesafe username api`. On macOS: `security add-generic-password -s typesafe -a api -w`. Each command prompts for the key.
-3. Create the local file from the sections above, including the `Dispatch default` ruling.
-4. Create the CTO tab: `herdr workspace create --cwd <directory> --label cto --no-focus`. Take the root pane ID from the reply, run the launch command there with `herdr pane run <pane> "<launch command>"`, then `herdr agent rename <pane> cto`.
-5. Add the crontab entries below, then work through `references/checklist.md`.
-
-The crontab addresses the tab by pane ID because `/clear` starts a new agent session and drops its agent name. `PATH` must include the directory of `herdr`. The first line sweeps at the interval during waking hours. The second resets at the reset time. Each waits for the tab to settle, then sends only when it is `idle` or `done`. A `blocked` tab gets nothing, because a blocked tab is already waiting on the user. After `/clear` the reset sends Enter once, because the command can stay staged in the composer; on an empty composer the Enter does nothing. It then restores the `cto` agent name, ignoring a rename failure so the sweep still runs. Before each message the line presses `ctrl+s`, which sets aside any draft the user left in the input box; Claude puts the draft back after the message is sent.
-
-```
-*/<interval in minutes> <first hour>-<last hour> * * * herdr agent wait <pane> --timeout 120000; herdr agent get <pane> | grep -Eq '"agent_status":"(idle|done)"' && herdr agent send-keys <pane> ctrl+s && herdr agent prompt <pane> "AGENT MESSAGE (cron). Run the cto skill: sweep."
-0 <reset hour> * * * herdr agent wait <pane> --timeout 600000; herdr agent get <pane> | grep -Eq '"agent_status":"(idle|done)"' && herdr agent send-keys <pane> ctrl+s && herdr agent prompt <pane> "/clear" && herdr agent send-keys <pane> Enter && sleep 5 && (herdr agent rename <pane> cto || true) && herdr agent send-keys <pane> ctrl+s && herdr agent prompt <pane> "AGENT MESSAGE (cron). Run the cto skill: sweep."
-```
+Before building the tool, configuring the tab or installing cron, read [references/install.md](references/install.md). After install, run the manual checks in [references/checklist.md](references/checklist.md).
 
 ## Sweep
 
-1. Read the local file. If it has an Import section, do `references/import.md` now.
-2. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop. It reads the `Assignee split` ruling as policy for the owner gate; do not assign an owner from the title alone.
-3. Apply owner judgments as described below. Keep the UUID and description of every todo this sweep tags `+cos`. If the missing owner was its only question, remove `+ask`.
-4. If this sweep tagged any todo `+cos`, send the CoS one chat message. First run `herdr agent send-keys cos ctrl+s`. Then run `herdr agent prompt cos --wait --timeout 120000` with this message, putting each todo on its own line: `AGENT MESSAGE (cto, not a human). New todos for you:\n<uuid> <description>\nAct on each within your standing rules and close it only on proof.` If the send fails, list it in the brief under Not checked.
-5. Read `unreadable`. Each entry is a source the tool could not read. List them in the brief under Not checked. Never infer from silence: a tab, todo or project that depends on an unreadable source is reported as unchecked, and no todo changes on a bad read.
-6. Handle orchestrator messages (below).
-7. Apply the judgments below.
-8. Clean up tabs (below).
-9. Dispatch ready todos (below).
-10. Make wiki writes (below).
-11. If any tab has state `blocked`, raise one notification: `herdr notification show "Blocked tab" --body "<project>: <tab labels>" --sound request`.
-12. Write the brief.
-
-## Orchestrator messages
-
-An orchestrator can write to the CTO tab in chat; its message starts with `AGENT MESSAGE`, such as a `DECISION NEEDED` entry or a report that it finished. For each one, find the todo whose `run:` annotation names that orchestrator's workspace. Run `task <uuid> modify +ask` and annotate `ask: <the decision, as one plain question>`, with the orchestrator's own recommendation as `suggested:` when it gives one. Never close a todo or a tab on such a message. Completion is accepted only through the reply gate in Tab cleanup.
-
-## Judgments
-
-The snapshot's `judgments` hold one entry per judged todo and per session. The order is rule, gate, judgment call. A rule decides with no model call. Otherwise a gate decides: a typed label with calibrated confidence. Each entry has a `verdict`. The CTO never reads transcripts itself and never overrides a verdict.
-
-- Owner, gate `todo_owner`, verdict `act`, label `cto` or `cos`: for a still-pending todo with neither owner tag, add `+cto` or `+cos` and write the judgment annotation. The owner gate uses the existing confidence floor. A user label, a mixed-owner task, a missing source, a failed call or confidence below the floor becomes a judgment call; keep it unassigned. There is no `+user` owner tag. Do not close, rewrite or dispatch a todo from an owner judgment.
-- Todo, verdict `act`, label `done`: `task <uuid> done`, then `task <uuid> annotate "<annotation>"`. Rules and gates both give an `annotation`; write it unchanged, so the verdict is recorded where the decision lands.
-- Todo, verdict `act`, label `stale`: rewrite the description from the facts in the snapshot (`task <uuid> modify`) and annotate. Keep every URL, `commit:` and `session:` reference that the old description holds.
-- Todo, verdict `act`, label `open`: change nothing. The todo is In progress or Queued.
-- A proof rule or an `act` verdict from `todo_state` settles the state question. If it is tagged `+ask`, run `task <uuid> modify -ask`. An owner judgment removes `+ask` only when missing ownership was the todo's sole question.
-- Todo, verdict `escalate`: this is a judgment call. Tag it `+ask` if it is not tagged yet. Never repeat a question: annotate `ask: <one plain question> | suggested: <label> | <annotation>` only when no earlier `ask:` annotation of the todo holds the same question. A question the user already answered is asked again only when a fact in the snapshot changed since the answer, such as the state of a linked issue or pull request, a new commit, or a different tab state. If `reason` says a source is unreadable, the todo has no assignee tag, or the gate failed, put that in the question and suggest nothing.
-- Session: the label is the In progress line. An `escalate` verdict means "activity unknown".
-- Todos tagged `+cos` belong to the CoS. Never change them.
-
-Both todo gates receive the todo, current links, project tabs, linked wiki page text and matching handoff text. They never receive a transcript excerpt; `session_activity` still receives its transcript excerpt. `wiki:` notes match actual markdown files in the todo's mapped vault by whole path or filename with or without `.md`; punctuation and prose need no reference grammar. A note with no matching page or an ambiguous filename reports an error, and no partial context is judged. Oversized requests report the page or handoff that crosses the service input limit instead of truncating text.
-
-The tool leaves the `ask:` and `cto ` annotations out of the gate's input, so an old question or verdict never feeds a new one. When the user answers a judgment call, apply the answer, remove `+ask` and annotate the todo with the answer.
-
-## Tab cleanup
-
-Do this for each workspace that is not pinned and whose state is `idle` or `done`. herdr's `done` is the same state as `idle`, not yet seen, so treat the two alike. A workspace's orchestrator is its tab labeled `orchestrator`. A workspace with no such tab is reported with its state and left alone. A pinned tab or workspace is never questioned, and a pinned tab is never closed, even inside an unpinned workspace.
-
-1. If the orchestrator is a `claude` agent, set aside any draft the user left in its input box with `herdr agent send-keys <target> ctrl+s`; Claude puts the draft back after the message is sent. Then send the orchestrator a chat message: `herdr agent prompt <target> --wait --timeout 120000 "AGENT MESSAGE (cto, not a human). Are your tabs still needed? Reply done only if your work is finished and every tab can close. If you finished any of these todos, name them: <the project's open +cto todos>."`
-2. Read the reply with `herdr agent read <target> --source recent-unwrapped --lines 60` and pipe the final message into `bin/cto-snapshot reply`.
-3. If the verdict is `act` and the label is `done`, the orchestrator has said done. That is proof: close the todos it named and annotate them with the printed `annotation`, then close each tab of the workspace that is `idle` or `done` and not pinned, with `herdr tab close <tab_id>`, the orchestrator's last. If a pinned tab remains, the workspace stays open and is reported.
-4. A timeout, a `blocked` state or any other verdict is "not done". Report the workspace with its state and age in Needs you. Close nothing.
-
-Talk to orchestrators by chat only. Never edit their files.
-
-## Dispatch
-
-Dispatch only a todo that has `ready` true, assignee `cto` and `dispatched` false, that is still open after this sweep's judgments, is not tagged `+ask`, and whose project has a `root`. A todo that is not ready is listed in Queued as not ready and is never dispatched; the user controls unspecified work. A ready todo whose project has no `root`, because no tab or session in the window ran in a checkout, is listed in Queued as "no local checkout" and is not dispatched.
-
-The steps follow the gauntlet skill and its `references/tab-dispatch.md`. Name the orchestrator's agent `orchestrator-<run id>`, where the run id is `<project label>-<issue number>`, because herdr agent names are unique per server and two projects can share an issue number. Lowercase the project label, replace each character outside `a-z`, `0-9` and `-` with `-`, and shorten the label so the whole name stays within 32 characters. Call that name `<agent>` below. If a step below blocks or fails, tag the todo and annotate it: `task <uuid> modify +ask`, then `task <uuid> annotate "ask: dispatch to <workspace label> failed at step <n>: <reason>"`. That puts it in Needs you. Go no further.
-
-1. Create a workspace for the run: `herdr workspace create --cwd <project root> --label <project label>-<issue number> --no-focus --env REPLY_SIZE_CHECK=off`. Take the tab ID and root pane ID from the reply.
-2. Record the run at once, before any step that can block: `task <uuid> annotate "run: <workspace label>"`. Then run `herdr tab rename <tab_id> orchestrator`.
-3. Read the `orchestrator` row of the seat table that the `Dispatch default` ruling names (`gauntlet.md`, or `gauntlet-<name>.md`). Start the orchestrator with `herdr agent start <agent> --kind <Kind> --pane <pane_id> -- <Args>`, taking Kind and Args from that row. A start failure goes to Needs you.
-4. The gauntlet skill is invoked by the user, never by a model, so load it first: `herdr agent prompt <agent> "/gauntlet" --wait --timeout 120000` for a claude orchestrator, or `herdr agent prompt <agent> '$gauntlet' --wait --timeout 120000` for a codex one, with single quotes so the shell keeps the `$`. The prompt settles on `idle`, `done` or `blocked`; a timeout or a `blocked` state is a failure.
-5. Send the kickoff through `gauntlet/send.sh <agent>`, with the message on standard input. The first line is `AGENT MESSAGE (cto, not a human).`, which `send.sh` requires. The message then gives the issue URL, `Run id: <run id>` with the instruction to name every seat it starts `<seat>-<run id>` instead of `<seat>-<issue number>`, `Seat table: <ruling>`, `Reviewers: <ruling>`, "Report decisions and completion in chat to the dispatcher, the agent named cto", this rule (never add a Co-Authored-By trailer or a tool attribution line to commits, PR bodies, or issue or review comments), and "Begin your response with exactly: RECEIVED <token>" with a token that is new for this send. `send.sh` prints `SEND BLOCKED <agent> <reason>` on failure.
-6. For a claude orchestrator, send the goal with `gauntlet/goal.sh <agent>`, the condition on standard input, using the example condition of the gauntlet skill's Session goal section. `goal.sh` prints `GOAL BLOCKED <agent>` on failure.
-
-## Wiki writes
-
-Write a wiki ruling with `llm-wiki rule --vault <vault root> --on <page> "<text>"`, or edit the page directly, in the vault the vault map names for the project. Before any edit, read the target page now and confirm the claim still holds against today's vault. A stale proposal never applies. Never run ingest. Applying a proposal imported from the previous tracker is not part of this skill.
-
-## Brief
-
-Plain English: no metaphors and no filler. Every brief is a full picture, never a delta. Group by project under four fixed sections:
-
-- Needs you: Start with the output of `phone-page inbox`, including every open question page with its link. Then Not checked, blocked tabs, and every judgment call (every todo tagged `+ask`) in one batch. Number the calls so the user can answer them in one reply. For each call give the todo, the question and the suggested answer with its confidence.
-- Done: todos closed this sweep with their proof, and merged pull requests in the window.
-- In progress: one line per tab or session: state, age, and the session label. Idle is always stated with an age. An age of `null` is stated as unknown.
-- Queued: ready and not ready todos with the next step, ranked.
-
-Pinned tabs appear in the brief and are never questioned.
+1. Read the local file. If it has an Import section, read and follow [references/import.md](references/import.md) now.
+2. Run `bin/cto-snapshot`. If it exits nonzero, say so in one line and stop. Do not assign an owner from the title alone.
+3. Read [references/sweep.md](references/sweep.md) before applying owner judgments; keep the UUID and description of every todo newly tagged `+cos`.
+4. Send the CoS one chat handoff for those todos, following that reference. Report send failures under Not checked.
+5. List `unreadable` entries under Not checked. Report dependent tabs, todos and projects as unchecked; never infer from silence or change a todo on a bad read.
+6. Handle orchestrator messages per [references/sweep.md](references/sweep.md#orchestrator-messages).
+7. Apply the remaining [judgments](references/sweep.md#judgments). Never read transcripts yourself or override a verdict. Never change `+cos` todos.
+8. Before asking orchestrators or closing tabs, read [references/tab-cleanup.md](references/tab-cleanup.md). Never question pinned tabs or workspaces, or close pinned tabs.
+9. Before dispatching ready todos, read [references/dispatch.md](references/dispatch.md).
+10. Before wiki edits, read [references/sweep.md](references/sweep.md#wiki-writes). Never run ingest.
+11. If any tab is blocked, raise one notification as specified in [references/sweep.md](references/sweep.md#sweep).
+12. Before writing the full brief, read [references/brief.md](references/brief.md).

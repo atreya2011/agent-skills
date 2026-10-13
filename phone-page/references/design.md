@@ -1,6 +1,6 @@
 # Phone-page design
 
-Every phone page uses this dark system. A read page and a question page should feel like two views of the same product.
+Read and question specs render through one template, stylesheet and shared block renderers in this dark system. Author read pages only through `phone-page read <spec>` and question pages through `phone-page ask <spec>`; both validate their content before publishing.
 
 ## Foundation
 
@@ -15,14 +15,14 @@ Every phone page uses this dark system. A read page and a question page should f
 - Cards have a 24 px radius. Buttons and compact labels are pills.
 - Every foreground and background pair has at least 4.5:1 contrast. Muted text on a card is the lowest pair, at 7.2:1.
 
-Use one column with a 16 px gutter on a phone. Read pages keep that column centered and no wider than 720 px on a desktop browser. Question pages below 960 px scroll through all questions; at 960 px and above each question starts a new screen and spans as many parts as needed, then comes a review screen, within a centered layout up to 1200 px wide. A question with context, cards or a table fills its left column, then its right column, in reading order: heading, context, cards, table, each chart, and options with Other, note and Skip. Bulleted lists split between top-level bullets to fill the remaining column space, then continue in the next column or screen with the same styling and indentation; each bullet keeps its whole text and sub-bullets. A screen with an empty right column keeps one centered column at the measured width; other questions keep a centered single column. Measure blocks against the space between the fixed progress and navigation bars. A single bullet taller than a column, or a taller block that is not a list, owns a screen and scrolls internally; the desktop page does not scroll. Only the first screen holds the masthead; later parts begin with a compact question heading. Repack on resize while keeping the current question and any focused answer field. Controls are at least 44 px high, focus is visible, and the layout never requires horizontal scrolling.
+Use one column with a 16 px gutter below 960 px. At 960 px and above, a read page scrolls inside a centered container up to 1200 px wide, with a full-width masthead and one full-width row per section. The section heading and context occupy the left column, cards occupy the right column, and its table and charts span both columns below them. A context-only section stays in one centered column. Read pages have no progress bar or Previous and Next bar. Question pages below 960 px scroll through all questions; at 960 px and above each question starts a new screen and spans as many parts as needed, then comes a review screen, within a centered layout up to 1200 px wide. A question with context, cards or a table fills its left column, then its right column, in reading order: heading, context, cards, table, each chart, and options with Other, note and Skip. Bulleted lists split between top-level bullets to fill the remaining column space, then continue in the next column or screen with the same styling and indentation; each bullet keeps its whole text and sub-bullets. A screen with an empty right column keeps one centered column at the measured width; other questions keep a centered single column. Measure blocks against the space between the fixed progress and navigation bars. A single bullet taller than a column, or a taller block that is not a list, owns a screen and scrolls internally; the desktop page does not scroll. Only the first screen holds the masthead; later parts begin with a compact question heading. Repack on resize while keeping the current question and any focused answer field. Controls are at least 44 px high, focus is visible, and the layout never requires horizontal scrolling.
 
 ## Content
 
 - Before writing any page, use `git ls-files` in the current repository to find files named `glossary.md` at any path, ignoring letter case, and read any matches.
 - Use glossary terms with their exact spelling and meaning, and define each term on first use using the glossary's own definition.
 
-Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the question spec's `flow` or `flows` field on a question page or draw the same chart on a read page. Show parallel facts as a card grid and structured comparisons as a table; keep bullets for reasons that do not fit either. A read page follows the same density rule as a question: the bottom line with its reason, the facts in a table with numbers and sources, two or three limits, the process as a chart, and nothing else.
+Open with one short eyebrow and one headline. State the bottom line in the first bullet, then give the reasons in the remaining bullets. Write each bullet and sub-bullet as one sentence at 17 px. Put numbered points in nested sub-bullets without numbering their text. Show every process as a flow chart with bordered boxes and arrows, using branches for decisions: use the shared `flow` or `flows` field on either page type. Show parallel facts as a card grid and structured comparisons as a table; keep bullets for reasons that do not fit either. A read page follows the same density rule as a question: the bottom line with its reason, the facts in a table with numbers and sources, two or three limits, the process as a chart, and nothing else.
 
 - A page covers one project; questions or content about different projects go on separate pages; the page title names the project.
 
@@ -32,7 +32,7 @@ Use Lucide icons only when they identify meaning. Pair every icon with visible t
 
 ### Summary
 
-One sentence in text color at weight 500 directly under the headline states the bottom line. On a question page the spec's `summary` renders it; on a read page write it as the first paragraph.
+One sentence in text color at weight 500 directly under the headline states the bottom line. Both page types render it from the spec's `summary`.
 
 ### Card
 
@@ -40,17 +40,17 @@ A card groups one decision, fact or outcome. Give it a short heading and bullet 
 
 ### Fact cards
 
-A grid of 2 to 6 small cards shows parallel facts such as causes, sources or constraints. Each has a canvas background inside the card, a 1 px line border, a 12 px radius, a 17 px title at weight 600 with an optional 20 px lime Lucide icon, and one 17 px muted sentence. The grid has one column on a phone and two columns when the container is at least 500 px wide. On a question page the spec's `cards` field renders it.
+A grid of small cards shows parallel facts such as causes, sources or constraints. Each has a canvas background inside the card, a 1 px line border, a 12 px radius, a 17 px title at weight 600 with an optional 20 px lime Lucide icon, and one 17 px muted sentence. The grid has one column on a phone and two columns when the container is at least 500 px wide. Both page types render it from `cards`.
 
 ### Table
 
-A table compares 2 to 4 columns over 1 to 8 rows at 17 px. Column headers are uppercase muted text at 0.75 rem, the first cell of each row is in text color at weight 500, other cells are muted, and rows are separated by a 1 px line. The table scrolls horizontally inside its wrapper instead of widening the page. On a question page the spec's `table` field renders it.
+A table compares structured facts at 17 px. Column headers are uppercase muted text at 0.75 rem, the first cell of each row is in text color at weight 500, other cells are muted, and rows are separated by a 1 px line. The table scrolls horizontally inside its wrapper instead of widening the page. Both page types render it from `table`.
 
 ### Flow chart
 
-Draw every process as bordered boxes joined by down arrows under a small label, with 17 px text and the existing colors. The label is `Flow` for a single chart, or the chart's title of up to 40 characters when a page shows more than one chart. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
+Draw every process as bordered boxes joined by down arrows under a small label, with 17 px text and the existing colors. The label is `Flow` for a single chart, or the chart's title when a page shows more than one chart. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
 
-In a question spec, `context` accepts one-sentence strings or objects `{"text": "<one sentence>", "items": ["<one sentence>", ...]}` whose non-empty `items` render as nested sub-bullets. `flow` accepts one-sentence strings or objects `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with 2 to 4 branches, and `flows` accepts 1 to 4 objects `{"title": "<up to 40 characters>", "steps": [...]}` with the same steps. A question renders context, cards, table, charts and options in that order. Each bullet, sub-bullet, card title, card text, table cell, flow title, flow step, branch outcome and option description has one sentence. Validation rejects `.`, `!` or `?` followed by whitespace and an uppercase letter or digit, while allowing decimals and version numbers; bullets cannot start with `1.` or `2)` numbering.
+The shared field schemas and sentence rules are defined once in [blocks.md](blocks.md); [read-spec.md](read-spec.md) and [question-spec.md](question-spec.md) define each page type's own fields. A question renders context, cards, table, charts and options in that order. A read section uses the desktop row layout above and that same content order on a phone.
 
 ### Options
 
@@ -64,17 +64,6 @@ The desktop review heading is Check your answers; on a phone, a live Your answer
 
 ## Assets
 
-Load scripts and fonts only from `/assets/<name>`, using the names in `../assets.json`. A page must not request a remote stylesheet, script, font, image, analytics endpoint or API. Inline page-specific CSS is allowed by the store's content policy.
+The template loads scripts and fonts only from `/assets/<name>`, using the names in [assets.json](../assets.json), and supplies the font declarations and inline CSS. Pages must not request remote stylesheets, scripts, fonts, images, analytics endpoints or APIs.
 
-Start a read page with these asset declarations:
-
-```html
-<style>
-  @font-face { font-family: Figtree; font-style: normal; font-weight: 900; font-display: swap; src: url('/assets/figtree-900.woff2') format('woff2'); }
-  @font-face { font-family: Inter; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/inter-400.woff2') format('woff2'); }
-  @font-face { font-family: Inter; font-style: normal; font-weight: 500; font-display: swap; src: url('/assets/inter-500.woff2') format('woff2'); }
-  @font-face { font-family: Inter; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/inter-600.woff2') format('woff2'); }
-</style>
-<script src="/assets/tailwind-browser.js"></script>
-<script src="/assets/lucide.min.js"></script>
-```
+Interactivity uses the pinned official `@alpinejs/csp` build without changing the store's content policy. Its [CSP expression limits](https://alpinejs.dev/advanced/csp) exclude arrow functions, destructuring, template literals and global functions; use simple property and registered method bindings, with logic in the Alpine component. Inline scripts remain allowed, and `eval` remains disallowed.

@@ -7,7 +7,7 @@ import {
   waitOnExecutionContext,
 } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import type { D1Migration } from "@cloudflare/vitest-pool-workers";
+import type { D1Migration } from "@cloudflare/vitest-plugin";
 import { importPKCS8, SignJWT, type CryptoKey } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import worker, { type PageEvents } from "../src/index";
@@ -189,7 +189,7 @@ describe("pages", () => {
 
 describe("assets", () => {
   it("serves a manifest asset through the assets binding", async () => {
-    const response = await request("/assets/tailwind-browser.js", {}, await token());
+    const response = await request("/assets/alpine-csp.min.js", {}, await token());
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("test asset\n");
   });

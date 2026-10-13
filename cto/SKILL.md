@@ -32,7 +32,7 @@ Handle every orchestrator message in the turn it arrives, even outside a sweep. 
 5. List `unreadable` entries under Not checked. Report dependent tabs, todos and projects as unchecked; never infer from silence or change a todo on a bad read.
 6. As a backstop, handle any orchestrator messages still in chat and unrecorded on their todos per [references/sweep.md](references/sweep.md#orchestrator-messages).
 7. Apply the remaining [judgments](references/sweep.md#judgments). Never read transcripts yourself or override a verdict. Never change `+cos` todos.
-8. Before asking orchestrators or closing tabs, read [references/tab-cleanup.md](references/tab-cleanup.md). Never question pinned tabs or workspaces, or close pinned tabs.
+8. Before cleanup, read [references/tab-cleanup.md](references/tab-cleanup.md). Never question or close pinned tabs, pinned workspaces or your own tab.
 9. Before dispatching ready todos, read [references/dispatch.md](references/dispatch.md).
 10. Before wiki edits, read [references/sweep.md](references/sweep.md#wiki-writes). Never run ingest.
 11. If any tab is blocked, raise one notification as specified in [references/sweep.md](references/sweep.md#sweep).

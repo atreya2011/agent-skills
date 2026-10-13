@@ -95,10 +95,10 @@ var (
 	}
 	gateReply = gateDef{
 		Name:         "orchestrator_reply",
-		Instructions: "The CTO asked an orchestrator whether its tabs are still needed. What does the reply in the state say?",
+		Instructions: "The CTO asked an agent whether its tab or tabs are still needed. What does the reply in the state say?",
 		Criteria: map[string]string{
-			"done":     "The reply explicitly says its work is finished and its tabs can be closed.",
-			"not_done": "The reply says work continues or the tabs are still needed.",
+			"done":     "The reply explicitly says its work is finished and its tab or tabs can be closed.",
+			"not_done": "The reply says work continues or its tab or tabs are still needed.",
 			"unclear":  "The reply does not clearly say either.",
 		},
 		Unknown: "unclear",

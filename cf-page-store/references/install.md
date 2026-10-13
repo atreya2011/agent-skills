@@ -1,6 +1,6 @@
 # Install cf-page-store
 
-Run these steps in order, from the `cf-page-store` directory.
+Install the latest Bun release, then run these steps in order from the `cf-page-store` directory.
 
 1. Ask the user to create a Zero Trust organization on Cloudflare's free plan in the dashboard. Cloudflare asks for a payment method, but the free plan charges nothing. Record the full team domain. Open Workers & Pages once in the dashboard so Cloudflare registers the `workers.dev` subdomain before deployment.
 
@@ -17,7 +17,7 @@ Run these steps in order, from the `cf-page-store` directory.
 3. Install the pinned packages, create D1, apply the schema, render the deploy config next to the future local file, download the phone-page assets, and deploy. Set each placeholder to the value from the dashboard or command output. The first deploy uses an audience that matches no Access application because Access does not exist yet.
 
    ```sh
-   npm ci
+   bun install --frozen-lockfile
    export ACCOUNT_ID='<cloudflare-account-id>'
    export DATABASE_NAME='<database-name>'
    export WORKER_NAME='<worker-name>'
@@ -31,10 +31,10 @@ Run these steps in order, from the `cf-page-store` directory.
    esac
    export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
 
-   npx wrangler d1 create "$DATABASE_NAME"
+   bunx --bun wrangler d1 create "$DATABASE_NAME"
    export D1_DATABASE_ID='<database-id-from-the-create-command>'
-   npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0001_schema.sql
-   npx wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql
+   bunx --bun wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0001_schema.sql
+   bunx --bun wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql
    mkdir -p "$(dirname "$DEPLOY_CONFIG")"
    jq \
      --arg name "$WORKER_NAME" \
@@ -52,7 +52,7 @@ Run these steps in order, from the `cf-page-store` directory.
       .assets.directory = $assets' \
      wrangler.template.jsonc >"$DEPLOY_CONFIG"
    phone-page assets "$PWD/assets"
-   npx wrangler deploy --config "$DEPLOY_CONFIG"
+   bunx --bun wrangler deploy --config "$DEPLOY_CONFIG"
    export STORE_ADDRESS='<deployed-workers.dev-url>'
    ```
 
@@ -110,7 +110,7 @@ Run these steps in order, from the `cf-page-store` directory.
    jq --arg audience "$AUDIENCE_TAG" '.vars.ACCESS_AUDIENCE = $audience' \
      "$DEPLOY_CONFIG" >"$DEPLOY_CONFIG.new"
    mv "$DEPLOY_CONFIG.new" "$DEPLOY_CONFIG"
-   npx wrangler deploy --config "$DEPLOY_CONFIG"
+   bunx --bun wrangler deploy --config "$DEPLOY_CONFIG"
    ```
 
 6. Link the command into `PATH`, write this skill's local file, and set phone-page to use it:

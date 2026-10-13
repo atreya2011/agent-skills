@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'question-page.spec.js',
+  testMatch: ['question-page.spec.js', 'read-page.spec.js'],
   fullyParallel: false,
   workers: 1,
   reporter: 'line',

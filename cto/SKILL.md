@@ -19,6 +19,10 @@ Before evaluating or enabling the todo gates, read [references/evaluation.md](re
 
 Before building the tool, configuring the tab or installing cron, read [references/install.md](references/install.md). After install, run the manual checks in [references/checklist.md](references/checklist.md).
 
+## Orchestrator messages
+
+Handle every orchestrator message in the turn it arrives, even outside a sweep. Before acting, read [references/sweep.md](references/sweep.md#orchestrator-messages).
+
 ## Sweep
 
 1. Read the local file. If it has an Import section, read and follow [references/import.md](references/import.md) now.
@@ -26,7 +30,7 @@ Before building the tool, configuring the tab or installing cron, read [referenc
 3. Read [references/sweep.md](references/sweep.md) before applying owner judgments; keep the UUID and description of every todo newly tagged `+cos`.
 4. Send the CoS one chat handoff for those todos, following that reference. Report send failures under Not checked.
 5. List `unreadable` entries under Not checked. Report dependent tabs, todos and projects as unchecked; never infer from silence or change a todo on a bad read.
-6. Handle orchestrator messages per [references/sweep.md](references/sweep.md#orchestrator-messages).
+6. As a backstop, handle any orchestrator messages still in chat and unrecorded on their todos per [references/sweep.md](references/sweep.md#orchestrator-messages).
 7. Apply the remaining [judgments](references/sweep.md#judgments). Never read transcripts yourself or override a verdict. Never change `+cos` todos.
 8. Before asking orchestrators or closing tabs, read [references/tab-cleanup.md](references/tab-cleanup.md). Never question pinned tabs or workspaces, or close pinned tabs.
 9. Before dispatching ready todos, read [references/dispatch.md](references/dispatch.md).

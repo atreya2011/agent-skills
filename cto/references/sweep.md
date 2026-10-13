@@ -8,7 +8,7 @@ Run these steps in order on every sweep, using the snapshot for judgments and ch
 3. Apply owner judgments in [Judgments](#judgments). Keep the UUID and description of every todo this sweep tags `+cos`. If the missing owner was its only question, remove `+ask`.
 4. If this sweep tagged any todo `+cos`, send the CoS one chat message. First run `herdr agent send-keys cos ctrl+s`. Then run `herdr agent prompt cos --wait --timeout 120000` with this message, putting each todo on its own line: `AGENT MESSAGE (cto, not a human). New todos for you:\n<uuid> <description>\nAct on each within your standing rules and close it only on proof.` If the send fails, list it in the brief under Not checked.
 5. Read `unreadable`. Each entry is a source the tool could not read. List them in the brief under Not checked. Never infer from silence: a tab, todo or project that depends on an unreadable source is reported as unchecked, and no todo changes on a bad read.
-6. Handle [orchestrator messages](#orchestrator-messages).
+6. As a backstop, handle any [orchestrator messages](#orchestrator-messages) still in chat and unrecorded on their todos.
 7. Apply the [judgments](#judgments).
 8. Clean up tabs per [tab-cleanup.md](tab-cleanup.md).
 9. Dispatch ready todos per [dispatch.md](dispatch.md).
@@ -18,7 +18,7 @@ Run these steps in order on every sweep, using the snapshot for judgments and ch
 
 ## Orchestrator messages
 
-An orchestrator can write to the CTO tab in chat; its message starts with `AGENT MESSAGE`, such as a `DECISION NEEDED` entry or a report that it finished. For each one, find the todo whose `run:` annotation names that orchestrator's workspace. Run `task <uuid> modify +ask` and annotate `ask: <the decision, as one plain question>`, with the orchestrator's own recommendation as `suggested:` when it gives one. Never close a todo or a tab on such a message. Completion is accepted only through the reply gate in [tab-cleanup.md](tab-cleanup.md).
+An orchestrator can write to the CTO tab in chat; its message starts with `AGENT MESSAGE`, such as a `DECISION NEEDED` entry or a report that it finished. In the turn each message arrives, even outside a sweep, find the existing todo whose `run:` annotation names that orchestrator's workspace. Run `task <uuid> modify +ask` and annotate `ask: <the decision, as one plain question>`, with the orchestrator's own recommendation as `suggested:` when it gives one. Never create a todo for the message. Never close a todo or a tab on such a message. Completion is accepted only through the reply gate in [tab-cleanup.md](tab-cleanup.md).
 
 ## Judgments
 

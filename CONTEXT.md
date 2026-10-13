@@ -68,7 +68,7 @@ _Avoid_: task, item, ticket
 A todo whose text no longer matches its sources.
 
 **Proof**:
-A fact from a source that closes or updates a todo without asking the user: a merged PR, a closed issue, a commit on the default branch, or the orchestrator saying done.
+A fact from a source that closes or updates a todo without asking the user: a merged PR, a closed issue, a commit on the default branch, or an agent's done reply accepted by the [cleanup reply gate](cto/references/tab-cleanup.md).
 _Avoid_: evidence
 
 **Judgment call**:

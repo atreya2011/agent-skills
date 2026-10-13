@@ -139,10 +139,7 @@ func TestJudgeVerdicts(t *testing.T) {
 	}
 }
 
-// recordedCase is one synthetic state and the real gate response it drew.
-// testdata/gate/<name>.request.json is the request the tool sent for the state
-// and <name>.response.json is the reply of the live API, both saved once with
-// the recording script kept outside the repository.
+// Expected requests use the broadened reply wording; responses retain the original live API recordings.
 type recordedCase struct {
 	name  string
 	def   gateDef
@@ -188,7 +185,7 @@ func TestJudgeReplaysRecordedResponses(t *testing.T) {
 			assert.InDelta(t, tt.confidence, j.Confidence, 1e-9)
 			assert.Equal(t, tt.verdict, j.Verdict, j.Reason)
 			require.Equal(t, 1, f.requests())
-			assert.JSONEq(t, string(request), string(f.bodies[0]), "the tool still sends the request that was recorded")
+			assert.JSONEq(t, string(request), string(f.bodies[0]), "the tool sends the expected current request")
 		})
 	}
 }

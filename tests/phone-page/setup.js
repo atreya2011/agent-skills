@@ -1,5 +1,5 @@
 import { $ } from 'bun';
-import { rm, mkdtemp } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -9,5 +9,5 @@ export default async function setup() {
   const assetsDirectory = await mkdtemp(join(tmpdir(), 'phone-page-assets-'));
   await $`${join(root, 'phone-page/phone-page')} assets ${assetsDirectory}`;
   process.env.PHONE_PAGE_ASSETS_DIR = assetsDirectory;
-  return () => rm(assetsDirectory, { recursive: true, force: true });
+  return () => $`rm -rf ${assetsDirectory}`;
 }

@@ -1,7 +1,7 @@
 import { $ } from 'bun';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
@@ -78,7 +78,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await rm(renderDirectory, { recursive: true, force: true });
+  await $`rm -rf ${renderDirectory}`;
 });
 
 test('answers work on a phone and the page remains accessible', async ({ page }) => {
@@ -104,7 +104,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
     }
 
     if (url.pathname.startsWith('/assets/') && request.method() === 'GET') {
-      const name = basename(url.pathname);
+      const name = (await $`basename ${url.pathname}`.text()).trimEnd();
       const contentTypes = {
         '.js': 'text/javascript',
         '.woff2': 'font/woff2'
@@ -301,12 +301,12 @@ for (const branchCount of [2, 4]) {
     const server = Bun.serve({
       hostname: 'localhost',
       port: 0,
-      fetch(request) {
+      async fetch(request) {
         const pathname = new URL(request.url).pathname;
         if (pathname === '/') {
           return new Response(html, { headers: { 'Content-Type': 'text/html' } });
         } else if (pathname.startsWith('/assets/')) {
-          const name = basename(pathname);
+          const name = (await $`basename ${pathname}`.text()).trimEnd();
           return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, name)), {
             headers: { 'Content-Type': name.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
           });
@@ -376,12 +376,12 @@ for (const { name, width } of [
     const server = Bun.serve({
       hostname: 'localhost',
       port: 0,
-      fetch(request) {
+      async fetch(request) {
         const pathname = new URL(request.url).pathname;
         if (pathname === '/') {
           return new Response(html, { headers: { 'Content-Type': 'text/html' } });
         } else if (pathname.startsWith('/assets/')) {
-          const assetName = basename(pathname);
+          const assetName = (await $`basename ${pathname}`.text()).trimEnd();
           return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
             headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
           });
@@ -423,12 +423,12 @@ for (const { name, width, stepped } of [
     const server = Bun.serve({
       hostname: 'localhost',
       port: 0,
-      fetch(request) {
+      async fetch(request) {
         const pathname = new URL(request.url).pathname;
         if (pathname === '/') {
           return new Response(renderedPage, { headers: { 'Content-Type': 'text/html' } });
         } else if (pathname.startsWith('/assets/')) {
-          const assetName = basename(pathname);
+          const assetName = (await $`basename ${pathname}`.text()).trimEnd();
           return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
             headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
           });
@@ -620,7 +620,7 @@ test.describe('desktop form regressions', () => {
           if (pathname === '/') {
             return new Response(html, { headers: { 'Content-Type': 'text/html' } });
           } else if (pathname.startsWith('/assets/')) {
-            const assetName = basename(pathname);
+            const assetName = (await $`basename ${pathname}`.text()).trimEnd();
             return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
               headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
             });
@@ -853,12 +853,12 @@ test.describe('desktop list packing', () => {
       const server = Bun.serve({
         hostname: 'localhost',
         port: 0,
-        fetch(request) {
+        async fetch(request) {
           const pathname = new URL(request.url).pathname;
           if (pathname === '/') {
             return new Response(html, { headers: { 'Content-Type': 'text/html' } });
           } else if (pathname.startsWith('/assets/')) {
-            const assetName = basename(pathname);
+            const assetName = (await $`basename ${pathname}`.text()).trimEnd();
             return new Response(Bun.file(join(process.env.PHONE_PAGE_ASSETS_DIR, assetName)), {
               headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' }
             });

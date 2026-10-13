@@ -39,8 +39,8 @@ Started: <YYYY-MM-DD> · Restore-point tag: `program/<slug>/wave-0`
      not aspirations. If a wave's real verification surface is thin, say so and
      record the owner's explicit acceptance below — never silently degrade a gate. -->
 
-- Wave 1: `<e.g. npm test -- --scope=routes>`
-- Wave 2: `<e.g. npm run e2e:smoke>` + manual check of `<flow>`
+- Wave 1: `<e.g. bun run test --scope=routes>`
+- Wave 2: `<e.g. bun run e2e:smoke>` + manual check of `<flow>`
 - Wave 5: dry-run inventory script `<path>`, row-count diff reviewed by owner
 - Wave 6: `<migration tool>` dry-run against staging snapshot dated `<date>`
 

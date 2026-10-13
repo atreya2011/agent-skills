@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { promisify } from "node:util";
+import { $ } from "bun";
 import WebSocket from "ws";
 
-const run = promisify(execFile);
 const tabPattern = /^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/;
 const uuidPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-const [clientId, clientSecret] = readFileSync(0, "utf8").trimEnd().split("\n");
+const [clientId, clientSecret] = (await Bun.stdin.text()).trimEnd().split("\n");
 if (!clientId || !clientSecret) {
   console.error("page store listener: missing service-token credentials");
   process.exit(1);
@@ -32,12 +29,13 @@ async function handleEvent(socket, data) {
     console.error(`page store listener: invalid page or tab id for page ${JSON.stringify(event.page_id)} tab ${JSON.stringify(event.tab_id)}`);
   } else {
     try {
-      const { stdout } = await run("herdr", ["agent", "list"]);
+      const stdout = await $`herdr agent list`.text();
       const agents = JSON.parse(stdout).result.agents.filter((agent) => agent.tab_id === event.tab_id);
       if (agents.length === 1 && typeof agents[0].pane_id === "string"
         && ["idle", "done", "working"].includes(agents[0].agent_status)) {
-        await run("herdr", ["agent", "prompt", agents[0].pane_id,
-          `AGENT MESSAGE (page store, not a human). Page ${event.page_id} has a new submission. Read it with phone-page answers ${event.page_id}.`]);
+        await $`herdr agent prompt ${agents[0].pane_id} ${
+          `AGENT MESSAGE (page store, not a human). Page ${event.page_id} has a new submission. Read it with phone-page answers ${event.page_id}.`
+        }`.quiet();
       } else {
         console.error(`page store listener: no eligible agent for page ${JSON.stringify(event.page_id)} tab ${JSON.stringify(event.tab_id)}`);
       }

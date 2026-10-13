@@ -5,9 +5,7 @@ description: Publish designed read pages and tappable question pages for replies
 
 # Phone page
 
-Skip the page when you can explain the reply in 50 words or less.
-
-Use a page when a reply to the user needs more than two sentences, a diagram, a table or any question. Put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
+Use a page when a reply to the user needs more than 50 words, a diagram, a table or any question. Put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
 
 ## Local file
 

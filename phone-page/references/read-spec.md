@@ -2,7 +2,7 @@
 
 Write read pages only as JSON specs and publish them with `phone-page read <spec> [id]`; never hand-write their HTML or asset declarations. The renderer validates the spec and uses the same [blocks](blocks.md), fonts and styling as question pages.
 
-A read spec is one object with a string `title`, a mandatory non-empty `summary` that states the bottom line, and 1 to 10 `sections`. Every section is an object with a non-empty string `heading` and any optional shared `context`, `cards`, `table`, and `flow` or `flows` fields. Sections have no `options`, and a read spec cannot contain `questions`. The summary follows the [shared sentence rules](blocks.md#sentence-rules).
+A read spec is one object with a string `title`, a mandatory non-empty `summary` that states the bottom line, and 1 to 10 `sections`. Every section is an object with a non-empty string `heading` and any optional shared `context`, `cards`, `table`, `flow` or `flows`, and `mermaid` fields. Sections have no `options`, and a read spec cannot contain `questions`. The summary follows the [shared sentence rules](blocks.md#sentence-rules).
 
 ```json
 {

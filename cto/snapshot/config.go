@@ -13,8 +13,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Config holds the settings the snapshot tool reads from the TOML blocks of
-// the local file.
 type Config struct {
 	Commands    Commands          `toml:"commands"`
 	Profiles    []Profile         `toml:"profiles"`
@@ -26,16 +24,11 @@ type Config struct {
 	Gate        GateConfig        `toml:"gate"`
 }
 
-// Pinned lists the tab and workspace labels a sweep never questions. They sit
-// in a table because a bare key would land in whichever table the previous
-// block opened.
 type Pinned struct {
 	Tabs       []string `toml:"tabs"`
 	Workspaces []string `toml:"workspaces"`
 }
 
-// Commands names the programs the sources run. Task has no default because
-// bare "task" is a different tool on some machines.
 type Commands struct {
 	Task  string `toml:"task"`
 	Herdr string `toml:"herdr"`
@@ -43,18 +36,12 @@ type Commands struct {
 	Git   string `toml:"git"`
 }
 
-// Profile is one agent CLI profile and the directory that holds its
-// transcripts. Kind is "claude" or "codex" and selects the directory layout.
 type Profile struct {
 	Name string `toml:"name"`
 	Kind string `toml:"kind"`
 	Dir  string `toml:"dir"`
 }
 
-// Thresholds are the confidence cut-offs and the transcript bounds. Floor is
-// the confidence below which every verdict escalates, Low applies to
-// low-stakes acts and High to closing a todo. The values come from the
-// ground-truth run, so the code has no defaults for them.
 type Thresholds struct {
 	Floor        float64 `toml:"floor"`
 	Low          float64 `toml:"low"`
@@ -64,8 +51,6 @@ type Thresholds struct {
 	ExcerptChars int     `toml:"excerpt_chars"`
 }
 
-// GateConfig locates the gate service and the gate-call log. The API key is
-// never configured here; it comes from the environment or the OS keyring.
 type GateConfig struct {
 	TodoContextEnabled bool   `toml:"todo_context_enabled"`
 	URL                string `toml:"url"`
@@ -74,11 +59,8 @@ type GateConfig struct {
 
 const defaultGateURL = "https://api.typesafe.ai/v1/systemone"
 
-// tomlFence matches a fenced toml block of the markdown local file.
 var tomlFence = regexp.MustCompile("(?ms)^\x60\x60\x60toml[ \t]*\r?\n(.*?)^\x60\x60\x60[ \t]*\r?$")
 
-// loadConfig reads the local file at path, joins its toml blocks and decodes
-// them strictly, so a misspelled field fails instead of silently defaulting.
 func loadConfig(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -113,7 +95,6 @@ func loadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-// validate reports every setting the tool cannot run without.
 func (c Config) validate() error {
 	var errs []error
 	if c.Commands.Task == "" {
@@ -142,7 +123,6 @@ func (c Config) validate() error {
 	return errors.Join(errs...)
 }
 
-// ContextConfig locates handoff files used as todo evidence.
 type ContextConfig struct {
 	HandoffDir string `toml:"handoff_dir"`
 }

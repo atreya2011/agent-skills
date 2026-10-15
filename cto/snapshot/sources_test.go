@@ -162,7 +162,6 @@ func TestTodos(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			got := byDesc[tt.desc]
-			// The test compares the exported fields; identity and link slugs are checked below.
 			for i := range got.Links {
 				got.Links[i].slug = ""
 			}

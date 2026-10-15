@@ -11,18 +11,12 @@ import (
 	"time"
 )
 
-// commandTimeout bounds every source command so a hung tool cannot stall a
-// sweep.
 const commandTimeout = 30 * time.Second
 
-// runner runs the external programs the sources read.
 type runner struct {
 	cmds Commands
 }
 
-// output runs name in dir and returns its standard output and exit code. A
-// failure to start, a timeout or a nonzero exit is an error whose text carries
-// the program, its first arguments and the first line of its standard error.
 func (r runner) output(parent context.Context, dir, name string, args ...string) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
@@ -55,7 +49,6 @@ func (r runner) output(parent context.Context, dir, name string, args ...string)
 	return stdout.Bytes(), code, errors.New(text)
 }
 
-// firstLine returns the first line of s, trimmed, for compact error text.
 func firstLine(s string) string {
 	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
 	return line

@@ -570,7 +570,6 @@ for (const { name, width, stepped } of [
       const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
       expect(accessibility.violations).toEqual([]);
     } finally {
-      // Close Chromium's open connections before waiting for the fixture server to stop.
       await page.context().close();
       await server.stop(true);
     }
@@ -644,7 +643,6 @@ test.describe('desktop form regressions', () => {
         await expect(card).toBeVisible();
         await page.screenshot({ path: testInfo.outputPath('desktop-first-screen.png'), fullPage: true });
         if (!long) {
-          // The installed WebKit build has no native textarea resize handle, including on plain HTML.
           if (browserName === 'chromium') {
             console.log('Drag the desktop note resize handle down 150 pixels.');
             const note = card.getByLabel('Note (optional)');

@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Tests for gauntlet/close-decision.sh. Each case feeds one cycle's admission
-# list to the script and asserts its exit status, its output, which is the whole
-# decision (a fix brief's lists, or the closing review notes), and its error
-# line. The check files are synthetic and live in a temporary directory, so the
-# output must never contain their path.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -19,20 +14,16 @@ fail() {
 }
 
 tab=$'\t'
-# Joins its arguments into lines.
 lines() { printf '%s\n' "$@"; }
 
 printf 'run-thing --flag\n' >"$tmp/check-a"
 printf 'cd service\nrun-thing --flag\n\nread-thing | grep -q ok\n' >"$tmp/check-b"
 printf 'run-other-thing\n' >"$tmp/check-c"
 
-# The rendered form of each check, as the output must show it.
 item_a=$(lines '- Check:' '  ```' '  run-thing --flag' '  ```' '  Clause: clause a')
 item_b=$(lines '- Check:' '  ```' '  cd service' '  run-thing --flag' '' '  read-thing | grep -q ok' '  ```' '  Clause: clause b')
 item_c=$(lines '- Check:' '  ```' '  run-other-thing' '  ```' '  Clause: clause c')
 
-# Each case has an admission list (what the orchestrator ruled), the output the
-# decision must print and the error line it must print, empty for none.
 declare -A list want err
 
 list[fix]=$(lines \
@@ -103,7 +94,6 @@ list[refuse-unreadable-check]="major${tab}$tmp/no-such-check${tab}clause a"
 want[refuse-unreadable-check]=''
 err[refuse-unreadable-check]="CLOSE BLOCKED unreadable check file $tmp/no-such-check"
 
-# name | case | expected exit
 cases=(
   'one major bug yields a fix brief listing every admitted item|fix|0'
   'a major bug listed last still yields a fix brief|fix-major-last|0'

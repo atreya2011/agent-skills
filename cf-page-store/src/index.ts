@@ -57,7 +57,6 @@ export class PageEvents extends DurableObject<Env> {
         this.ctx.storage.sql.exec("DELETE FROM events WHERE id = ?", value.ack);
       }
     } catch {
-      // Malformed acknowledgments leave events available for redelivery.
     }
   }
 
@@ -108,7 +107,6 @@ app.get("/api/events", (c) => {
   return c.env.EVENTS.getByName("listener").fetch(c.req.raw);
 });
 
-/** Reads an HTML page body, or returns the rejection response for an oversized or non-HTML body. */
 async function readPage(c: Context<{ Bindings: Env }>) {
   const body = await c.req.arrayBuffer();
   if (body.byteLength > pageLimit) {

@@ -1,10 +1,3 @@
-// Command cto-snapshot gathers the facts a CTO sweep needs, lets rules and
-// gates judge them, and prints one JSON document. It only reads: it never
-// writes to herdr, Taskwarrior, git, GitHub, a transcript or a vault.
-//
-//	cto-snapshot [--local-file PATH]         print the snapshot
-//	cto-snapshot reply [--local-file PATH]   judge an agent reply on standard input
-//	cto-snapshot evaluate --cases PATH [--local-file PATH]   evaluate todo gates without writes
 package main
 
 import (
@@ -22,13 +15,8 @@ import (
 )
 
 const (
-	// maxReplyBytes bounds the agent reply the reply gate reads. The
-	// last bytes are kept, because a reply ends with its verdict.
 	maxReplyBytes = 16 << 10
-	// runTimeout bounds one call of the tool, so a hung source or gate cannot
-	// stall a sweep. It stays under the two minute command timeout of the agent
-	// CLIs that run the tool. What it cuts off is reported as unreadable or
-	// escalated.
+
 	runTimeout = 100 * time.Second
 )
 
@@ -36,7 +24,6 @@ func main() {
 	os.Exit(run(context.Background(), os.Args[1:], os.Stdin, os.Stdout, os.Stderr, time.Now()))
 }
 
-// defaultLocalFile is the CTO skill's local file under the user's home.
 func defaultLocalFile() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -45,9 +32,6 @@ func defaultLocalFile() string {
 	return filepath.Join(home, ".agents", "local", "cto.md")
 }
 
-// run is one call of the tool with its inputs explicit so tests can call it. It
-// returns the process exit code: 0 once it prints a document, whatever it could
-// not read, and 2 for a bad invocation or a bad local file.
 func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, now time.Time) int {
 	evaluate := len(args) > 0 && args[0] == "evaluate"
 	reply := len(args) > 0 && args[0] == "reply"
@@ -63,7 +47,6 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	}
 	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
-	// The key leaves the environment before any source command can start.
 	key, keyErr := readAPIKey()
 	cfg, err := loadConfig(*localFile)
 	if err != nil {
@@ -98,16 +81,13 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	return 0
 }
 
-// judgeReply asks the orchestrator_reply gate what an agent's chat reply
-// says about its tab or tabs. A reply that is empty after trimming escalates without a
-// call; a long reply is cut to its last maxReplyBytes.
 func judgeReply(ctx context.Context, gate *Gate, stdin io.Reader) Judgment {
 	data, err := io.ReadAll(stdin)
 	data = bytes.TrimSpace(data)
 	if len(data) > maxReplyBytes {
 		data = data[len(data)-maxReplyBytes:]
 	}
-	text := strings.ToValidUTF8(string(data), "") // drops a character the cut split
+	text := strings.ToValidUTF8(string(data), "")
 	if err != nil || text == "" {
 		return Judgment{Subject: "reply", Gate: gateReply.Name, Verdict: verdictEscalate, DecidedBy: decidedByError,
 			Reason: "there is no reply text to judge"}

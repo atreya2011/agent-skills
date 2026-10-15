@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Tests for gauntlet/receipt.sh against a real herdr server. The seat is
-# synthetic: a throwaway tab whose shell shows a token on the alternate screen,
-# as an agent CLI does, and which herdr's own report-agent marks as a working
-# claude seat. herdr refuses a read of more lines from such a seat, which is what
-# the receipt check must cope with. Without a reachable herdr server the test
-# skips.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -34,7 +28,6 @@ for _ in $(seq 1 20); do
   sleep 0.5
 done
 
-# The premise: herdr refuses a long read of a working seat.
 name='herdr refuses a long read of a working seat'
 status=0
 out=$(herdr agent read "$pane" --lines 400 2>&1) || status=$?
@@ -44,7 +37,6 @@ else
   fail "$name" "exit $status; output: $out"
 fi
 
-# name | agent | token | polls | expected exit | error line
 cases=(
   "the token on the screen of a working seat is the receipt|$pane|shown-token|4|0|"
   "a token that is not on the screen gets no receipt|$pane|absent-token|2|1|SEND BLOCKED $pane no receipt for absent-token"

@@ -18,7 +18,6 @@ export default defineConfig(async () => {
   const migrations = await readD1Migrations("./migrations");
   return {
     test: {
-      // Workerd cannot read Vitest's host filesystem module cache.
       fsModuleCache: false,
     },
     plugins: [

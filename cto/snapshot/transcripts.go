@@ -15,7 +15,6 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// transcriptFile is one session transcript on disk.
 type transcriptFile struct {
 	Profile  string
 	Kind     string
@@ -23,19 +22,13 @@ type transcriptFile struct {
 	Modified time.Time
 }
 
-// transcriptIndex maps session IDs to transcript files across every profile.
 type transcriptIndex struct {
 	byID  map[string]transcriptFile
 	infos []ProfileInfo
 }
 
-// uuidLen is the length of the session UUID that ends a codex file name.
 const uuidLen = 36
 
-// buildIndex lists the transcripts of every profile. Profiles whose
-// directories resolve to the same real directory share its files, which are
-// indexed once under the first profile. A directory that cannot be read is
-// returned as unreadable and the other profiles still load.
 func buildIndex(profiles []Profile, now time.Time, window time.Duration) (*transcriptIndex, []Unreadable) {
 	ix := &transcriptIndex{byID: map[string]transcriptFile{}}
 	var bad []Unreadable
@@ -77,10 +70,6 @@ func buildIndex(profiles []Profile, now time.Time, window time.Duration) (*trans
 	return ix, bad
 }
 
-// scanTranscripts finds the transcripts under dir by session ID. Claude keeps
-// <dir>/<project>/<id>.jsonl and puts subagent transcripts in deeper
-// directories, which the two-level read never enters. Codex keeps
-// <dir>/YYYY/MM/DD/rollout-<time>-<id>.jsonl.
 func scanTranscripts(dir, kind string) (map[string]transcriptFile, []error) {
 	found := map[string]transcriptFile{}
 	var errs []error
@@ -131,7 +120,6 @@ func scanTranscripts(dir, kind string) (map[string]transcriptFile, []error) {
 	return found, errs
 }
 
-// recent returns the transcripts written within the window, by session ID.
 func (ix *transcriptIndex) recent(now time.Time, window time.Duration) map[string]transcriptFile {
 	out := map[string]transcriptFile{}
 	for id, f := range ix.byID {
@@ -142,10 +130,6 @@ func (ix *transcriptIndex) recent(now time.Time, window time.Duration) map[strin
 	return out
 }
 
-// readTranscript reads the last tailBytes of a transcript and returns the
-// final excerptChars characters of its user and assistant text, plus the
-// working directory the session last reported. Lines it cannot read are
-// skipped, because the format differs between agent CLI versions.
 func readTranscript(f transcriptFile, tailBytes, excerptChars int) (excerpt, cwd string, err error) {
 	file, err := os.Open(f.Path)
 	if err != nil {
@@ -161,7 +145,7 @@ func readTranscript(f transcriptFile, tailBytes, excerptChars int) (excerpt, cwd
 	if _, err := file.ReadAt(buf, start); err != nil && !errors.Is(err, io.EOF) {
 		return "", "", err
 	}
-	if start > 0 { // the first line is cut in the middle
+	if start > 0 {
 		_, rest, found := bytes.Cut(buf, []byte("\n"))
 		if !found {
 			return "", "", nil
@@ -185,9 +169,6 @@ func readTranscript(f transcriptFile, tailBytes, excerptChars int) (excerpt, cwd
 	return string(runes), cwd, nil
 }
 
-// parseLine extracts the speaker, text and working directory of one transcript
-// line. Claude lines carry them at the top level; codex lines carry them in
-// "payload".
 func parseLine(kind string, line []byte) (role, text, cwd string) {
 	var contentPath string
 	switch kind {

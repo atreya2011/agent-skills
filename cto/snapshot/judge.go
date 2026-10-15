@@ -8,11 +8,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// maxParallel bounds concurrent source commands and gate calls.
 const maxParallel = 8
 
-// parallel runs fn for every item with at most maxParallel in flight. fn
-// writes its result to its own slot, so no result needs a lock.
 func parallel[T any](items []T, fn func(i int, item T)) {
 	var g errgroup.Group
 	g.SetLimit(maxParallel)
@@ -25,7 +22,6 @@ func parallel[T any](items []T, fn func(i int, item T)) {
 	_ = g.Wait()
 }
 
-// tabBrief is the part of a tab a gate sees.
 type tabBrief struct {
 	Label string `json:"label"`
 	Agent string `json:"agent,omitempty"`
@@ -33,7 +29,6 @@ type tabBrief struct {
 	AgeS  *int   `json:"age_s"`
 }
 
-// todoState is what the todo_state gate sees about one todo.
 type todoState struct {
 	ID          string        `json:"id"`
 	Today       string        `json:"today"`
@@ -48,7 +43,6 @@ type todoState struct {
 	Handoffs    []contextPage `json:"handoffs,omitempty"`
 }
 
-// sessionState is what the session_activity gate sees about one session.
 type sessionState struct {
 	ID       string `json:"id"`
 	Profile  string `json:"profile"`
@@ -58,13 +52,10 @@ type sessionState struct {
 	Excerpt  string `json:"excerpt"`
 }
 
-// gateAnnotations drops the annotations the CTO wrote itself. The gate must
-// judge the todo from the facts, not from its own earlier output.
 func gateAnnotations(all []string) []string {
 	return slices.DeleteFunc(slices.Clone(all), ownAnnotation)
 }
 
-// judgeAll applies existing proof rules, then enabled todo gates and unchanged session gates.
 func judgeAll(ctx context.Context, gate *Gate, projects []*Project, now time.Time, cfg Config) []Judgment {
 	today := now.Format(time.DateOnly)
 	var jobs []func() Judgment

@@ -15,7 +15,6 @@ var (
 	sessionRef = regexp.MustCompile(`session:\s*\S*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
 )
 
-// taskTimeLayout is Taskwarrior's export timestamp format.
 const taskTimeLayout = "20060102T150405Z"
 
 type taskItem struct {
@@ -31,8 +30,6 @@ type taskItem struct {
 	} `json:"annotations"`
 }
 
-// todos runs "<task> export" and returns the open todos (pending or waiting)
-// and the todos completed within the window.
 func (r runner) todos(ctx context.Context, now time.Time, window time.Duration) ([]Todo, error) {
 	out, _, err := r.output(ctx, "", r.cmds.Task, "export")
 	if err != nil {
@@ -61,16 +58,10 @@ func (r runner) todos(ctx context.Context, now time.Time, window time.Duration) 
 	return todos, nil
 }
 
-// ownAnnotation reports whether the CTO wrote an annotation itself: a pending
-// question ("ask:") or a recorded verdict ("cto "). Such an annotation can name
-// a pull request, a commit or a session without citing it as a source, so the
-// link scans and the gate input skip it.
 func ownAnnotation(a string) bool {
 	return strings.HasPrefix(a, "ask:") || strings.HasPrefix(a, "cto ")
 }
 
-// parseTodo maps one export item to a Todo and extracts the links its text and
-// annotations cite.
 func parseTodo(it taskItem, closedAt string) Todo {
 	t := Todo{
 		UUID: it.UUID, Description: it.Description, Domain: it.Project, Status: it.Status,
@@ -126,8 +117,6 @@ func parseTodo(it taskItem, closedAt string) Todo {
 	return t
 }
 
-// slug returns the owner/name of the first GitHub link, which places the todo
-// in a project.
 func (t Todo) slug() string {
 	for _, l := range t.Links {
 		if l.slug != "" {

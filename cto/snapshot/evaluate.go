@@ -30,7 +30,6 @@ func evaluateTodos(ctx context.Context, cfg Config, gate *Gate, now time.Time, p
 		return nil, err
 	}
 	r := runner{cmds: cfg.Commands}
-	// A wide window retains completed todos so evaluation is independent of later live status changes.
 	todos, err := r.todos(ctx, now, 100*365*24*time.Hour)
 	if err != nil {
 		return nil, err

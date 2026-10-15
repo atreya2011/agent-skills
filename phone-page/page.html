@@ -345,7 +345,7 @@
           const script = document.createElement('script');
           script.src = '/assets/mermaid.min.js';
           script.addEventListener('load', resolve);
-          script.addEventListener('error', reject);
+          script.addEventListener('error', () => reject(new Error('Mermaid failed to load.')));
           document.head.append(script);
         }).then(() => mermaid.initialize({
           startOnLoad: false,
@@ -374,7 +374,7 @@
           box.innerHTML = svg;
           const image = box.querySelector('svg');
           image.style.maxWidth = 'none';
-          image.setAttribute('width', image.viewBox.baseVal.width);
+          if (image.viewBox.baseVal) image.setAttribute('width', image.viewBox.baseVal.width);
         }).catch((error) => {
           box.textContent = error.message;
         }).then(onRender);

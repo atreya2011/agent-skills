@@ -251,19 +251,27 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
 });
 
 test.describe('read pages load mermaid only for mermaid blocks under the store content policy', () => {
-  for (const { name, mermaid, roles, error } of [
+  for (const { name, mermaid, roles, error, missingAsset } of [
     {
-      name: 'state and flow diagrams render as SVG',
+      name: 'state, flow, entity and sequence diagrams render as SVG',
       mermaid: [
         { title: 'Request states', source: 'stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review: Submit\n  Review --> Draft: Reject\n  Review --> Approved: Accept\n  Approved --> [*]' },
-        { title: 'Release cycle', source: 'flowchart LR\n  A[Write the change] --> B[Run the checks] --> C{Checks pass?}\n  C -->|Yes| D[Merge the change] --> E[Deploy the release]\n  C -->|No| A' }
+        { title: 'Release cycle', source: 'flowchart LR\n  A[Write the change] --> B[Run the checks] --> C{Checks pass?}\n  C -->|Yes| D[Merge the change] --> E[Deploy the release]\n  C -->|No| A' },
+        { title: 'Data model', source: 'erDiagram\n  REQUEST ||--o{ REVIEW : receives\n  REVIEWER ||--o{ REVIEW : writes' },
+        { title: 'Review exchange', source: 'sequenceDiagram\n  participant A as Author\n  participant R as Reviewer\n  A->>R: Submit the request\n  R-->>A: Approve the request' }
       ],
-      roles: ['stateDiagram', 'flowchart-v2']
+      roles: ['stateDiagram', 'flowchart-v2', 'er', 'sequence']
     },
     {
       name: 'an invalid diagram shows its render error',
       mermaid: [{ title: 'Broken diagram', source: 'flowchart LR\n  A -->' }],
       error: 'Parse error on line'
+    },
+    {
+      name: 'a missing mermaid asset shows its load error',
+      mermaid: [{ title: 'Request states', source: 'stateDiagram-v2\n  [*] --> Done' }],
+      error: 'Mermaid failed to load.',
+      missingAsset: true
     },
     {
       name: 'a page without diagrams does not load mermaid'
@@ -292,7 +300,7 @@ test.describe('read pages load mermaid only for mermaid blocks under the store c
           }
           if (pathname === '/favicon.ico') return new Response(null, { status: 204 });
           const assetName = pathname.slice('/assets/'.length);
-          if (pathname.startsWith('/assets/') && assetNames.has(assetName)) {
+          if (pathname.startsWith('/assets/') && assetNames.has(assetName) && !(missingAsset && assetName === 'mermaid.min.js')) {
             return new Response(Bun.file(`${assetsDirectory}/${assetName}`), { headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' } });
           }
           return new Response('not found', { status: 404 });
@@ -335,7 +343,7 @@ test.describe('read pages load mermaid only for mermaid blocks under the store c
         expect(mermaidRequests).toHaveLength(mermaid ? 1 : 0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
         expect(externalRequests).toEqual([]);
-        expect(browserErrors).toEqual([]);
+        expect(browserErrors).toEqual(missingAsset ? ['Failed to load resource: the server responded with a status of 404 (Not Found)'] : []);
       } finally {
         await page.context().close();
         server.stop(true);

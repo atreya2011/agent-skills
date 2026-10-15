@@ -20,6 +20,7 @@ interface PageEvent extends Record<string, string> {
 export class PageEvents extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, tab_id TEXT NOT NULL)");
   }
 
@@ -56,9 +57,7 @@ export class PageEvents extends DurableObject<Env> {
       if (typeof value?.ack === "string") {
         this.ctx.storage.sql.exec("DELETE FROM events WHERE id = ?", value.ack);
       }
-    } catch {
-      // Malformed acknowledgments leave events available for redelivery.
-    }
+    } catch {}
   }
 
   webSocketClose(socket: WebSocket, code: number) {
@@ -108,7 +107,6 @@ app.get("/api/events", (c) => {
   return c.env.EVENTS.getByName("listener").fetch(c.req.raw);
 });
 
-/** Reads an HTML page body, or returns the rejection response for an oversized or non-HTML body. */
 async function readPage(c: Context<{ Bindings: Env }>) {
   const body = await c.req.arrayBuffer();
   if (body.byteLength > pageLimit) {

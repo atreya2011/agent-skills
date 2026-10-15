@@ -19,6 +19,8 @@ bunx --bun wrangler deploy --config "$DEPLOY_CONFIG"
 
 Run `cf-page-store listen` with the latest Bun release, `herdr`, and the existing service-token keyring entries available. The listener uses `ws` to send Access headers, validates event identifiers, and prompts the single matching agent pane when its state is idle, done, or working. If no eligible pane exists, it logs the page and tab instead. It acknowledges each handled event and reconnects with backoff from one to sixty seconds. Credentials never appear in its output.
 
+Every thirty seconds after connecting, the listener sends the text message `ping`. The Durable Object automatically replies with the text message `pong` through `setWebSocketAutoResponse`, including while hibernating. If no `pong` arrives within ten seconds, the listener terminates the connection and reconnects through its existing backoff and replay flow. Pong messages do not enter event processing. These are application text messages because the Cloudflare edge can answer WebSocket protocol pings before they reach the Durable Object. Deploy the updated Worker before restarting the updated listener.
+
 On Linux, install the user service after the command is linked into `PATH`:
 
 - Check the executable locations from `command -v bun herdr` against the service unit's configured `PATH`.

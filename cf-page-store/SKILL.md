@@ -36,7 +36,7 @@ When `cf-page-store listen` runs on the asking machine, a submitted answer wakes
 - `cf-page-store publish <file> [tab-id]`, `cf-page-store update <id> <file>`, `cf-page-store delete <id>` and `cf-page-store answers <id>` follow the [store contract](references/store-contract.md). Read it before changing a command or the Worker.
 - `publish` and `update` print exactly the Worker's one-line JSON object.
 - `answers` prints nothing when it exits 3. After an answers HTTP 404, it checks the page itself to distinguish exit 3 from exit 4; other read failures remain errors.
-- `cf-page-store listen` maintains the answer-event WebSocket and wakes asking Herdr tabs.
+- `cf-page-store listen` maintains the answer-event WebSocket, checks it with a text heartbeat every thirty seconds, and wakes asking Herdr tabs.
 
 The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and one or more ASCII letters or digits. Invalid values return HTTP 400.
 

@@ -321,6 +321,30 @@ describe("answer events", () => {
       state.storage.sql.exec("SELECT id, page_id, tab_id FROM events ORDER BY rowid").toArray());
   }
 
+  it.each(["active", "hibernating"])("automatically answers text pings while %s", async (mode) => {
+    const target = env.EVENTS.get(env.EVENTS.newUniqueId());
+    const response = await target.fetch("https://store.invalid/api/events", { headers: { Upgrade: "websocket" } });
+    expect(response.status).toBe(101);
+    expect(response.webSocket).not.toBeNull();
+    const socket = response.webSocket!;
+    socket.accept();
+    sockets.push(socket);
+    expect(await runInDurableObject(target, (_instance, state) => {
+      const pair = state.getWebSocketAutoResponse();
+      return [pair?.request, pair?.response];
+    })).toEqual(["ping", "pong"]);
+    if (mode === "hibernating") {
+      await evictDurableObject(target);
+    }
+    const received = new Promise<string>((resolve) => {
+      socket.addEventListener("message", (message) => resolve(message.data as string), { once: true });
+    });
+    socket.send("ping");
+    expect(await received).toBe("pong");
+    expect(await runInDurableObject(target, (_instance, state) =>
+      state.getWebSocketAutoResponseTimestamp(state.getWebSockets()[0]) !== null)).toBe(true);
+  });
+
   it.each(["connected", "offline"])("delivers %s submissions, replays unacked events after hibernation, and deletes acknowledged events", async (mode) => {
     const assertion = await token();
     const page = await publish(assertion, "wTEST:tR");

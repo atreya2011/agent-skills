@@ -1,11 +1,11 @@
 ---
 name: phone-page
-description: Publish designed read pages and tappable question pages for replies that do not fit cleanly in chat on a phone.
+description: Publish designed read pages and tappable question pages in an interactive session, only for an item that needs the user's decision or an explanation the user explicitly asked for. Never use it for status summaries or job reports, in headless runs (codex exec, claude -p), or in agent-dispatched or subagent runs.
 ---
 
 # Phone page
 
-Use a page when a reply to the user needs more than 50 words, a diagram, a table or any question. Put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
+Use a page only in an interactive session, and only for an item that needs the user's decision or for an explanation the user explicitly asked for. Never use a page for a status summary or job report, in a headless run such as `codex exec` or `claude -p`, or in a run that another agent dispatched, including a subagent. Within that scope, put every question to the user on a question page, never in reply text or the agent CLI's question dialog. Chat between agents is unaffected.
 
 ## Local file
 

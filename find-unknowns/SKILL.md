@@ -33,7 +33,7 @@ Skip angles that do not apply, and say which and why. Brief each subagent: "Surf
 
 Keep only real unknown unknowns: things the user, from their stated starting point, would not have known to ask about. Drop findings the user obviously knows; five sharp findings teach more than ten vague ones.
 
-Explain findings in complete sentences. Follow [phone-page](../phone-page/SKILL.md) before replying with teaching or decisions exceeding two sentences or containing any diagram, table or question. For each finding:
+Explain findings in complete sentences. Follow [phone-page](../phone-page/SKILL.md) only when a finding needs the user's decision or the user explicitly asked for the explanation, and never in a headless run such as `codex exec` or `claude -p` or in a run another agent dispatched, including a subagent. For each finding:
 
 - Name it.
 - Explain what it is and how the territory actually behaves.

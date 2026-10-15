@@ -15,7 +15,7 @@ Skills for running and tracking coding-agent sessions in herdr, kept free of mac
 - `herdr-orchestrator`: Survey all Claude and Codex tabs across herdr workspaces, report activity and blockers, locate tabs, or resume dead sessions.
 - `major-refactor`: Run an explicit managed program for a large or irreversible codebase change, with audits, a committed manifest, risk-ordered waves, subagents, and approval gates.
 - `no-slop-writing`: Draft or rewrite public prose, or edit existing prose to remove AI tells, using the author's actual writing and current intent as the voice reference.
-- `phone-page`: Publish designed read pages and tappable question pages for replies that need more than a short phone-friendly chat message.
+- `phone-page`: Publish designed read pages and tappable question pages in an interactive session, only for an item that needs the user's decision or an explanation the user explicitly asked for. Never use it for status summaries or job reports, in headless runs (`codex exec`, `claude -p`), or in agent-dispatched or subagent runs.
 - `thermo-nuclear-code-quality-review`: Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth.
 - `where-are-we`: Reconstruct how the current session started and where it stands now by parsing its own transcript, then report it as a short readable narrative (ASD-STE100 mechanics, blunt outcome-first voice).
 

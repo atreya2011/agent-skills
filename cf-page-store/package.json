@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun --bun vitest run",
+    "test": "bun --bun vitest run && bun test test/listener.test.mjs",
     "typecheck": "bun --bun tsc --noEmit"
   },
   "dependencies": {

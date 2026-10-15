@@ -58,18 +58,32 @@ function connect() {
   });
   let reconnecting = false;
   let pending = Promise.resolve();
+  let heartbeat;
+  let pongTimeout;
   const reconnect = () => {
     if (reconnecting) {
       return;
     }
     reconnecting = true;
+    clearInterval(heartbeat);
+    clearTimeout(pongTimeout);
     socket.terminate();
     console.error("page store listener: disconnected; reconnecting");
     setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 60000);
   };
-  socket.on("open", () => { backoff = 1000; });
-  socket.on("message", (data) => {
+  socket.on("open", () => {
+    backoff = 1000;
+    heartbeat = setInterval(() => {
+      pongTimeout = setTimeout(reconnect, 10000);
+      socket.send("ping");
+    }, 30000);
+  });
+  socket.on("message", (data, isBinary) => {
+    if (!isBinary && data.toString() === "pong") {
+      clearTimeout(pongTimeout);
+      return;
+    }
     pending = pending.then(() => handleEvent(socket, data)).catch(() => {
       console.error("page store listener: event processing failed");
     });

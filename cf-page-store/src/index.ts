@@ -20,6 +20,7 @@ interface PageEvent extends Record<string, string> {
 export class PageEvents extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, tab_id TEXT NOT NULL)");
   }
 
@@ -56,8 +57,7 @@ export class PageEvents extends DurableObject<Env> {
       if (typeof value?.ack === "string") {
         this.ctx.storage.sql.exec("DELETE FROM events WHERE id = ?", value.ack);
       }
-    } catch {
-    }
+    } catch {}
   }
 
   webSocketClose(socket: WebSocket, code: number) {

@@ -25,8 +25,6 @@ type ghLink struct {
 	} `json:"labels"`
 }
 
-// pullRequests returns the project's 30 most recently updated pull requests,
-// open or closed, from "gh pr list".
 func (r runner) pullRequests(ctx context.Context, slug string) ([]PR, error) {
 	out, _, err := r.output(ctx, "", r.cmds.Gh, "pr", "list", "--repo", slug, "--state", "all", "--limit", "30",
 		"--json", "number,title,state,headRefName,isDraft,mergedAt,url")
@@ -45,7 +43,6 @@ func (r runner) pullRequests(ctx context.Context, slug string) ([]PR, error) {
 	return prs, nil
 }
 
-// fillLink reads the state of a linked issue or pull request from GitHub.
 func (r runner) fillLink(ctx context.Context, l *Link) error {
 	noun, fields := "issue", "state,stateReason,labels"
 	if l.Kind == "pr" {

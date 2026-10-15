@@ -31,7 +31,6 @@ type herdrAgent struct {
 	} `json:"agent_session"`
 }
 
-// herdrLists is the part of a "herdr <noun> list" reply the snapshot reads.
 type herdrLists struct {
 	Result struct {
 		Workspaces []herdrWorkspace `json:"workspaces"`
@@ -40,7 +39,6 @@ type herdrLists struct {
 	} `json:"result"`
 }
 
-// herdrList runs "herdr <noun> list" and decodes its JSON reply.
 func (r runner) herdrList(ctx context.Context, noun string) (herdrLists, error) {
 	out, _, err := r.output(ctx, "", r.cmds.Herdr, noun, "list")
 	if err != nil {
@@ -53,9 +51,6 @@ func (r runner) herdrList(ctx context.Context, noun string) (herdrLists, error) 
 	return lists, nil
 }
 
-// buildHerdr joins the three herdr lists. Each tab takes the first agent in it
-// by pane ID; a tab without an agent is a plain shell. A workspace's
-// orchestrator is the tab labeled "orchestrator".
 func buildHerdr(cfg Config, workspaces []herdrWorkspace, tabs []herdrTab, agents []herdrAgent) ([]Workspace, []Tab) {
 	label := map[string]string{}
 	var outWS []Workspace

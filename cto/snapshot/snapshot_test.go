@@ -19,19 +19,18 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// Todo UUIDs of the synthetic task export.
 const (
-	todoParser      = "00000000-0000-4000-8000-000000000001" // linked pull request is merged
-	todoDocs        = "00000000-0000-4000-8000-000000000002" // linked issue is open and ready
-	todoDentist     = "00000000-0000-4000-8000-000000000003" // +cos
-	todoFlake       = "00000000-0000-4000-8000-000000000004" // linked issue is closed
-	todoRetry       = "00000000-0000-4000-8000-000000000005" // cites a session
-	todoMerged      = "00000000-0000-4000-8000-000000000007" // commit on the default branch beside an open issue
-	todoGamma       = "00000000-0000-4000-8000-000000000008" // its issue cannot be read
-	todoUnmerged    = "00000000-0000-4000-8000-000000000010" // cites a commit on a feature branch
-	todoOtherMerged = "00000000-0000-4000-8000-000000000012" // commit on the default branch, issue closed
-	todoOffsite     = "00000000-0000-4000-8000-000000000013" // untagged
-	todoQuestion    = "00000000-0000-4000-8000-000000000014" // its own question names a merged pull request
+	todoParser      = "00000000-0000-4000-8000-000000000001"
+	todoDocs        = "00000000-0000-4000-8000-000000000002"
+	todoDentist     = "00000000-0000-4000-8000-000000000003"
+	todoFlake       = "00000000-0000-4000-8000-000000000004"
+	todoRetry       = "00000000-0000-4000-8000-000000000005"
+	todoMerged      = "00000000-0000-4000-8000-000000000007"
+	todoGamma       = "00000000-0000-4000-8000-000000000008"
+	todoUnmerged    = "00000000-0000-4000-8000-000000000010"
+	todoOtherMerged = "00000000-0000-4000-8000-000000000012"
+	todoOffsite     = "00000000-0000-4000-8000-000000000013"
+	todoQuestion    = "00000000-0000-4000-8000-000000000014"
 	wantGateCalls   = 10
 )
 
@@ -40,8 +39,6 @@ type scriptedAnswer struct {
 	confidence float64
 }
 
-// baseScript is the gate's answer for every subject that reaches a gate in the
-// base world; rules decide the other todos and the CoS todo is not judged.
 var baseScript = map[string]scriptedAnswer{
 	"todo_owner:" + todoOffsite:       {"unknown", .9},
 	"todo_state:" + todoDocs:          {"open", 0.9},
@@ -60,8 +57,6 @@ var gateDefs = map[string]gateDef{
 	gateTodoOwner.Name: gateTodoOwner, gateTodoState.Name: gateTodoState, gateSession.Name: gateSession, gateReply.Name: gateReply,
 }
 
-// scriptedGate replays the script by gate name and the state's id, and answers
-// 500 to anything the script does not cover.
 func scriptedGate(t *testing.T, script map[string]scriptedAnswer) *fakeGate {
 	t.Helper()
 	return newFakeGate(t, nil, func(f *fakeGate, body []byte, w http.ResponseWriter) {
@@ -86,7 +81,6 @@ func scriptedGate(t *testing.T, script map[string]scriptedAnswer) *fakeGate {
 	})
 }
 
-// seen lists the "gate:id" of every request the fake gate received.
 func (f *fakeGate) seen(t *testing.T) []string {
 	t.Helper()
 	f.mu.Lock()
@@ -108,8 +102,6 @@ func (f *fakeGate) seen(t *testing.T) []string {
 	return out
 }
 
-// runTool runs the program against the world and returns its exit code and
-// output. The OS keyring is replaced with an empty in-memory one.
 func runTool(t *testing.T, w *world, stdin string, args ...string) (int, string, string) {
 	t.Helper()
 	keyring.MockInit()
@@ -124,8 +116,6 @@ var (
 	commitID   = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 )
 
-// normalize replaces what differs between runs: the temporary root, the commit
-// IDs and the request hashes, which cover paths under the root.
 func normalize(s string, w *world) string {
 	s = strings.NewReplacer(w.Root, "{{root}}", w.ShaMerged, "{{sha_merged}}", w.ShaOpen, "{{sha_unmerged}}").Replace(s)
 	s = commitID.ReplaceAllString(s, "{{sha}}")
@@ -360,7 +350,6 @@ func failRecording(t *testing.T, w *world, cmd, key string) {
 	writeFile(t, filepath.Join(w.Fixtures, cmd, key+".err"), "HTTP 502\n", time.Time{})
 }
 
-// setCommand adds a program path to the local file's commands table.
 func setCommand(t *testing.T, w *world, name, path string) {
 	t.Helper()
 	data, err := os.ReadFile(w.Local)
@@ -400,7 +389,6 @@ func TestSnapshotEscalatesWhenTheGateFails(t *testing.T) {
 	}
 }
 
-// keyRun is one run of the tool with a key setup, for the key handling rows.
 type keyRun struct {
 	f      *fakeGate
 	w      *world
@@ -412,8 +400,8 @@ type keyRun struct {
 func TestSnapshotKeyHandling(t *testing.T) {
 	tests := []struct {
 		name    string
-		env     string // value of TYPESAFE_API_KEY; empty is unset
-		keyring string // the OS keyring entry; empty is none
+		env     string
+		keyring string
 		check   func(t *testing.T, r keyRun)
 	}{
 		{"the key is out of the environment of every source command and stays out of every output", keySentinel, "",
@@ -478,7 +466,7 @@ func TestReplySubcommand(t *testing.T) {
 		script      map[string]scriptedAnswer
 		wantVerdict string
 		wantLabel   string
-		wantReply   string // the reply text sent to the gate; empty means no call
+		wantReply   string
 	}{
 		{"a confident done acts", "All merged. The tabs can be closed.", map[string]scriptedAnswer{"orchestrator_reply:": {"done", 0.85}},
 			verdictAct, "done", "All merged. The tabs can be closed."},

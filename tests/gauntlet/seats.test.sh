@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Tests for gauntlet/seats.sh. Each row runs the script with HOME set to a
-# temporary home directory whose .agents/local holds the tables under
-# seat-tables/, then asserts the exit status, the seats printed and the refusal
-# line. The tables are synthetic; a variant that lacks a seat is made from the
-# default table in a temporary home directory.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -12,8 +7,6 @@ fixtures="$PWD/seat-tables"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# Makes the home directory $tmp/<name> with every fixture table in
-# .agents/local, and drops the row of the given seat from the default table.
 home() {
   mkdir -p "$tmp/$1/.agents/local"
   cp "$fixtures"/*.md "$tmp/$1/.agents/local/"
@@ -31,8 +24,6 @@ fail() {
   failed=1
 }
 
-# Runs the script in the given home directory with the given arguments, leaving
-# its exit status, standard output and standard error in status, out and err.
 run() {
   local argv
   read -ra argv <<<"$2"
@@ -41,7 +32,6 @@ run() {
   err=$(<"$tmp/err")
 }
 
-# name | home | arguments | seats printed, in order
 resolve_cases=(
   "every seat resolves for the whole pool|default|3|implementer,reviewer-alpha,reviewer-beta,reviewer-gamma"
   "a count takes the first pool rows|default|2|implementer,reviewer-alpha,reviewer-beta"
@@ -66,9 +56,6 @@ for row in "${resolve_cases[@]}"; do
   printf 'ok: %s\n' "$name"
 done
 
-# A seat line carries the kind, the args and the clear command of its row,
-# without the code backticks, and keeps a plain-text cell as it is. The
-# orchestrator's row has to exist but is not launched.
 name='a seat line holds the kind, the args and the clear command'
 run default 3
 want=$(printf '%s\t%s\t%s\t%s\n' \
@@ -82,7 +69,6 @@ else
   fail "$name" "exit $status; got: $out"
 fi
 
-# name | home | arguments | exit status | error line (a glob)
 refusal_cases=(
   "a missing table file|no-tables|1|1|SEAT MISSING orchestrator (no $tmp/no-tables/.agents/local/gauntlet.md)"
   "an alternate table that does not exist|default|--table absent 1|1|SEAT MISSING orchestrator (no $tmp/default/.agents/local/gauntlet-absent.md)"

@@ -10,23 +10,16 @@ import (
 	"testing"
 )
 
-// shimNames are the programs the tests replace. The test binary is linked
-// under each name, and when the sources run it as one of them it replays the
-// synthetic output instead of running tests.
 var shimNames = []string{"herdr", "gh", "task"}
 
 func TestMain(m *testing.M) {
 	if name := filepath.Base(os.Args[0]); slices.Contains(shimNames, name) {
 		os.Exit(replay(name, os.Args[1:]))
 	}
-	// A race-enabled shim would sleep one second at exit, once per command. The
-	// setting only reaches the shims this process starts.
 	_ = os.Setenv("GORACE", "atexit_sleep_ms=0")
 	os.Exit(m.Run())
 }
 
-// fixtureKey names the synthetic output for an argument list: the arguments up
-// to --json joined with underscores, with slashes and colons made dashes.
 func fixtureKey(args []string) string {
 	for i, a := range args {
 		if a == "--json" {
@@ -37,9 +30,6 @@ func fixtureKey(args []string) string {
 	return strings.NewReplacer("/", "-", ":", "-").Replace(strings.Join(args, "_"))
 }
 
-// replay prints <SHIM_FIXTURES>/<name>/<key>.out and exits with the code in
-// <key>.code, as the program it stands in for would. A missing fixture exits 127. When
-// SHIM_ENVLOG is set it appends the environment it was started with.
 func replay(name string, args []string) int {
 	if path := os.Getenv("SHIM_ENVLOG"); path != "" {
 		if f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {

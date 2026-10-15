@@ -11,8 +11,6 @@ import (
 
 const goodThresholds = "[thresholds]\nfloor = 0.6\nlow = 0.6\nhigh = 0.8\nwindow_hours = 6\ntail_bytes = 65536\nexcerpt_chars = 800\n"
 
-// localFile joins markdown prose and toml blocks the way a real local file
-// interleaves them.
 func localFile(blocks ...string) string {
 	out := "# CTO local file\n\nProse the tool ignores.\n\n"
 	for _, b := range blocks {
@@ -26,7 +24,7 @@ func TestLoadConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		file    string
-		absent  bool // the local file does not exist
+		absent  bool
 		wantErr string
 		check   func(t *testing.T, c Config)
 	}{
@@ -115,8 +113,6 @@ func TestLoadConfig(t *testing.T) {
 
 }
 
-// TestSkillExampleParses keeps the settings example in the skill text valid:
-// the tool must accept the block the Local file section tells users to write.
 func TestSkillExampleParses(t *testing.T) {
 	c, err := loadConfig(filepath.Join("..", "references", "local-file.md"))
 	require.NoError(t, err)

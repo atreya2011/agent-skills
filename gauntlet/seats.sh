@@ -1,22 +1,7 @@
 #!/usr/bin/env bash
-# Reads the run's seat table, as references/seats.md defines it,
-# and prints one line per seat to launch: the seat, its kind, its args and its
-# clear command, separated by tabs. The lines come in launch order: the
-# implementer, then the chosen reviewers. The orchestrator is the session that
-# runs this script, so its row has to exist but is not printed.
 #
-#   seats.sh [--table <name>] <reviewers>
 #
-# Without --table the table is ~/.agents/local/gauntlet.md; with it,
-# ~/.agents/local/gauntlet-<name>.md. <reviewers> is a count, which takes the
-# first rows of the reviewer pool in table order, or full seat names of the form
-# reviewer-<name> separated by commas, which take those rows in that order. A bare
-# number is always a count, even when a seat is named reviewer-<number>.
 #
-# A missing table file prints SEAT MISSING orchestrator and the file's path. A
-# seat the table lacks prints SEAT MISSING <seat>, and a count above the pool
-# size prints SEAT MISSING reviewer. Each exits 1 before any line is printed. A
-# missing or malformed argument prints the usage line and exits 2.
 set -euo pipefail
 
 usage='usage: seats.sh [--table <name>] <reviewers: a count, or reviewer-<name> seats separated by commas>'
@@ -40,7 +25,6 @@ if [[ ! -f $file ]]; then
   exit 1
 fi
 
-# Removes every backtick from a cell, then the blanks on both sides of it.
 trim() {
   local cell=${1//\`/}
   cell=${cell#"${cell%%[![:space:]]*}"}
@@ -55,7 +39,6 @@ while IFS='|' read -r _ seat kind args clear _; do
   [[ $seat == reviewer-* ]] && pool+=("$seat")
 done < <(grep '^|' "$file")
 
-# Stops the run before any seat starts.
 missing() {
   echo "SEAT MISSING $1" >&2
   exit 1

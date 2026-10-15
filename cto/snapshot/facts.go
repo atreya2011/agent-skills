@@ -2,16 +2,12 @@ package main
 
 import "time"
 
-// Unreadable names a source the snapshot could not read. A missing source is
-// listed here and the run goes on, so silence in the snapshot never means that
-// nothing happened.
 type Unreadable struct {
 	Source string `json:"source"`
 	Target string `json:"target,omitempty"`
 	Error  string `json:"error"`
 }
 
-// Workspace is one herdr workspace.
 type Workspace struct {
 	ID              string `json:"id"`
 	Label           string `json:"label"`
@@ -20,10 +16,6 @@ type Workspace struct {
 	OrchestratorTab string `json:"orchestrator_tab,omitempty"`
 }
 
-// Tab is one herdr tab. Target is what herdr agent commands take: the agent's
-// name, else its pane ID. AgeS is the seconds since the tab's transcript was
-// last written, or null when the tab has no readable transcript, because herdr
-// itself reports no state timestamp.
 type Tab struct {
 	ID        string `json:"id"`
 	Label     string `json:"label"`
@@ -37,8 +29,6 @@ type Tab struct {
 	SessionID string `json:"session_id,omitempty"`
 }
 
-// PR is one GitHub pull request of a project. MergedAt is read into a time, so
-// the output does not depend on how gh formats it.
 type PR struct {
 	Number   int       `json:"number"`
 	Title    string    `json:"title"`
@@ -49,9 +39,6 @@ type PR struct {
 	URL      string    `json:"url"`
 }
 
-// Link is a fact source a todo cites: a GitHub issue or pull request, or a
-// commit. Issue and PR links carry the state read from GitHub; a commit link
-// says whether the commit is on the default branch.
 type Link struct {
 	Kind        string   `json:"kind"`
 	URL         string   `json:"url,omitempty"`
@@ -64,7 +51,6 @@ type Link struct {
 	slug string
 }
 
-// Todo is one Taskwarrior item. Domain is Taskwarrior's project field.
 type Todo struct {
 	UUID        string    `json:"uuid"`
 	Description string    `json:"description"`
@@ -81,7 +67,6 @@ type Todo struct {
 	Dispatched  bool      `json:"dispatched"`
 }
 
-// Session is one agent session whose transcript was written within the window.
 type Session struct {
 	Profile  string    `json:"profile"`
 	ID       string    `json:"id"`
@@ -92,9 +77,6 @@ type Session struct {
 	Excerpt  string    `json:"excerpt,omitempty"`
 }
 
-// ProfileInfo summarizes one profile's transcripts. SameAs names the profile
-// whose directory this one shares through a symlink; the shared sessions are
-// counted once, under that profile.
 type ProfileInfo struct {
 	Name             string    `json:"name"`
 	Kind             string    `json:"kind"`
@@ -103,7 +85,6 @@ type ProfileInfo struct {
 	SameAs           string    `json:"same_as,omitempty"`
 }
 
-// Vault describes the wiki vault mapped to a project.
 type Vault struct {
 	Path     string `json:"path"`
 	Readable bool   `json:"readable"`

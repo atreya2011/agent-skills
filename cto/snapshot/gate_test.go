@@ -26,7 +26,6 @@ var testNow = time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
 
 var testThresholds = Thresholds{Floor: 0.6, Low: 0.6, High: 0.8, WindowHours: 6, TailBytes: 4096, ExcerptChars: 400}
 
-// fakeGate replays scripted responses and records the requests it receives.
 type fakeGate struct {
 	srv     *httptest.Server
 	mu      sync.Mutex
@@ -36,8 +35,6 @@ type fakeGate struct {
 	handler func(f *fakeGate, body []byte, w http.ResponseWriter)
 }
 
-// newFakeGate starts a fake gate. reply answers by request number; a handler,
-// when given, answers by request content instead.
 func newFakeGate(t *testing.T, reply func(n int, w http.ResponseWriter), handler ...func(f *fakeGate, body []byte, w http.ResponseWriter)) *fakeGate {
 	t.Helper()
 	f := &fakeGate{reply: reply}
@@ -67,7 +64,6 @@ func (f *fakeGate) requests() int {
 	return len(f.bodies)
 }
 
-// answerBody is a documented-shape response with one choice answer.
 func answerBody(gate, choice string, probs map[string]float64, confidence float64) string {
 	p, _ := json.Marshal(probs, json.Deterministic(true))
 	return fmt.Sprintf(`{"model":"jev-1.13.0","answers":{%q:{"type":"choice","choice":%q,"probabilities":%s,"confidence":%v}},"usage":{"input_tokens":1,"output_tokens":1}}`,
@@ -139,7 +135,6 @@ func TestJudgeVerdicts(t *testing.T) {
 	}
 }
 
-// Expected requests use the broadened reply wording; responses retain the original live API recordings.
 type recordedCase struct {
 	name  string
 	def   gateDef
@@ -206,7 +201,7 @@ func TestJudgeEscalatesOnInvalidOrFailedCalls(t *testing.T) {
 		reply        func(int, http.ResponseWriter)
 		wantRequests int
 		wantReason   string
-		how          string // "closed" closes the server first, "cancelled" cancels the context first
+		how          string
 	}{
 		{"malformed JSON", serve(200, `{"answers": [`), 1, "not valid JSON", ""},
 		{"no answer for the gate", serve(200, `{"model":"m","answers":{},"usage":{}}`), 1, "no answer", ""},
@@ -377,7 +372,7 @@ func TestNoKeyEscalatesEveryGate(t *testing.T) {
 	tests := []struct {
 		name   string
 		setup  func(t *testing.T)
-		direct bool // build the gate with an empty key and no error, as a bug would
+		direct bool
 	}{
 		{"a keyring miss with no environment key", func(*testing.T) {}, false},
 		{"an empty keyring value", func(t *testing.T) { require.NoError(t, keyring.Set(keyringService, keyringUser, "")) }, false},

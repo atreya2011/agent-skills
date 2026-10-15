@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-// collector gathers the facts of one sweep. A source that fails is recorded in
-// bad and the sweep goes on.
 type collector struct {
 	cfg    Config
 	r      runner
@@ -26,7 +24,6 @@ type collector struct {
 	bad []Unreadable
 }
 
-// fail lists a source the snapshot could not read.
 func (c *collector) fail(source, target string, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -38,7 +35,6 @@ type rootResult struct {
 	isRepo bool
 }
 
-// collect groups source facts and judges them when gate is non-nil; unreadable sources remain listed.
 func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapshot {
 	c := &collector{cfg: cfg, r: runner{cmds: cfg.Commands}, now: now,
 		window: time.Duration(cfg.Thresholds.WindowHours) * time.Hour}
@@ -93,13 +89,9 @@ func collect(ctx context.Context, cfg Config, gate *Gate, now time.Time) Snapsho
 	return snap
 }
 
-// bindTabs sets each agent tab's age from its transcript and lists the tabs
-// with no readable transcript. A kind of agent that herdr gives no session ID
-// is listed once, not once per tab. It returns the tab ID of every bound
-// session.
 func (c *collector) bindTabs(tabs []Tab, ix *transcriptIndex) map[string]string {
 	bound := map[string]string{}
-	noSession := map[string][]string{} // agent kind -> labels of its tabs without a session ID
+	noSession := map[string][]string{}
 	for i := range tabs {
 		t := &tabs[i]
 		if t.Agent == "" {
@@ -124,8 +116,6 @@ func (c *collector) bindTabs(tabs []Tab, ix *transcriptIndex) map[string]string 
 	return bound
 }
 
-// readSessions reads the tail of every transcript written within the window,
-// newest first.
 func (c *collector) readSessions(ix *transcriptIndex, boundTab map[string]string) []Session {
 	recent := ix.recent(c.now, c.window)
 	var sessions []Session
@@ -147,9 +137,6 @@ func (c *collector) readSessions(ix *transcriptIndex, boundTab map[string]string
 	return sessions
 }
 
-// groupProjects places tabs, sessions and todos in projects. A tab or session
-// goes to the project of its working directory, a todo to the project of the
-// first GitHub repository it cites, and anything else to the none group.
 func (c *collector) groupProjects(ctx context.Context, tabs []Tab, sessions []Session, todos []Todo) []*Project {
 	var cwds []string
 	for _, t := range tabs {
@@ -249,7 +236,6 @@ func (c *collector) groupProjects(ctx context.Context, tabs []Tab, sessions []Se
 	})
 }
 
-// compareBool orders false before true.
 func compareBool(a, b bool) int {
 	switch {
 	case a == b:
@@ -260,8 +246,6 @@ func compareBool(a, b bool) int {
 	return 1
 }
 
-// readPullRequests reads the pull requests of every project that has a GitHub
-// repository.
 func (c *collector) readPullRequests(ctx context.Context, projects []*Project) {
 	var withSlug []*Project
 	for _, p := range projects {
@@ -279,16 +263,12 @@ func (c *collector) readPullRequests(ctx context.Context, projects []*Project) {
 	})
 }
 
-// linkRef addresses one link of one todo of one project.
 type linkRef struct {
 	p    *Project
 	todo int
 	link int
 }
 
-// readLinks reads the state of every issue and pull request an open +cto todo
-// cites, then checks its cited commits against the project's default branch
-// and marks the todos that are ready to dispatch.
 func (c *collector) readLinks(ctx context.Context, projects []*Project) {
 	var refs []linkRef
 	for _, p := range projects {

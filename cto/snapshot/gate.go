@@ -36,16 +36,11 @@ const (
 	decidedByGate  = "gate"
 	decidedByError = "error"
 
-	// statusOverloaded is the status TypeSafe returns when it is overloaded.
 	statusOverloaded = 529
-	// probabilityTolerance is how far the probabilities of an answer may be
-	// from summing to 1.
+
 	probabilityTolerance = 0.01
 )
 
-// gateDef is one fixed gate: the question it asks, the labels it offers and
-// the labels whose act needs the high threshold because the act is hard to
-// undo. Unknown is the label that always escalates.
 type gateDef struct {
 	Name         string
 	Instructions string
@@ -106,8 +101,6 @@ var (
 	}
 )
 
-// Judgment is the outcome for one todo, session or reply: the gate or rule
-// that decided, its label and confidence, and whether the CTO may act on it.
 type Judgment struct {
 	Subject    string  `json:"subject"`
 	ID         string  `json:"id,omitempty"`
@@ -122,8 +115,6 @@ type Judgment struct {
 	Annotation string  `json:"annotation,omitempty"`
 }
 
-// Gate calls the TypeSafe API. It holds the API key in an unexported field so
-// the key only ever reaches the Authorization header.
 type Gate struct {
 	url    string
 	key    string
@@ -134,13 +125,9 @@ type Gate struct {
 	today  string
 }
 
-// errNoKey is the reason every gate escalates when no key is configured.
 var errNoKey = fmt.Errorf("no API key: %s is unset and the keyring has no entry for service %s, user %s",
 	keyEnv, keyringService, keyringUser)
 
-// readAPIKey returns the API key from the environment, else from the OS
-// keyring. It clears the environment variable first, so no child process the
-// tool starts can inherit the key.
 func readAPIKey() (string, error) {
 	key := os.Getenv(keyEnv)
 	if err := os.Unsetenv(keyEnv); err != nil {
@@ -159,8 +146,6 @@ func readAPIKey() (string, error) {
 	return key, nil
 }
 
-// newGate builds a gate. Without a key, every judgment escalates with keyErr,
-// or errNoKey when keyErr is nil, and sends no request.
 func newGate(cfg GateConfig, th Thresholds, key string, keyErr error, log *slog.Logger, now time.Time) *Gate {
 	if key == "" && keyErr == nil {
 		keyErr = errNoKey
@@ -180,8 +165,6 @@ func newGate(cfg GateConfig, th Thresholds, key string, keyErr error, log *slog.
 	}
 }
 
-// retryOnThrottle retries only the statuses the API documents as transient,
-// 429 and 529. A transport error is returned to the caller, which escalates.
 func retryOnThrottle(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
@@ -192,11 +175,6 @@ func retryOnThrottle(ctx context.Context, resp *http.Response, err error) (bool,
 	return resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == statusOverloaded, nil
 }
 
-// jitteredBackoff waits for the Retry-After seconds the server names, else
-// for an exponential delay, plus up to a quarter more so that parallel calls
-// do not retry in step. No wait exceeds maxWait, and a wait that is zero or
-// negative becomes maxWait. The default backoff reads Retry-After for 429 only
-// and does not cap it.
 func jitteredBackoff(minWait, maxWait time.Duration, attempt int, resp *http.Response) time.Duration {
 	wait := retryablehttp.DefaultBackoff(minWait, maxWait, attempt, resp)
 	if resp != nil && resp.StatusCode == statusOverloaded {
@@ -204,7 +182,7 @@ func jitteredBackoff(minWait, maxWait time.Duration, attempt int, resp *http.Res
 			wait = time.Duration(secs) * time.Second
 		}
 	}
-	if wait <= 0 || wait > maxWait { // an overflowing Retry-After wraps to a negative wait
+	if wait <= 0 || wait > maxWait {
 		wait = maxWait
 	}
 	return min(wait+rand.N(wait/4+1), maxWait)
@@ -238,10 +216,6 @@ type answer struct {
 	Confidence float64
 }
 
-// ask sends one request that carries the state and the gate's question, and
-// returns the validated answer with the hash of the request. A response that
-// does not match the documented shape and the offered labels is an error,
-// never a partial answer.
 func (g *Gate) ask(ctx context.Context, state any, d gateDef) (answer, string, error) {
 	if g.key == "" {
 		return answer{}, "", g.keyErr
@@ -290,8 +264,6 @@ func (g *Gate) ask(ctx context.Context, state any, d gateDef) (answer, string, e
 	return a, hash, nil
 }
 
-// validateAnswer accepts a choice answer only when its probabilities cover
-// exactly the offered labels and sum to 1 within the tolerance.
 func validateAnswer(d gateDef, raw rawAnswer) (answer, error) {
 	if raw.Type != "choice" {
 		return answer{}, fmt.Errorf("type is %q, want choice", raw.Type)
@@ -322,8 +294,6 @@ func validateAnswer(d gateDef, raw rawAnswer) (answer, error) {
 	return answer{Label: raw.Choice, Confidence: *raw.Confidence}, nil
 }
 
-// verdict decides whether the CTO may act on a label. It escalates the gate's
-// unknown label and any confidence below the floor or the label's threshold.
 func (g *Gate) verdict(d gateDef, label string, confidence float64) (string, string) {
 	need := g.th.Low
 	if d.Name == gateTodoOwner.Name {
@@ -344,8 +314,6 @@ func (g *Gate) verdict(d gateDef, label string, confidence float64) (string, str
 	return verdictAct, ""
 }
 
-// Judge asks one gate about one subject and logs the call. Any error leaves
-// the judgment at escalate; it never acts on a failed or invalid call.
 func (g *Gate) Judge(ctx context.Context, subject, id string, d gateDef, state any) Judgment {
 	j := Judgment{Subject: subject, ID: id, Gate: d.Name, Verdict: verdictEscalate, DecidedBy: decidedByError}
 	a, hash, err := g.ask(ctx, state, d)
@@ -367,8 +335,6 @@ func (g *Gate) Judge(ctx context.Context, subject, id string, d gateDef, state a
 	return j
 }
 
-// openGateLog opens the gate-call log for appending and returns a JSON logger
-// that writes to it. The caller closes the file.
 func openGateLog(path string) (*slog.Logger, *os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, nil, fmt.Errorf("gate log: %w", err)
@@ -380,7 +346,6 @@ func openGateLog(path string) (*slog.Logger, *os.File, error) {
 	return slog.New(slog.NewJSONHandler(f, nil)), f, nil
 }
 
-// gateHTTPError retains validation details so oversized context can be identified.
 type gateHTTPError struct {
 	Status int
 	Detail string
@@ -402,7 +367,6 @@ func inputLimitError(err error) bool {
 	return e.Status == 413 || strings.Contains(detail, "token") || strings.Contains(detail, "context length") || strings.Contains(detail, "too large") || strings.Contains(detail, "maximum context")
 }
 
-// limitPage diagnoses a rejected request without using a shortened context for a verdict.
 func (g *Gate) limitPage(ctx context.Context, state todoState, d gateDef, original error) string {
 	wiki, handoffs := state.WikiPages, state.Handoffs
 	state.WikiPages, state.Handoffs = nil, nil

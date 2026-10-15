@@ -13,18 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Session IDs of the synthetic world.
 const (
-	sessAlpha      = "11111111-1111-4111-8111-111111111111" // claude, bound to tab w1:t1
-	sessNotes      = "22222222-2222-4222-8222-222222222222" // claude, bound to tab w2:t1
-	sessBeta       = "33333333-3333-4333-8333-333333333333" // codex; herdr gives codex agents no session ID, so no tab is bound
-	sessUnbound    = "44444444-4444-4444-8444-444444444444" // claude, no tab, in the window
-	sessOldUnbound = "55555555-5555-4555-8555-555555555555" // claude, no tab, outside the window
+	sessAlpha      = "11111111-1111-4111-8111-111111111111"
+	sessNotes      = "22222222-2222-4222-8222-222222222222"
+	sessBeta       = "33333333-3333-4333-8333-333333333333"
+	sessUnbound    = "44444444-4444-4444-8444-444444444444"
+	sessOldUnbound = "55555555-5555-4555-8555-555555555555"
 )
 
-// world is a synthetic machine: real git repositories, transcripts for two
-// profiles, a vault, synthetic herdr, gh and task output, and a local file that
-// points at all of it.
 type world struct {
 	Root      string
 	Local     string
@@ -51,8 +47,6 @@ func writeFile(t *testing.T, path, content string, mtime time.Time) {
 	}
 }
 
-// newWorld builds the world under a temporary directory and points the process
-// at its stand-in programs. gateURL goes into the local file.
 func newWorld(t *testing.T, gateURL string) *world {
 	t.Helper()
 	root, err := filepath.EvalSymlinks(t.TempDir())
@@ -171,7 +165,6 @@ func newWorld(t *testing.T, gateURL string) *world {
 	return w
 }
 
-// config loads the world's local file.
 func (w *world) config(t *testing.T) Config {
 	t.Helper()
 	cfg, err := loadConfig(w.Local)

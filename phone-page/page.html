@@ -522,7 +522,6 @@
                     columns[0].append(block);
                     block.classList.add('oversized-block');
                     placed = true;
-                    // A tall block owns its screen; the next block starts a new part.
                     columnIndex = columns.length;
                   } else if (occupied && columnIndex + 1 < columns.length) {
                     columnIndex++;
@@ -627,7 +626,6 @@
             }
             const row = rows.children[index];
             if (row) {
-              // Keep the pressed Change button attached when a text field's blur updates answers.
               row.firstElementChild.replaceWith(copy);
             } else {
               const newRow = document.createElement('div');

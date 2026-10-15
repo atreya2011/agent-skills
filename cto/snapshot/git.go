@@ -10,11 +10,8 @@ import (
 	"strings"
 )
 
-// originSlug extracts owner/name from a GitHub remote URL in https, ssh or
-// scp form.
 var originSlug = regexp.MustCompile(`github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$`)
 
-// gitDetails are the git facts of a project's main checkout.
 type gitDetails struct {
 	Slug          string
 	Branch        string
@@ -24,10 +21,6 @@ type gitDetails struct {
 	Behind        int
 }
 
-// gitRoot returns the main checkout of the repository that contains cwd, so
-// that linked worktrees fold into one project. A directory that is gone or is
-// not in a repository is a fact, not a read failure: isRepo is false and err
-// is nil.
 func (r runner) gitRoot(ctx context.Context, cwd string) (root string, isRepo bool, err error) {
 	if _, statErr := os.Stat(cwd); statErr != nil {
 		return "", false, nil
@@ -46,9 +39,6 @@ func (r runner) gitRoot(ctx context.Context, cwd string) (root string, isRepo bo
 	return top, true, nil
 }
 
-// gitDetails reads the branch, change count, default branch, origin and the
-// last five commits of root. Only the status call must succeed: a repository
-// without an origin, an origin HEAD or a commit simply lacks that fact.
 func (r runner) gitDetails(ctx context.Context, root string) (gitDetails, error) {
 	var d gitDetails
 	out, _, err := r.output(ctx, root, r.cmds.Git, "status", "--porcelain=v2", "--branch")
@@ -82,9 +72,6 @@ func (r runner) gitDetails(ctx context.Context, root string) (gitDetails, error)
 	return d, nil
 }
 
-// onDefault reports whether sha is an ancestor of the default branch:
-// "on_default", "not_on_default", or "unchecked" when the repository has no
-// default branch or does not know the commit.
 func (r runner) onDefault(ctx context.Context, root, defaultBranch, sha string) string {
 	if defaultBranch == "" {
 		return "unchecked"

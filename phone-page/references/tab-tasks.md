@@ -42,7 +42,7 @@ The listener logs no successful delivery; it only writes failure lines such as `
 | `undelivered` | submission with a failure line | none |
 | `open` | no submission, asking tab still listed by `herdr tab list` | none |
 | `tabgone` | no submission, asking tab gone | delete |
-| `notab` | page has no asking tab | none |
+| `notab` | page has no asking tab | delete |
 | `unknown` | the journal or herdr could not be read | none |
 
 A delete runs `phone-page delete <id>`, which also removes the inbox line. With `--dry-run` nothing is deleted and the log rows carry `dry-run`.

@@ -443,8 +443,8 @@ class CloseTests(unittest.TestCase):
 
     def test_statuses_and_actions(self):
         cases = [
-            ("dry run", ["--dry-run"], {}, {"answered": ("answered", "delete"), "undelivered": ("undelivered", "none"), "open": ("open", "none"), "tabgone": ("tabgone", "delete"), "notab": ("notab", "none")}, [], "dry-run"),
-            ("live", [], {}, {"answered": ("answered", "delete"), "undelivered": ("undelivered", "none"), "open": ("open", "none"), "tabgone": ("tabgone", "delete"), "notab": ("notab", "none")}, ["answered", "tabgone"], "live"),
+            ("dry run", ["--dry-run"], {}, {"answered": ("answered", "delete"), "undelivered": ("undelivered", "none"), "open": ("open", "none"), "tabgone": ("tabgone", "delete"), "notab": ("notab", "delete")}, [], "dry-run"),
+            ("live", [], {}, {"answered": ("answered", "delete"), "undelivered": ("undelivered", "none"), "open": ("open", "none"), "tabgone": ("tabgone", "delete"), "notab": ("notab", "delete")}, ["answered", "tabgone", "notab"], "live"),
             ("herdr lookup fails", [], {"FAKE_HERDR_FAIL": "1"}, {name: ("unknown", "none") for name in ("answered", "undelivered", "open", "tabgone", "notab")}, [], "live"),
             ("listener log fails", [], {"FAKE_JOURNAL_FAIL": "1"}, {name: ("unknown", "none") for name in ("answered", "undelivered", "open", "tabgone", "notab")}, [], "live"),
         ]

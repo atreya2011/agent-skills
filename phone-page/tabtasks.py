@@ -425,7 +425,7 @@ def command_close(args):
     stamp = now().isoformat(timespec="seconds")
     for page in pages:
         status = page_status(page, failed, tab_ids)
-        action = "delete" if status in ("answered", "tabgone") else "none"
+        action = "delete" if status in ("answered", "tabgone", "notab") else "none"
         counts[(status, action)] = counts.get((status, action), 0) + 1
         area = tab_area(tabs, rules, page["herdr_tab_id"]) if page["herdr_tab_id"] else ""
         rows.append((stamp, page["id"], area, status, action, mode(args)))

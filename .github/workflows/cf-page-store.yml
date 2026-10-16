@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/cf-page-store'
+      - 'tests/cf-page-store/**'
       - 'cf-page-store/src/**'
       - 'cf-page-store/test/**'
       - 'cf-page-store/migrations/**'
@@ -19,6 +21,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/cf-page-store.yml'
+      - 'cf-page-store/cf-page-store'
+      - 'tests/cf-page-store/**'
       - 'cf-page-store/src/**'
       - 'cf-page-store/test/**'
       - 'cf-page-store/migrations/**'
@@ -31,6 +35,13 @@ on:
       - 'phone-page/assets.json'
 
 jobs:
+  cf-page-store-shell-tests:
+    name: cf-page-store shell tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: tests/cf-page-store/cf-page-store.test.sh
+
   cf-page-store-tests:
     name: cf-page-store tests
     runs-on: ubuntu-latest

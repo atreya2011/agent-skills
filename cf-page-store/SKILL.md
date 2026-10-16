@@ -37,6 +37,7 @@ When `cf-page-store listen` runs on the asking machine, a submitted answer wakes
 - `publish` and `update` print exactly the Worker's one-line JSON object.
 - `answers` prints nothing when it exits 3. After an answers HTTP 404, it checks the page itself to distinguish exit 3 from exit 4; other read failures remain errors.
 - `cf-page-store listen` maintains the answer-event WebSocket, checks it with a text heartbeat every thirty seconds, and wakes asking Herdr tabs.
+- `cf-page-store pages` prints every page as one JSON array through a read-only D1 query that Wrangler runs with the `api-token` keyring entry, the account id and the deploy config from the local file. It runs from the skill directory, so `bun install --frozen-lockfile` must have run there.
 
 The optional tab id is sent as `X-Herdr-Tab-Id`; the Worker accepts only `w` plus one or more ASCII letters or digits, then `:t` and one or more ASCII letters or digits. Invalid values return HTTP 400.
 

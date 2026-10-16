@@ -8,6 +8,8 @@ on:
       - '.github/workflows/phone-page.yml'
       - 'tests/phone-page/**'
       - 'phone-page/phone-page'
+      - 'phone-page/herdr-tab-sync'
+      - 'phone-page/tabtasks.py'
       - 'phone-page/page.html'
       - 'phone-page/validate.jq'
       - 'phone-page/assets.json'
@@ -16,6 +18,8 @@ on:
       - '.github/workflows/phone-page.yml'
       - 'tests/phone-page/**'
       - 'phone-page/phone-page'
+      - 'phone-page/herdr-tab-sync'
+      - 'phone-page/tabtasks.py'
       - 'phone-page/page.html'
       - 'phone-page/validate.jq'
       - 'phone-page/assets.json'
@@ -27,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: tests/phone-page/phone-page.test.sh
+      - run: python3 tests/phone-page/test_tabtasks.py
 
   phone-page-playwright-tests:
     name: phone-page Playwright tests

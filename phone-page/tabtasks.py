@@ -282,6 +282,18 @@ def emit(*values):
     print("\t".join(str(value) for value in values))
 
 
+def sync_plan(tabs, tasks):
+    current = [
+        ("keep" if task_for_tab(tasks, tab.tab_id, pending_only=True) else "create", tab)
+        for tab in sorted(tabs.values(), key=lambda entry: entry.tab_id)
+    ]
+    closed = [
+        task for task in tasks
+        if task.get("herdrtab") and task.get("status") in ("pending", "waiting") and task["herdrtab"] not in tabs
+    ]
+    return current, closed
+
+
 def command_sync(args):
     directory = platform_dir()
     tabs, source = load_tabs(directory, args.live)
@@ -290,21 +302,20 @@ def command_sync(args):
     emit("source", source)
     created = 0
     closed = 0
-    for tab in sorted(tabs.values(), key=lambda entry: entry.tab_id):
+    current, closing = sync_plan(tabs, tasks)
+    for action, tab in current:
         area, owner = rules.classify(tab)
         owner = owner_for(area, owner)
         fields = tab_task_fields(tab, area, owner, rules.triage(tab))
-        if task_for_tab(tasks, tab.tab_id, pending_only=True):
+        if action == "keep":
             emit("keep", tab.tab_id, fields["project"], area, owner, fields["description"])
             continue
         created += 1
         emit("create", tab.tab_id, fields["project"], area, owner, fields["description"])
         if not args.dry_run:
             task_import(fields)
-    for task in tasks:
-        tab_id = task.get("herdrtab")
-        if not tab_id or task.get("status") not in ("pending", "waiting") or tab_id in tabs:
-            continue
+    for task in closing:
+        tab_id = task["herdrtab"]
         closed += 1
         emit("close", tab_id, task.get("project") or "", task.get("area") or "", task.get("owner") or "", task.get("description") or "")
         if not args.dry_run:
@@ -394,6 +405,13 @@ def ensure_annotation(task, text, dry_run):
     return True
 
 
+def page_annotations(page, journal):
+    texts = [f"phone-page {page['id']} {page['url']}"]
+    if journal is not None and delivered(page, journal):
+        texts.append(f"phone-page {page['id']} answered {page['submitted_at']}")
+    return texts
+
+
 def command_attach(args):
     directory = platform_dir()
     pages = load_pages()
@@ -420,9 +438,10 @@ def command_attach(args):
             emit("unmatched", page["id"], desk, page["title"])
             continue
         matched += 1
-        action = "annotate" if ensure_annotation(task, f"phone-page {page['id']} {page['url']}", args.dry_run) else "keep"
-        if journal is not None and delivered(page, journal):
-            if ensure_annotation(task, f"phone-page {page['id']} answered {page['submitted_at']}", args.dry_run):
+        texts = page_annotations(page, journal)
+        action = "annotate" if ensure_annotation(task, texts[0], args.dry_run) else "keep"
+        for text in texts[1:]:
+            if ensure_annotation(task, text, args.dry_run):
                 action += "+answered"
         emit("matched", page["id"], task["uuid"], action, page["title"])
     name = "unmatched.dryrun.tsv" if args.dry_run else "unmatched.tsv"
@@ -448,6 +467,15 @@ def delete_page(page_id):
     run([script, "delete", page_id])
 
 
+def close_plan(pages, journal, tab_ids):
+    result = []
+    for page in pages:
+        status = page_status(page, journal, tab_ids)
+        action = "delete" if status in ("answered", "tabgone", "notab") else "none"
+        result.append((page, status, action))
+    return result
+
+
 def command_close(args):
     directory = platform_dir()
     pages = load_pages()
@@ -463,9 +491,7 @@ def command_close(args):
     rows = []
     counts = {}
     stamp = now().isoformat(timespec="seconds")
-    for page in pages:
-        status = page_status(page, journal, tab_ids)
-        action = "delete" if status in ("answered", "tabgone", "notab") else "none"
+    for page, status, action in close_plan(pages, journal, tab_ids):
         counts[(status, action)] = counts.get((status, action), 0) + 1
         area = tab_area(tabs, rules, page["herdr_tab_id"]) if page["herdr_tab_id"] else ""
         rows.append((stamp, page["id"], area, status, action, mode(args)))

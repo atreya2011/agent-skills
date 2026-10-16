@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -113,6 +114,16 @@ class PureFunctionTests(unittest.TestCase):
                 self.assertEqual(self.module.ensure_annotation(task, "phone-page p answered now", True), expected)
                 self.assertEqual(task["annotations"], [{"description": "phone-page p answered now"}])
 
+    def test_errors_exit_nonzero(self):
+        cases = [
+            ("missing executable", ["/nonexistent/tabtasks-test-command"], "cannot run"),
+            ("failed process", [sys.executable, "-c", "import sys; sys.stderr.write('failed'); sys.exit(2)"], "exited 2: failed"),
+        ]
+        for name, argv, message in cases:
+            with self.subTest(name):
+                with self.assertRaisesRegex(self.module.CommandError, message):
+                    self.module.run(argv)
+
 
 class SyncTests(unittest.TestCase):
     def setUp(self):
@@ -201,6 +212,131 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("--live | --platform", completed.stdout)
         self.assertIn("read live Herdr tabs (default)", completed.stdout)
+
+
+class PlanningTests(unittest.TestCase):
+    def setUp(self):
+        self.module = load_module()
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.tabs = {
+            tab_id: self.module.Tab(**tab(tab_id, "/work/repos/alpha", "alpha", label))
+            for tab_id, label in [("w1:t2", "new"), ("w1:t1", "kept")]
+        }
+        self.tasks = [
+            {"uuid": "keep", "herdrtab": "w1:t1", "status": "waiting"},
+            {"uuid": "old", "herdrtab": "w1:t2", "status": "completed"},
+            {"uuid": "gone", "herdrtab": "w9:t9", "status": "pending"},
+            {"uuid": "done", "herdrtab": "w8:t8", "status": "completed"},
+            {"uuid": "deleted", "herdrtab": "w7:t7", "status": "deleted"},
+            {"uuid": "plain", "status": "pending"},
+        ]
+
+    def test_plan_from_platform_files(self):
+        root = os.path.join(self.directory.name, "tabs", "2026-10-16", "work.json")
+        write(root, json.dumps({"tabs": [tab("w1:t1", "/work/repos/alpha"), tab("w1:t2", "/work/repos/beta")]}))
+        tabs, source = self.module.load_tabs(self.directory.name, live=False)
+        before = json.dumps(self.tasks)
+        cases = [
+            ("platform files", tabs),
+            ("live listing data", self.tabs),
+        ]
+        self.assertTrue(source.startswith("platform files "))
+        for name, entries in cases:
+            with self.subTest(name):
+                current, closed = self.module.sync_plan(entries, self.tasks)
+                self.assertEqual([(action, entry.tab_id) for action, entry in current], [("keep", "w1:t1"), ("create", "w1:t2")])
+                self.assertEqual([task["uuid"] for task in closed], ["gone"])
+                self.assertEqual(json.dumps(self.tasks), before)
+
+    def test_sync_plan_is_idempotent(self):
+        for attempt in ("first", "second"):
+            with self.subTest(attempt):
+                current, closed = self.module.sync_plan(self.tabs, self.tasks)
+                self.assertEqual([(action, entry.tab_id) for action, entry in current], [("keep", "w1:t1"), ("create" if attempt == "first" else "keep", "w1:t2")])
+                self.assertEqual([task["uuid"] for task in closed], ["gone"] if attempt == "first" else [])
+                for action, entry in current:
+                    if action == "create":
+                        self.tasks.append({"uuid": "new", **self.module.tab_task_fields(entry, "personal", "Chief of Staff")})
+                for task in closed:
+                    task["status"] = "completed"
+        self.assertEqual(len(self.tasks), 7)
+        self.assertEqual([task["status"] for task in self.tasks if task["uuid"] == "old"], ["completed"])
+
+    def test_attach_annotates_once(self):
+        journal = ({("answered", "w1:t1")}, {"failed"})
+        cases = [
+            ("open", page("open", "w1:t1"), ["phone-page open https://store.example/p/open"]),
+            ("delivered answer", page("answered", "w1:t1", "2026-10-11 00:00:00"), ["phone-page answered https://store.example/p/answered", "phone-page answered answered 2026-10-11 00:00:00"]),
+            ("failed delivery", page("failed", "w1:t1", "2026-10-11 00:00:00"), ["phone-page failed https://store.example/p/failed"]),
+        ]
+        for name, entry, expected in cases:
+            with self.subTest(name):
+                task = {"uuid": "keep"}
+                for attempt in ("first", "second"):
+                    changed = [self.module.ensure_annotation(task, text, True) for text in self.module.page_annotations(entry, journal)]
+                    self.assertEqual(changed, [attempt == "first"] * len(expected))
+                    self.assertEqual(self.module.annotations(task), expected)
+
+    def test_listener_log_failure_skips_answered_marking(self):
+        entry = page("answered", "w1:t1", "2026-10-11 00:00:00")
+        cases = [
+            ("unavailable journal", None),
+            ("no delivery evidence", (set(), set())),
+            ("different asking tab", ({("answered", "w2:t2")}, set())),
+        ]
+        for name, journal in cases:
+            with self.subTest(name):
+                self.assertEqual(self.module.page_annotations(entry, journal), ["phone-page answered https://store.example/p/answered"])
+
+    def test_unmatched_and_completed_tasks(self):
+        cases = [
+            ("pending tab", "w1:t1", "keep"),
+            ("completed tab", "w1:t2", "old"),
+            ("unknown tab", "w6:t6", None),
+            ("deleted task", "w7:t7", None),
+        ]
+        for name, tab_id, expected in cases:
+            with self.subTest(name):
+                matched = self.module.task_for_tab(self.tasks, tab_id, pending_only=False)
+                self.assertEqual(matched["uuid"] if matched else None, expected)
+
+    def test_statuses_and_actions(self):
+        entries = [page("answered", "w1:t1", "2026-10-11 00:00:00"), page("undelivered", "w1:t1", "2026-10-11 00:00:00"), page("open", "w1:t1"), page("tabgone", "w9:t9"), page("notab", None), page("unknown", "w1:t1", "2026-10-11 00:00:00")]
+        journal = ({("answered", "w1:t1")}, {"undelivered", "open"})
+        expected = [("answered", "answered", "delete"), ("undelivered", "undelivered", "none"), ("open", "open", "none"), ("tabgone", "tabgone", "delete"), ("notab", "notab", "delete"), ("unknown", "unknown", "none")]
+        cases = [
+            ("known lookups", journal, {"w1:t1"}, expected),
+            ("journal unavailable", None, {"w1:t1"}, [(entry["id"], "unknown", "none") for entry in entries]),
+            ("tabs unavailable", journal, None, [(entry["id"], "unknown", "none") for entry in entries]),
+        ]
+        before = json.dumps(entries)
+        for name, evidence, tab_ids, expected_plan in cases:
+            with self.subTest(name):
+                plan = self.module.close_plan(entries, evidence, tab_ids)
+                self.assertEqual([(entry["id"], status, action) for entry, status, action in plan], expected_plan)
+                self.assertNotIn("open", [entry["id"] for entry, _, action in plan if action == "delete"])
+                self.assertTrue(all(action == "none" for _, status, action in plan if status == "unknown"))
+                self.assertEqual(json.dumps(entries), before)
+
+    def test_log_appends_across_runs(self):
+        path = os.path.join(self.directory.name, "close-log.tsv")
+        entries = [page("open", "w1:t1"), page("answered", "w1:t1", "2026-10-11 00:00:00")]
+        journal = ({("answered", "w1:t1")}, set())
+        for mode in ("dry-run", "live"):
+            with self.subTest(mode):
+                rows = [("2026-10-16T00:00:00+09:00", entry["id"], "work", status, action, mode) for entry, status, action in self.module.close_plan(entries, journal, {"w1:t1"})]
+                self.module.append_tsv(path, self.module.CLOSE_LOG_HEADER, rows)
+        self.assertEqual(self.module.read_rows(path), [list(self.module.CLOSE_LOG_HEADER), ["2026-10-16T00:00:00+09:00", "open", "work", "open", "none", "dry-run"], ["2026-10-16T00:00:00+09:00", "answered", "work", "answered", "delete", "dry-run"], ["2026-10-16T00:00:00+09:00", "open", "work", "open", "none", "live"], ["2026-10-16T00:00:00+09:00", "answered", "work", "answered", "delete", "live"]])
+
+    def test_dry_run_unmatched_report_is_separate(self):
+        cases = [("unmatched.tsv", [("Live question", "Chief of Staff", "live")]), ("unmatched.dryrun.tsv", [("Dry question", "Finance", "dry")])]
+        for name, rows in cases:
+            with self.subTest(name):
+                self.module.write_tsv(os.path.join(self.directory.name, name), self.module.UNMATCHED_HEADER, rows)
+        for name, rows in cases:
+            with self.subTest(name):
+                self.assertEqual(self.module.read_rows(os.path.join(self.directory.name, name)), [list(self.module.UNMATCHED_HEADER), *[list(row) for row in rows]])
 
 
 if __name__ == "__main__":

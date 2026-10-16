@@ -125,6 +125,11 @@ case_names=(
   'flow chart title over forty characters'
   'flow chart with one step'
   'flow and flows together'
+  'no mermaid diagrams'
+  'five mermaid diagrams'
+  'mermaid diagram with an empty title'
+  'mermaid diagram title over forty characters'
+  'mermaid diagram with an empty source'
   'multi-sentence summary'
   'multi-sentence card text'
   'multi-sentence table cell'
@@ -187,6 +192,11 @@ case_filters=(
   'del(.questions[0].flow) | .questions[0].flows = [{title: ("x" * 41), steps: ["Start.", "End."]}]'
   'del(.questions[0].flow) | .questions[0].flows = [{title: "Chart", steps: ["Start."]}]'
   '.questions[0].flows = [{title: "Chart", steps: ["Start.", "End."]}]'
+  '.questions[0].mermaid = []'
+  '.questions[0].mermaid = [range(0; 5) | {title: "States", source: "stateDiagram-v2\n  [*] --> Done"}]'
+  '.questions[0].mermaid = [{title: "", source: "stateDiagram-v2\n  [*] --> Done"}]'
+  '.questions[0].mermaid = [{title: ("x" * 41), source: "stateDiagram-v2\n  [*] --> Done"}]'
+  '.questions[0].mermaid = [{title: "States", source: ""}]'
   '.summary = "Choose now. Finish later."'
   '.questions[0].cards = [{title: "Rule", text: "Choose now. Finish later."}, {title: "Check", text: "CI checks the format."}]'
   '.questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "Choose now. Finish later."]]}'
@@ -249,6 +259,11 @@ case_reasons=(
   'question flows must contain'
   'question flows must contain'
   'a question may use flow or flows, not both'
+  'question mermaid must contain 1 to 4 objects with a title of 1 to 40 characters and a non-empty source'
+  'question mermaid must contain'
+  'question mermaid must contain'
+  'question mermaid must contain'
+  'question mermaid must contain'
   'summary must contain one sentence: Choose now. Finish later.'
   'card text must contain one sentence: Choose now. Finish later.'
   'table cell must contain one sentence: Choose now. Finish later.'
@@ -293,7 +308,7 @@ fi
 
 for index in "${!case_names[@]}"; do
   case "${case_filters[index]}" in
-    *'.questions[0].context'*|*'.questions[0].cards'*|*'.questions[0].table'*|*'.questions[0].flow'*|*'.summary'*) ;;
+    *'.questions[0].context'*|*'.questions[0].cards'*|*'.questions[0].table'*|*'.questions[0].flow'*|*'.questions[0].mermaid'*|*'.summary'*) ;;
     *) continue ;;
   esac
   name="read rejects ${case_names[index]} using the shared block rules"
@@ -392,13 +407,14 @@ else
   pass "$name"
 fi
 
-read_case_names=('one section without optional blocks' 'ten sections' 'nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows')
+read_case_names=('one section without optional blocks' 'ten sections' 'nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows' 'mermaid diagrams beside a flow')
 read_case_filters=(
   '.sections = [{heading: "Delivery"}]'
   '.sections = [range(0; 10) | {heading: "Delivery", context: ["Use the current path."]}]'
   '.sections[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .sections[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
   '.summary = "Use v1.3.0 with a threshold of 0.60." | .sections[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .sections[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}]'
   '.sections[0].cards = [{title: "Rule", text: "No rule maps changes to types.", icon: "book-open"}, {title: "Check", text: "CI checks only the format."}] | .sections[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "docs"], ["src/", "feat or fix"]]} | del(.sections[0].flow) | .sections[0].flows = [{title: "How it reached main", steps: ["An agent opens the PR.", "CI checks the format."]}, {title: "Proposed check", steps: ["Compare the type with the paths.", {text: "Do they match?", branches: ["Pass.", "Fail."]}]}]'
+  '.sections[0].mermaid = [{title: "Request states", source: "stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review: Submit now. Wait.\n  Review --> [*]"}, {title: "Release cycle", source: "flowchart LR\n  A[Build] --> B{Pass?}\n  B -->|No| A"}]'
 )
 for index in "${!read_case_names[@]}"; do
   name="render accepts a read spec with ${read_case_names[index]}"
@@ -412,12 +428,13 @@ for index in "${!read_case_names[@]}"; do
   fi
 done
 
-case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows' 'several recommended options in a multi-choice question')
+case_names=('nested context and branching flow' 'decimal and version text' 'summary, cards, table and titled flows' 'several recommended options in a multi-choice question' 'mermaid diagrams beside a flow')
 case_filters=(
   '.questions[0].context[1] = {text: "Keep the change small.", items: ["Use the current path.", "Preserve its lifecycle."]} | .questions[0].flow[1] = {text: "Are checks passing?", branches: ["Deliver the result.", "Repair the result."]}'
   '.questions[0].context = ["0.60 is the threshold.", {text: "Use v1.3.0.", items: ["Compare 0.60 with v1.3.0."]}] | .questions[0].flow = ["Check 0.60.", {text: "Is v1.3.0 ready?", branches: ["Deliver v1.3.0.", "Keep 0.60."]}] | .questions[0].options[0].description = "Use v1.3.0 with a threshold of 0.60."'
   '.summary = "Add the rule and the check." | .questions[0].cards = [{title: "Rule", text: "No rule maps changes to types.", icon: "book-open"}, {title: "Check", text: "CI checks only the format."}] | .questions[0].table = {columns: ["Paths", "Type"], rows: [["docs/", "docs"], ["src/", "feat or fix"]]} | del(.questions[0].flow) | .questions[0].flows = [{title: "How it reached main", steps: ["An agent opens the PR.", "CI checks the format."]}, {title: "Proposed check", steps: ["Compare the type with the paths.", {text: "Do they match?", branches: ["Pass.", "Fail."]}]}]'
   '.questions[0].multiSelect = true | .questions[0].options[1].recommended = true'
+  '.questions[0].mermaid = [{title: "Request states", source: "stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review: Submit now. Wait.\n  Review --> [*]"}, {title: "Release cycle", source: "flowchart LR\n  A[Build] --> B{Pass?}\n  B -->|No| A"}]'
 )
 for index in "${!case_names[@]}"; do
   name="render accepts ${case_names[index]}"

@@ -24,7 +24,7 @@ Use a page only in an interactive session, and only for an item that needs the u
   - the problem, what was tried, the result, and what needs deciding, then the recommendation with its one-line reason, as the first context bullets;
   - the facts it rests on in a `table`, with numbers and sources;
   - known limits as two or three one-line `cards`, or as a table row when there is only one;
-  - the process as a `flow` or `flows` chart with short boxes;
+  - the process as a `flow`, `flows` or `mermaid` chart with short boxes;
   - each option's consequence in its description.
 - Add nothing beyond those parts, and never cut a fact the decision depends on.
 

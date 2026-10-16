@@ -50,6 +50,10 @@ A table compares structured facts at 17 px. Column headers are uppercase muted t
 
 Draw every process as bordered boxes joined by down arrows under a small label, with 17 px text and the existing colors. The label is `Flow` for a single chart, or the chart's title when a page shows more than one chart. A decision box connects by an arrow to each outcome box. Place outcomes side by side, or stack them beside a shared connector when the screen is too narrow; alternatives never appear as sequential steps. Use the same chart on read pages and question pages, never numbered circles or a code block.
 
+### Mermaid diagram
+
+Draw a state machine, cycle, sequence or relationship that the flow chart cannot draw as a Mermaid diagram under the same small label, showing its title. The diagram keeps its natural width inside a bordered box in the page colors and Inter; a diagram wider than the screen scrolls inside its box, so the page never scrolls horizontally. The page loads Mermaid from `/assets/` only when the spec has a `mermaid` block, renders with strict security, and shows a render error as text in that diagram's box.
+
 The shared field schemas and sentence rules are defined once in [blocks.md](blocks.md); [read-spec.md](read-spec.md) and [question-spec.md](question-spec.md) define each page type's own fields. A question renders context, cards, table, charts and options in that order. A read section uses the desktop row layout above and that same content order on a phone.
 
 ### Options
@@ -58,7 +62,7 @@ An option is a full-width tappable card. Put its label first, its one-sentence c
 
 ### Actions and status
 
-The primary action is a lime pill. Desktop question screens have a fixed bottom bar with Previous, a position such as Question 1 of 2, part 1 of 2, and Next. The bar is disabled until questions exist. Previous is disabled on the first screen; Next becomes Review answers on the final part and is hidden on review. Left and Right arrow keys navigate unless focus is in a text field, radio, checkbox or table, or a modifier key is held. Screen changes scroll to the top and focus the heading; keys at either end leave focus and scrolling alone.
+The primary action is a lime pill. Desktop question screens have a fixed bottom bar with Previous, a position such as Question 1 of 2, part 1 of 2, and Next. The bar is disabled until questions exist. Previous is disabled on the first screen; Next becomes Review answers on the final part and is hidden on review. Left and Right arrow keys navigate unless focus is in a text field, radio, checkbox, table or diagram, or a modifier key is held. Screen changes scroll to the top and focus the heading; keys at either end leave focus and scrolling alone.
 
 The desktop review heading is Check your answers; on a phone, a live Your answers panel follows the last question. Each row shows the question's header and question, selected option labels, Other text, Skipped or Not answered, and any note prefixed with Note:. Its Change button opens that question's first desktop part or scrolls to and focuses its heading on a phone. Submit appears only on desktop review, centered below the rows, and full width on a phone; Enter from a question opens review first. Put submission errors near the action and move focus to the question that needs attention; an empty selected Other response keeps its error, opens the desktop part containing its field and focuses it. Put the latest submission notice and any failure to check it in the masthead so they show when the page opens. After a successful submission, keep the success toast and show `Sent at` with the local time, then the exact instruction `Reply done in the chat`, below Submit.
 

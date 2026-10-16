@@ -11,6 +11,7 @@ def flow_item:
   else false end;
 def flow_steps: type == "array" and length >= 2 and all(.[]; flow_item);
 def flow_chart: type == "object" and (.title | nonempty and length <= 40) and (.steps | flow_steps);
+def mermaid_chart: type == "object" and (.title | nonempty and length <= 40) and (.source | nonempty);
 def card_item:
   type == "object" and (.title | nonempty) and (.text | nonempty)
   and (if has("icon") then (.icon | type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$")) else true end);
@@ -27,6 +28,7 @@ def block_error($blocks; $kind):
   elif any($blocks[]; has("flow") and (.flow | flow_steps | not)) then "\($kind) flow must contain 2 or more non-empty strings or objects with text and 2 to 4 branches"
   elif any($blocks[]; has("flows") and (.flows | if type == "array" then length < 1 or length > 4 or any(.[]; flow_chart | not) else true end)) then "\($kind) flows must contain 1 to 4 objects with a title of 1 to 40 characters and 2 or more steps"
   elif any($blocks[]; has("flow") and has("flows")) then "a \($kind) may use flow or flows, not both"
+  elif any($blocks[]; has("mermaid") and (.mermaid | if type == "array" then length < 1 or length > 4 or any(.[]; mermaid_chart | not) else true end)) then "\($kind) mermaid must contain 1 to 4 objects with a title of 1 to 40 characters and a non-empty source"
   else "" end;
 
 def flow_texts:
@@ -38,7 +40,8 @@ def block_texts:
   (.cards[]? | {kind: "card title", text: .title}, {kind: "card text", text: .text}),
   (.table? // empty | (.columns[] | {kind: "table column", text: .}), (.rows[][] | {kind: "table cell", text: .})),
   (.flow[]? | flow_texts),
-  (.flows[]? | {kind: "flow title", text: .title}, (.steps[] | flow_texts));
+  (.flows[]? | {kind: "flow title", text: .title}, (.steps[] | flow_texts)),
+  (.mermaid[]? | {kind: "mermaid title", text: .title});
 def sentence_error($blocks; $question):
   [(.summary | select(type == "string") | {kind: "summary", text: .}),
     ($blocks[] | block_texts,

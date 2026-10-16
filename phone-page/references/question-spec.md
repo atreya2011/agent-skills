@@ -2,7 +2,7 @@
 
 Write one JSON object with a string `title`, an optional `summary` that states the bottom line under the title, and 1 to 10 `questions`; publish it with `phone-page ask <spec> [id]`. Question pages add answer controls, stored drafts and a review screen to the [shared blocks](blocks.md).
 
-Every question has a unique string `id`, a `header` of 1 to 12 characters, a string `question`, a Boolean `multiSelect`, and 2 to 6 `options`. It may also have the shared `context`, `cards`, `table`, and `flow` or `flows` fields. The page renders context, cards, table, charts and options in that order. A question spec cannot contain `sections`.
+Every question has a unique string `id`, a `header` of 1 to 12 characters, a string `question`, a Boolean `multiSelect`, and 2 to 6 `options`. It may also have the shared `context`, `cards`, `table`, `flow` or `flows`, and `mermaid` fields. The page renders context, cards, table, charts and options in that order. A question spec cannot contain `sections`.
 
 Every option has a unique string `label`, a string `description`, and may set Boolean `recommended`. Recommended options come first; a question that recommends more than one option sets `multiSelect` to true, so the page shows checkboxes and marks each recommended option. Summary and option descriptions follow the [shared sentence rules](blocks.md#sentence-rules).
 

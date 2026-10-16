@@ -79,6 +79,8 @@
       .flow-branch:first-child::before { left: 50%; }
       .flow-branch:last-child::before { right: 50%; }
     }
+    .diagram { margin-top: 20px; }
+    .diagram-box { overflow-x: auto; padding: 12px 14px; border: 1px solid #2c3029; border-radius: 12px; background: #0e0f0c; color: #a3a9a0; font-size: 17px; line-height: 1.55; }
     .options { display: grid; gap: 10px; margin: 22px 0 0; }
     .option { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; min-height: 58px; padding: 14px; border: 1px solid #2c3029; border-radius: 18px; background: #0e0f0c; cursor: pointer; }
     .option:hover { border-color: #a3a9a0; }
@@ -124,8 +126,8 @@
       .read-page main { top: 0; bottom: 0; overflow-y: auto; overscroll-behavior: contain; }
       .read-page .masthead { width: 100%; }
       .read-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; }
-      .read-section > .cards, .read-section > .table-wrap, .read-section > .flow { margin-top: 0; }
-      .read-section > .table-wrap, .read-section > .flow { grid-column: 1 / -1; }
+      .read-section > .cards, .read-section > .table-wrap, .read-section > .flow, .read-section > .diagram { margin-top: 0; }
+      .read-section > .table-wrap, .read-section > .flow, .read-section > .diagram { grid-column: 1 / -1; }
       .read-section.context-only { grid-template-columns: minmax(0, 1fr); }
       .read-section.context-only .section-content { width: min(100%, 720px); margin: 0 auto; }
       #question-form { display: flex; flex-direction: column; gap: 12px; height: 100%; }
@@ -326,13 +328,66 @@
         return flow;
       }
 
+      let mermaidReady;
+      let diagramCount = 0;
 
-      function renderBlocks(blocks) {
+      function renderMermaid(title, source, onRender) {
+        const diagram = document.createElement('div');
+        diagram.className = 'diagram';
+        const label = document.createElement('p');
+        label.className = 'flow-label';
+        label.textContent = title;
+        const box = document.createElement('div');
+        box.className = 'diagram-box';
+        box.tabIndex = 0;
+        diagram.append(label, box);
+        mermaidReady ??= new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/assets/mermaid.min.js';
+          script.addEventListener('load', resolve);
+          script.addEventListener('error', () => reject(new Error('Mermaid failed to load.')));
+          document.head.append(script);
+        }).then(() => mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          suppressErrorRendering: true,
+          theme: 'base',
+          themeVariables: {
+            darkMode: true,
+            background: '#0e0f0c',
+            primaryColor: '#0e0f0c',
+            primaryBorderColor: '#2c3029',
+            primaryTextColor: '#e8ebe6',
+            secondaryColor: '#0e0f0c',
+            tertiaryColor: '#0e0f0c',
+            lineColor: '#9fe870',
+            textColor: '#a3a9a0',
+            edgeLabelBackground: '#0e0f0c',
+            noteBkgColor: '#0e0f0c',
+            noteBorderColor: '#2c3029',
+            noteTextColor: '#a3a9a0',
+            fontFamily: 'Inter, sans-serif'
+          }
+        }));
+        const id = `diagram-${diagramCount++}`;
+        mermaidReady.then(() => mermaid.render(id, source)).then(({ svg }) => {
+          box.innerHTML = svg;
+          const image = box.querySelector('svg');
+          image.style.maxWidth = 'none';
+          if (image.viewBox.baseVal) image.setAttribute('width', image.viewBox.baseVal.width);
+        }).catch((error) => {
+          box.textContent = error.message;
+        }).then(onRender);
+        return diagram;
+      }
+
+      function renderBlocks(blocks, onRender) {
         return {
           context: blocks.context ? renderContext(blocks.context) : null,
           cards: blocks.cards ? renderCards(blocks.cards) : null,
           table: blocks.table ? renderTable(blocks.table) : null,
-          flows: blocks.flow ? [renderFlow('Flow', blocks.flow)] : (blocks.flows ?? []).map((chart) => renderFlow(chart.title, chart.steps))
+          flows: blocks.flow ? [renderFlow('Flow', blocks.flow)] : (blocks.flows ?? []).map((chart) => renderFlow(chart.title, chart.steps)),
+          diagrams: (blocks.mermaid ?? []).map((chart) => renderMermaid(chart.title, chart.source, onRender))
         };
       }
 
@@ -351,8 +406,8 @@
         row.append(copy);
         if (blocks.cards) row.append(blocks.cards);
         if (blocks.table) row.append(blocks.table);
-        row.append(...blocks.flows);
-        if (!blocks.cards && !blocks.table && !blocks.flows.length) row.classList.add('context-only');
+        row.append(...blocks.flows, ...blocks.diagrams);
+        if (!blocks.cards && !blocks.table && !blocks.flows.length && !blocks.diagrams.length) row.classList.add('context-only');
         return row;
       }
 
@@ -745,11 +800,11 @@
           content.append(questionHeading);
           card.append(content, answer);
 
-          const rendered = renderBlocks(question);
+          const rendered = renderBlocks(question, () => page.scheduleRepack());
           if (rendered.context) questionHeading.append(rendered.context);
           if (rendered.cards) content.append(rendered.cards);
           if (rendered.table) content.append(rendered.table);
-          answer.append(...rendered.flows);
+          answer.append(...rendered.flows, ...rendered.diagrams);
 
           const options = document.createElement('div');
           options.className = 'options';
@@ -1011,7 +1066,7 @@
         }
 
         function keyboardNavigation(event) {
-          if (!page.ready || !desktop.matches || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('textarea, input, [contenteditable], .table-wrap')) return;
+          if (!page.ready || !desktop.matches || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.target.closest('textarea, input, [contenteditable], .table-wrap, .diagram-box')) return;
           if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
             event.preventDefault();
             page.showScreen(page.screen + (event.key === 'ArrowRight' ? 1 : -1));

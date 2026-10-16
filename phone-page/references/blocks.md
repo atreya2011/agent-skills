@@ -1,6 +1,6 @@
 # Shared page blocks
 
-Read sections and questions use the same optional context, cards, table and flow fields, validated once and rendered by the same components. Choose the blocks that carry the facts the reader needs; the page type adds its own heading, layout and controls.
+Read sections and questions use the same optional context, cards, table, flow and mermaid fields, validated once and rendered by the same components. Choose the blocks that carry the facts the reader needs; the page type adds its own heading, layout and controls.
 
 ## Context
 
@@ -20,8 +20,12 @@ Read sections and questions use the same optional context, cards, table and flow
 
 Charts use the existing CSS renderer: bordered boxes and arrows, with decision outcomes side by side or stacked beside a shared connector on narrow screens. They are not numbered lists or code blocks.
 
+## Mermaid diagrams
+
+`mermaid` holds 1 to 4 objects `{"title": "<title>", "source": "<Mermaid source>"}` with a non-empty title of up to 40 characters and a non-empty Mermaid source. A question or section can use it beside any other field, including `flow` or `flows`. Use `flow` or `flows` for a short linear process with decisions, and `mermaid` for state machines, cycles, sequences or relationships the flow chart cannot draw.
+
 ## Sentence rules
 
-The summary, context bullets and sub-bullets, card titles and text, table columns and cells, flow titles and steps, branch outcomes and question option descriptions each contain one sentence. Validation rejects a sentence break at `.`, `!` or `?` followed by whitespace and an uppercase letter or digit; decimals such as `0.60` and versions such as `v1.3.0` stay valid. Context bullets and sub-bullets cannot start with list numbering such as `1.` or `2)`. Errors name the offending text.
+The summary, context bullets and sub-bullets, card titles and text, table columns and cells, flow titles and steps, mermaid titles, branch outcomes and question option descriptions each contain one sentence. Validation rejects a sentence break at `.`, `!` or `?` followed by whitespace and an uppercase letter or digit; decimals such as `0.60` and versions such as `v1.3.0` stay valid. Context bullets and sub-bullets cannot start with list numbering such as `1.` or `2)`. A mermaid `source` is not checked. Errors name the offending text.
 
 See [question-spec.md](question-spec.md) and [read-spec.md](read-spec.md) for each page type's own fields and [design.md](design.md) for presentation.

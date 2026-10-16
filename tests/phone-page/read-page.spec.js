@@ -249,3 +249,105 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
     });
   }
 });
+
+test.describe('read pages load mermaid only for mermaid blocks under the store content policy', () => {
+  for (const { name, mermaid, roles, error, missingAsset } of [
+    {
+      name: 'state, flow, entity and sequence diagrams render as SVG',
+      mermaid: [
+        { title: 'Request states', source: 'stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review: Submit\n  Review --> Draft: Reject\n  Review --> Approved: Accept\n  Approved --> [*]' },
+        { title: 'Release cycle', source: 'flowchart LR\n  A[Write the change] --> B[Run the checks] --> C{Checks pass?}\n  C -->|Yes| D[Merge the change] --> E[Deploy the release]\n  C -->|No| A' },
+        { title: 'Data model', source: 'erDiagram\n  REQUEST ||--o{ REVIEW : receives\n  REVIEWER ||--o{ REVIEW : writes' },
+        { title: 'Review exchange', source: 'sequenceDiagram\n  participant A as Author\n  participant R as Reviewer\n  A->>R: Submit the request\n  R-->>A: Approve the request' }
+      ],
+      roles: ['stateDiagram', 'flowchart-v2', 'er', 'sequence']
+    },
+    {
+      name: 'an invalid diagram shows its render error',
+      mermaid: [{ title: 'Broken diagram', source: 'flowchart LR\n  A -->' }],
+      error: 'Parse error on line'
+    },
+    {
+      name: 'a missing mermaid asset shows its load error',
+      mermaid: [{ title: 'Request states', source: 'stateDiagram-v2\n  [*] --> Done' }],
+      error: 'Mermaid failed to load.',
+      missingAsset: true
+    },
+    {
+      name: 'a page without diagrams does not load mermaid'
+    }
+  ]) {
+    test(name, async ({ page }, testInfo) => {
+      const assetsDirectory = process.env.PHONE_PAGE_ASSETS_DIR;
+      expect(assetsDirectory).toBeTruthy();
+      const diagramSpec = {
+        title: 'Request lifecycle',
+        summary: 'Review the request lifecycle.',
+        sections: [{ heading: 'Lifecycle', context: ['A request moves through review.'], ...(mermaid && { mermaid }) }]
+      };
+      const specPath = `${renderDirectory}/${testInfo.project.name}-${name.replaceAll(' ', '-')}.json`;
+      await Bun.write(specPath, JSON.stringify(diagramSpec));
+      const render = Bun.spawnSync([command, 'render', specPath], { stdout: 'pipe', stderr: 'pipe' });
+      expect(render.exitCode, render.stderr.toString()).toBe(0);
+      const html = render.stdout.toString();
+      const server = Bun.serve({
+        hostname: 'localhost',
+        port: 0,
+        fetch(request) {
+          const pathname = new URL(request.url).pathname;
+          if (pathname === '/p/read') {
+            return new Response(html, { headers: { 'Content-Type': 'text/html', 'Content-Security-Policy': contentPolicy } });
+          }
+          if (pathname === '/favicon.ico') return new Response(null, { status: 204 });
+          const assetName = pathname.slice('/assets/'.length);
+          if (pathname.startsWith('/assets/') && assetNames.has(assetName) && !(missingAsset && assetName === 'mermaid.min.js')) {
+            return new Response(Bun.file(`${assetsDirectory}/${assetName}`), { headers: { 'Content-Type': assetName.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' } });
+          }
+          return new Response('not found', { status: 404 });
+        }
+      });
+      const origin = server.url.origin;
+      const externalRequests = [];
+      const mermaidRequests = [];
+      const browserErrors = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.origin !== origin) externalRequests.push(url.href);
+        if (url.pathname === '/assets/mermaid.min.js') mermaidRequests.push(url.href);
+      });
+      page.on('pageerror', (pageError) => browserErrors.push(pageError.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') browserErrors.push(message.text());
+      });
+
+      try {
+        const response = await page.goto(`${origin}/p/read`);
+        expect(response.headers()['content-security-policy']).toBe(contentPolicy);
+        await expect(page.locator('.read-section')).toHaveCount(1);
+        const diagrams = page.locator('.diagram');
+        await expect(diagrams.locator('.flow-label')).toHaveText((mermaid ?? []).map(({ title }) => title));
+        if (roles) {
+          const images = diagrams.locator('.diagram-box > svg');
+          await expect(images).toHaveCount(mermaid.length);
+          for (const [index, role] of roles.entries()) await expect(images.nth(index)).toHaveAttribute('aria-roledescription', role);
+          const flowBox = diagrams.nth(1).locator('.diagram-box');
+          expect(await flowBox.evaluate((box) => box.scrollWidth > box.clientWidth)).toBe(true);
+        }
+        if (error) {
+          await expect(diagrams.locator('.diagram-box')).toContainText(error);
+          await expect(diagrams.locator('svg')).toHaveCount(0);
+        }
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({ path: testInfo.outputPath('diagrams.png'), fullPage: true });
+        await expect(page.locator('script[src="/assets/mermaid.min.js"]')).toHaveCount(mermaid ? 1 : 0);
+        expect(mermaidRequests).toHaveLength(mermaid ? 1 : 0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect(externalRequests).toEqual([]);
+        expect(browserErrors).toEqual(missingAsset ? ['Failed to load resource: the server responded with a status of 404 (Not Found)'] : []);
+      } finally {
+        await page.context().close();
+        server.stop(true);
+      }
+    });
+  }
+});

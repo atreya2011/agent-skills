@@ -16,13 +16,15 @@ The state directory is `~/.local/state/phone-page`; `PHONE_PAGE_STATE_DIR` overr
 - `tabs/<date>/*.json`: tab lists with `generated`, and `tabs[]` entries with `tab_id`, `workspace_id`, `workspace_label`, `tab_label` and `cwd`. The newest date folder is used, and for a tab in several files the newest `generated` wins.
 - `tab-overrides.tsv`: header `tab area owner note`, keyed by tab id; beats every other rule.
 - `tab-overrides.v2.tsv`: columns workspace label, tab label, area, owner; `#` lines are comments.
-- `tab-areas.v2.tsv`: columns folder prefix, area, owner; the longest matching prefix wins. A working directory with a folder whose name contains `cos` or `global-pm` has area `cos` before the prefixes apply.
+- `tab-areas.v2.tsv`: columns folder prefix, area, owner; the longest matching prefix wins. A working directory with a folder whose name contains `cos`, `global-pm` or `chief-of-staff` goes to Chief of Staff before the prefixes apply.
 
-When the tab files are missing or lack tab ids or folders, the commands read `herdr tab list`, `herdr agent list` and `herdr workspace list` instead and say so in the `source` line. An owner that no override or prefix row gives comes from `route area=<area>`, or `route source=herdr` for a tab with no area. `TASK_BIN` and `ROUTE_BIN` override the `~/.local/bin/task` and `~/.local/bin/route` paths.
+`herdr-tab-sync` reads the read-only `herdr tab list`, `herdr agent list` and `herdr workspace list` listings by default; `--live` selects this mode explicitly. Tab listing working directories take precedence over agent working directories. `--platform` selects the Platform tab files and fails if they are missing or lack tab ids or folders.
+
+Areas are `work`, `sidegig` or `personal`. Finance maps to area `personal`, owner `Finance`. CoS, shared, no-area and unmatched tabs map to area `personal`, owner `Chief of Staff`, with tag `triage`. Other owners come from `route area=<area>`; per-tab and label overrides beat route, with per-tab overrides taking precedence. The old owner column in folder prefix rows is not used. `TASK_BIN` and `ROUTE_BIN` override the `~/.local/bin/task` and `~/.local/bin/route` paths.
 
 ## herdr-tab-sync
 
-`herdr-tab-sync [--dry-run]` prints one tab-separated line per tab: `source <input used>`, then `create`, `keep` or `close` with the tab id, project, area, owner and description, then a `summary` line. A tab without a pending task gets a task through `task import`; a pending task whose tab is gone gets the annotation `herdr tab <id> closed` and is marked done. Nothing is ever deleted. With `--dry-run` it only prints.
+`herdr-tab-sync [--live | --platform] [--dry-run]` prints one tab-separated line per tab: `source <input used>`, then `create`, `keep` or `close` with the tab id, project, area, owner and description, then a `summary` line. A tab without a pending task gets a task through `task import`; a pending task whose tab is gone gets the annotation `herdr tab <id> closed` and is marked done. Nothing is ever deleted. With `--dry-run` it only prints.
 
 ## phone-page attach
 
@@ -30,7 +32,7 @@ When the tab files are missing or lack tab ids or folders, the commands read `he
 
 ## Delivery
 
-The listener logs no successful delivery; it only writes failure lines such as `no eligible agent for page "<id>" tab "<tab>"` to the user journal of `cf-page-store-listener`. A page therefore counts as delivered when it has an asking tab, a submission and no failure line naming its id in `journalctl --user -u cf-page-store-listener`. When the journal cannot be read, delivery is unknown: `attach` skips the answered annotation and `close` changes nothing.
+After successfully prompting the asking tab, the listener logs `delivered page=<id> tab=<tab> at=<ISO time>` to the user journal of `cf-page-store-listener`. A page counts as delivered only when it has a submission and that success line matches its page id and asking tab in `journalctl --user -u cf-page-store-listener`. A success line takes precedence over an earlier failure. A submission with a failure line but no matching success is undelivered; without either line, delivery is unknown. When the journal cannot be read, `attach` skips the answered annotation and `close` changes nothing.
 
 ## phone-page close
 
@@ -43,6 +45,6 @@ The listener logs no successful delivery; it only writes failure lines such as `
 | `open` | no submission, asking tab still listed by `herdr tab list` | none |
 | `tabgone` | no submission, asking tab gone | delete |
 | `notab` | page has no asking tab | delete |
-| `unknown` | the journal or herdr could not be read | none |
+| `unknown` | no delivery evidence for a submission, or the journal or herdr could not be read | none |
 
 A delete runs `phone-page delete <id>`, which also removes the inbox line. With `--dry-run` nothing is deleted and the log rows carry `dry-run`.

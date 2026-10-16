@@ -52,7 +52,7 @@ Use the latest Bun release. Run `bun install --frozen-lockfile` and `bun run tes
 
 ## Shell and Python tests
 
-`tests/phone-page/phone-page.test.sh` tests the `phone-page` renderer and asset download. `tests/phone-page/test_tabtasks.py` tests `herdr-tab-sync`, `phone-page attach` and `phone-page close` against fakes of Taskwarrior, herdr, the store's `pages` command, `route` and the listener journal; run it with `python3 tests/phone-page/test_tabtasks.py`. `tests/cf-page-store/cf-page-store.test.sh` tests `cf-page-store pages` against a fake Wrangler. None needs a local file, a herdr server or Cloudflare.
+`tests/phone-page/phone-page.test.sh` tests the `phone-page` renderer and asset download. `tests/phone-page/test_tabtasks.py` tests tab classification, task fields, input parsing and delivery status with synthetic data and no task-store writes or page deletes; run it with `python3 tests/phone-page/test_tabtasks.py`. `tests/cf-page-store/cf-page-store.test.sh` tests `cf-page-store pages` against a fake Wrangler. None needs a local file, a herdr server or Cloudflare.
 
 ## Gauntlet tests
 

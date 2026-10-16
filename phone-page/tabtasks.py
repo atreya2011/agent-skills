@@ -11,7 +11,8 @@ import sys
 HERDR_SOURCE = "herdr"
 MISC_PROJECT = "misc"
 DELETED_SUFFIX = " (deleted)"
-COS_SEGMENTS = ("cos", "global-pm")
+COS_SEGMENTS = ("cos", "global-pm", "chief-of-staff")
+AREAS = ("work", "sidegig", "personal")
 PAGE_ID_PATTERN = re.compile(r'page "([^"]+)"')
 TAB_ID_PATTERN = re.compile(r"^w[A-Za-z0-9]+:t[A-Za-z0-9]+$")
 UNMATCHED_HEADER = ("headline", "desk", "page_id")
@@ -109,11 +110,21 @@ class Rules:
     def classify(self, tab):
         area, owner = self.folder_rule(tab.cwd)
         override = self.by_tab.get(tab.tab_id) or self.by_label.get((tab.workspace_label, tab.tab_label))
-        if override and override[0]:
-            return override
-        if override and override[1]:
-            return area, override[1]
+        if override:
+            area = override[0] or area
+            owner = override[1]
+        else:
+            owner = ""
+        if area == "finance":
+            return "personal", "Finance"
+        if area not in AREAS:
+            return "personal", "Chief of Staff"
         return area, owner
+
+    def triage(self, tab):
+        area, _ = self.folder_rule(tab.cwd)
+        override = self.by_tab.get(tab.tab_id) or self.by_label.get((tab.workspace_label, tab.tab_label))
+        return (override[0] or area if override else area) not in (*AREAS, "finance")
 
 
 def route_owner(area):
@@ -174,23 +185,35 @@ def herdr_json(*words):
     return json.loads(run(["herdr", *words]))["result"]
 
 
-def load_herdr_tabs():
-    workspaces = {entry["workspace_id"]: entry.get("label") or "" for entry in herdr_json("workspace", "list")["workspaces"]}
+def tabs_from_listing(workspaces, entries, agents):
+    labels = {entry["workspace_id"]: entry.get("label") or "" for entry in workspaces}
     cwds = {}
-    for agent in herdr_json("agent", "list")["agents"]:
-        cwds.setdefault(agent["tab_id"], agent.get("cwd") or "")
+    for agent in agents:
+        if agent.get("cwd"):
+            cwds.setdefault(agent["tab_id"], agent["cwd"])
     tabs = {}
-    for entry in herdr_json("tab", "list")["tabs"]:
+    for entry in entries:
         tab_id = entry["tab_id"]
-        tabs[tab_id] = Tab(tab_id, entry.get("workspace_id") or "", workspaces.get(entry.get("workspace_id"), ""), entry.get("label") or "", cwds.get(tab_id, ""))
+        workspace_id = entry.get("workspace_id") or ""
+        tabs[tab_id] = Tab(tab_id, workspace_id, labels.get(workspace_id, ""), entry.get("label") or "", entry.get("cwd") or cwds.get(tab_id, ""))
     return tabs
 
 
-def load_tabs(directory):
+def load_herdr_tabs():
+    return tabs_from_listing(
+        herdr_json("workspace", "list")["workspaces"],
+        herdr_json("tab", "list")["tabs"],
+        herdr_json("agent", "list")["agents"],
+    )
+
+
+def load_tabs(directory, live=True):
+    if live:
+        return load_herdr_tabs(), "herdr live listing"
     tabs, source = load_platform_tabs(directory)
-    if tabs is not None:
-        return tabs, source
-    return load_herdr_tabs(), f"herdr live listing ({source})"
+    if tabs is None:
+        raise CommandError(source)
+    return tabs, source
 
 
 def load_tabs_if_available(directory):
@@ -239,8 +262,8 @@ def task_annotate(uuid, text):
     run([task_bin(), "rc.verbose=nothing", "rc.confirmation=off", uuid, "annotate", text])
 
 
-def tab_task_fields(tab, area, owner):
-    return {
+def tab_task_fields(tab, area, owner, triage=False):
+    fields = {
         "description": f"{tab.tab_label} ({tab.workspace_label})",
         "project": project_for(tab.cwd),
         "herdrtab": tab.tab_id,
@@ -250,6 +273,9 @@ def tab_task_fields(tab, area, owner):
         "owner": owner,
         "status": "pending",
     }
+    if triage:
+        fields["tags"] = ["triage"]
+    return fields
 
 
 def emit(*values):
@@ -258,7 +284,7 @@ def emit(*values):
 
 def command_sync(args):
     directory = platform_dir()
-    tabs, source = load_tabs(directory)
+    tabs, source = load_tabs(directory, args.live)
     rules = Rules(directory)
     tasks = export_tasks()
     emit("source", source)
@@ -267,7 +293,7 @@ def command_sync(args):
     for tab in sorted(tabs.values(), key=lambda entry: entry.tab_id):
         area, owner = rules.classify(tab)
         owner = owner_for(area, owner)
-        fields = tab_task_fields(tab, area, owner)
+        fields = tab_task_fields(tab, area, owner, rules.triage(tab))
         if task_for_tab(tasks, tab.tab_id, pending_only=True):
             emit("keep", tab.tab_id, fields["project"], area, owner, fields["description"])
             continue
@@ -307,13 +333,25 @@ def load_pages():
     return pages
 
 
-def failed_page_ids():
+def parse_delivery_log(output):
+    successes = set()
+    failures = set()
+    for line in output.splitlines():
+        match = re.fullmatch(r"delivered page=(\S+) tab=(\S+) at=\S+", line)
+        if match:
+            successes.add(match.group(1, 2))
+        elif line.startswith(("page store listener: no eligible agent for page ", "page store listener: could not prompt page ", "page store listener: invalid page or tab id for page ")):
+            failures.update(PAGE_ID_PATTERN.findall(line))
+    return successes, failures
+
+
+def listener_deliveries():
     output = run(["journalctl", "--user", "-u", "cf-page-store-listener", "-o", "cat", "--no-pager"])
-    return set(PAGE_ID_PATTERN.findall(output))
+    return parse_delivery_log(output)
 
 
-def delivered(page, failed):
-    return bool(page["submitted_at"] and page["herdr_tab_id"] and page["id"] not in failed)
+def delivered(page, journal):
+    return bool(page["submitted_at"] and page["herdr_tab_id"] and (page["id"], page["herdr_tab_id"]) in journal[0])
 
 
 def write_tsv(path, header, rows):
@@ -363,9 +401,9 @@ def command_attach(args):
     rules = Rules(directory)
     tabs = load_tabs_if_available(directory)
     try:
-        failed = failed_page_ids()
+        journal = listener_deliveries()
     except CommandError as exc:
-        failed = None
+        journal = None
         emit("listener-log", "unknown", str(exc))
     matched = 0
     notab = 0
@@ -383,7 +421,7 @@ def command_attach(args):
             continue
         matched += 1
         action = "annotate" if ensure_annotation(task, f"phone-page {page['id']} {page['url']}", args.dry_run) else "keep"
-        if failed is not None and delivered(page, failed):
+        if journal is not None and delivered(page, journal):
             if ensure_annotation(task, f"phone-page {page['id']} answered {page['submitted_at']}", args.dry_run):
                 action += "+answered"
         emit("matched", page["id"], task["uuid"], action, page["title"])
@@ -393,13 +431,15 @@ def command_attach(args):
     return 0
 
 
-def page_status(page, failed, tab_ids):
-    if failed is None or tab_ids is None:
+def page_status(page, journal, tab_ids):
+    if journal is None or tab_ids is None:
         return "unknown"
     if not page["herdr_tab_id"]:
         return "notab"
     if page["submitted_at"]:
-        return "answered" if page["id"] not in failed else "undelivered"
+        if delivered(page, journal):
+            return "answered"
+        return "undelivered" if page["id"] in journal[1] else "unknown"
     return "open" if page["herdr_tab_id"] in tab_ids else "tabgone"
 
 
@@ -413,10 +453,10 @@ def command_close(args):
     pages = load_pages()
     rules = Rules(directory)
     tabs = load_tabs_if_available(directory)
-    failed = None
+    journal = None
     tab_ids = None
     try:
-        failed = failed_page_ids()
+        journal = listener_deliveries()
         tab_ids = live_tab_ids()
     except CommandError as exc:
         emit("lookup", "unknown", str(exc))
@@ -424,7 +464,7 @@ def command_close(args):
     counts = {}
     stamp = now().isoformat(timespec="seconds")
     for page in pages:
-        status = page_status(page, failed, tab_ids)
+        status = page_status(page, journal, tab_ids)
         action = "delete" if status in ("answered", "tabgone", "notab") else "none"
         counts[(status, action)] = counts.get((status, action), 0) + 1
         area = tab_area(tabs, rules, page["herdr_tab_id"]) if page["herdr_tab_id"] else ""
@@ -443,6 +483,11 @@ def main(argv=None):
     for name, handler in (("sync", command_sync), ("attach", command_attach), ("close", command_close)):
         sub = commands.add_parser(name)
         sub.add_argument("--dry-run", action="store_true")
+        if name == "sync":
+            inputs = sub.add_mutually_exclusive_group()
+            inputs.add_argument("--live", dest="live", action="store_true", help="read live Herdr tabs (default)")
+            inputs.add_argument("--platform", dest="live", action="store_false", help="read Platform tab files")
+            sub.set_defaults(live=True)
         sub.set_defaults(handler=handler)
     args = parser.parse_args(argv)
     try:

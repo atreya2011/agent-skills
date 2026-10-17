@@ -7,6 +7,7 @@ description: Run one private Cloudflare store for phone-page pages and their lat
 
 `cf-page-store` is phone-page's store command. It implements the [store contract](references/store-contract.md) on a Cloudflare Worker. The Worker requires a valid Cloudflare Access token on every route, including assets. `PUT /api/pages/<id>` and `DELETE /api/pages/<id>` back the update and delete commands.
 Answered pages are deleted three days after their last submission.
+Unanswered pages are deleted seven days after they were last published or updated.
 
 ## Local file
 

@@ -119,7 +119,7 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
         await page.evaluate(() => document.fonts.ready);
         await page.screenshot({ path: testInfo.outputPath('read-page-open.png'), fullPage: true });
 
-        console.log('Inspect section order, nested bullets, cards, table cells, and CSS flow branches.');
+        console.log('Inspect section order, nested bullets, cards, table cells, and Mermaid flow nodes and arrows.');
         const sections = page.locator('.read-section');
         await expect(sections).toHaveCount(spec.sections.length);
         await expect(sections.getByRole('heading', { level: 2 })).toHaveText(spec.sections.map((section) => section.heading));
@@ -146,8 +146,10 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
             for (let flowIndex = 0; flowIndex < flows.length; flowIndex += 1) {
               const flow = flows[flowIndex];
               const chart = row.locator('.flow').nth(flowIndex);
-              await expect(chart.locator('.flow-step > .flow-box')).toHaveText(flow.steps.map((step) => typeof step === 'string' ? step : step.text));
-              await expect(chart.locator('.flow-branch .flow-box')).toHaveText(flow.steps.flatMap((step) => typeof step === 'string' ? [] : step.branches));
+              await expect(chart.locator('svg')).toHaveAttribute('aria-roledescription', 'flowchart-v2');
+              await expect(chart.locator('.node .label')).toHaveText(flow.steps.flatMap((step) => typeof step === 'string' ? [step] : [step.text, ...step.branches]));
+              await expect(chart.locator('.node polygon')).toHaveCount(flow.steps.filter((step) => typeof step === 'object').length);
+              await expect(chart.locator('.flowchart-link')).toHaveCount(flow.steps.length - 1 + flow.steps.flatMap((step) => typeof step === 'string' ? [] : step.branches).length);
             }
           }
         }
@@ -181,7 +183,7 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
               columns: getComputedStyle(row).gridTemplateColumns.split(' ').filter(Boolean).length,
               contextOnly: row.classList.contains('context-only')
             })),
-            text: [...document.querySelectorAll('.context li, .card-text, td, .flow-box')].map((element) => ({ fontSize: getComputedStyle(element).fontSize })),
+            text: [...document.querySelectorAll('.context li, .card-text, td')].map((element) => ({ fontSize: getComputedStyle(element).fontSize })),
             bullets: [...document.querySelectorAll('.context, .context ul')].map((element) => ({ listStyle: getComputedStyle(element).listStyleType, padding: parseFloat(getComputedStyle(element).paddingLeft) })),
             scrollWidth: document.documentElement.scrollWidth,
             clientWidth: document.documentElement.clientWidth,
@@ -250,7 +252,7 @@ test.describe('read pages preserve their blocks across phone and desktop layouts
   }
 });
 
-test.describe('read pages load mermaid only for mermaid blocks under the store content policy', () => {
+test.describe('read pages load mermaid for diagrams under the store content policy', () => {
   for (const { name, mermaid, roles, error, missingAsset } of [
     {
       name: 'state, flow, entity and sequence diagrams render as SVG',
@@ -349,5 +351,52 @@ test.describe('read pages load mermaid only for mermaid blocks under the store c
         server.stop(true);
       }
     });
+  }
+});
+
+
+test('flow labels remain literal text across read and question pages', async ({ page }, testInfo) => {
+  const labels = ['" [box] --> injected["node"]; #hash & <b>bold</b>', 'Decision " {diamond} --> target; #35; <script>bad()</script>', '<img src=x onerror=bad()> [outcome]; #quot;', 'Outcome " ] --> target; #60;b#62;'];
+  const title = '" [flow] --> x; # <b>title</b>';
+  const steps = [labels[0], { text: labels[1], branches: labels.slice(2) }];
+  for (const type of ['read', 'question']) {
+    for (const field of ['flow', 'flows']) {
+      const blocks = field === 'flow' ? { flow: steps } : { flows: [{ title, steps }] };
+      const fixture = type === 'read'
+        ? { title: 'Literal labels', summary: 'Read each flow label literally.', sections: [{ heading: 'Flow labels', ...blocks }] }
+        : { title: 'Literal labels', questions: [{ id: 'labels', header: 'Labels', question: 'Which outcome applies?', multiSelect: false, options: [{ label: 'Continue', description: 'Keep the current outcome.', recommended: true }, { label: 'Stop', description: 'Stop the current outcome.' }], ...blocks }] };
+      const path = `${renderDirectory}/escaping-${type}-${field}.json`;
+      await Bun.write(path, JSON.stringify(fixture));
+      const render = Bun.spawnSync([command, 'render', path], { stdout: 'pipe', stderr: 'pipe' });
+      expect(render.exitCode, render.stderr.toString()).toBe(0);
+      const server = Bun.serve({
+        hostname: 'localhost',
+        port: 0,
+        fetch(request) {
+          const pathname = new URL(request.url).pathname;
+          if (pathname === '/') return new Response(render.stdout, { headers: { 'Content-Type': 'text/html', 'Content-Security-Policy': contentPolicy } });
+          const name = pathname.slice('/assets/'.length);
+          if (pathname.startsWith('/assets/') && assetNames.has(name)) return new Response(Bun.file(`${process.env.PHONE_PAGE_ASSETS_DIR}/${name}`), { headers: { 'Content-Type': name.endsWith('.woff2') ? 'font/woff2' : 'text/javascript' } });
+          return new Response(null, { status: 404 });
+        }
+      });
+      try {
+        console.log(`Open ${type} ${field} and verify literal labels and graph structure under the store content policy.`);
+        await page.setViewportSize({ width: 420, height: 900 });
+        await page.goto(server.url.href);
+        const flow = page.locator('.flow');
+        await expect(flow.locator('.flow-label')).toHaveText(field === 'flow' ? 'Flow' : title);
+        await expect(flow.locator('svg')).toHaveAttribute('aria-roledescription', 'flowchart-v2');
+        await expect(flow.locator('.node .label')).toHaveText(labels);
+        await expect(flow.locator('.flowchart-link')).toHaveCount(3);
+        await expect(flow.locator('.node polygon')).toHaveCount(1);
+        await expect(flow.locator('script, img, b, a')).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`escaping-${type}-${field}.png`), fullPage: true });
+      } finally {
+        await page.goto('about:blank');
+        server.stop(true);
+      }
+    }
   }
 });

@@ -59,27 +59,8 @@
     .table th { color: #a3a9a0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
     .table td { color: #a3a9a0; }
     .table td:first-child { color: #e8ebe6; font-weight: 500; }
-    .flow { margin-top: 20px; container-type: inline-size; }
     .flow-label { margin: 0 0 8px; color: #9fe870; font-size: .75rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; overflow-wrap: anywhere; }
-    .flow-box { min-width: 0; padding: 12px 14px; border: 1px solid #2c3029; border-radius: 12px; background: #0e0f0c; color: #a3a9a0; font-size: 17px; line-height: 1.55; overflow-wrap: anywhere; }
-    .flow-decision { border-color: #9fe870; color: #e8ebe6; }
-    .flow-arrow { display: block; color: #9fe870; text-align: center; font-size: 24px; line-height: 32px; }
-    .flow-split { width: calc(50% - 18px); height: 18px; margin-left: 18px; border-right: 1px solid #9fe870; border-bottom: 1px solid #9fe870; }
-    .flow-branches { display: grid; gap: 12px; margin: 0 0 0 18px; padding: 12px 0 0 20px; border-left: 1px solid #9fe870; }
-    .flow-branch { position: relative; min-width: 0; }
-    .flow-branch > .flow-arrow { position: absolute; top: 50%; left: -21px; width: 20px; line-height: 1; transform: translateY(-50%); }
-    .flow-branch > .flow-arrow::before { content: '→'; }
-    @container (min-width: 500px) {
-      .flow-split { width: 1px; margin: 0 auto; border-bottom: 0; }
-      .flow-branches { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 0; border-left: 0; }
-      .flow-branch { padding-top: 32px; }
-      .flow-branch > .flow-arrow { top: 0; left: 0; width: 100%; line-height: 32px; transform: none; }
-      .flow-branch > .flow-arrow::before { content: '↓'; }
-      .flow-branch::before { position: absolute; top: 0; right: -6px; left: -6px; border-top: 1px solid #9fe870; content: ''; }
-      .flow-branch:first-child::before { left: 50%; }
-      .flow-branch:last-child::before { right: 50%; }
-    }
-    .diagram { margin-top: 20px; }
+    .diagram { min-width: 0; margin-top: 20px; }
     .diagram-box { overflow-x: auto; padding: 12px 14px; border: 1px solid #2c3029; border-radius: 12px; background: #0e0f0c; color: #a3a9a0; font-size: 17px; line-height: 1.55; }
     .options { display: grid; gap: 10px; margin: 22px 0 0; }
     .option { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; min-height: 58px; padding: 14px; border: 1px solid #2c3029; border-radius: 18px; background: #0e0f0c; cursor: pointer; }
@@ -279,52 +260,21 @@
         return wrap;
       }
 
-      function renderFlow(title, steps) {
-        const flow = document.createElement('div');
-        flow.className = 'flow';
-        const label = document.createElement('p');
-        label.className = 'flow-label';
-        label.textContent = title;
-        flow.append(label);
-        function arrow() {
-          const element = document.createElement('span');
-          element.className = 'flow-arrow';
-          element.setAttribute('aria-hidden', 'true');
-          element.textContent = '↓';
-          return element;
-        }
-        function box(text) {
-          const element = document.createElement('div');
-          element.className = 'flow-box';
-          element.textContent = text;
-          return element;
-        }
-        steps.forEach((item, stepIndex) => {
-          if (stepIndex > 0) flow.append(arrow());
-          const step = document.createElement('div');
-          step.className = 'flow-step';
-          const copy = box(typeof item === 'string' ? item : item.text);
-          step.append(copy);
+      function renderFlow(title, steps, onRender) {
+        const label = (text) => Array.from(text, (character) => `#${character.codePointAt(0)};`).join('');
+        const source = ['---', 'config:', '  themeVariables:', '    fontSize: 17px', '---', 'flowchart TD'];
+        steps.forEach((item, index) => {
+          const id = `step${index}`;
+          source.push(typeof item === 'string' ? `${id}["${label(item)}"]` : `${id}{"${label(item.text)}"}`);
+          if (index > 0) source.push(`step${index - 1} --> ${id}`);
           if (typeof item === 'object') {
-            copy.classList.add('flow-decision');
-            const connector = document.createElement('div');
-            connector.className = 'flow-split';
-            connector.setAttribute('aria-hidden', 'true');
-            step.append(connector);
-            const branches = document.createElement('div');
-            branches.className = 'flow-branches';
-            item.branches.forEach((text) => {
-              const branch = document.createElement('div');
-              branch.className = 'flow-branch';
-              const branchArrow = arrow();
-              branchArrow.textContent = '';
-              branch.append(branchArrow, box(text));
-              branches.append(branch);
+            item.branches.forEach((text, branchIndex) => {
+              source.push(`${id} --> ${id}branch${branchIndex}["${label(text)}"]`);
             });
-            step.append(branches);
           }
-          flow.append(step);
         });
+        const flow = renderMermaid(title, source.join('\n'), onRender);
+        flow.classList.add('flow');
         return flow;
       }
 
@@ -386,7 +336,7 @@
           context: blocks.context ? renderContext(blocks.context) : null,
           cards: blocks.cards ? renderCards(blocks.cards) : null,
           table: blocks.table ? renderTable(blocks.table) : null,
-          flows: blocks.flow ? [renderFlow('Flow', blocks.flow)] : (blocks.flows ?? []).map((chart) => renderFlow(chart.title, chart.steps)),
+          flows: blocks.flow ? [renderFlow('Flow', blocks.flow, onRender)] : (blocks.flows ?? []).map((chart) => renderFlow(chart.title, chart.steps, onRender)),
           diagrams: (blocks.mermaid ?? []).map((chart) => renderMermaid(chart.title, chart.source, onRender))
         };
       }

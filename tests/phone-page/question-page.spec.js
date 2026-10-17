@@ -158,8 +158,9 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   await expect(routeQuestion.locator('.context')).toHaveRole('list');
   await expect(routeQuestion.locator('.context li')).toHaveText(spec.questions[0].context);
   await expect(routeQuestion.locator('.flow-label')).toHaveText('Flow');
-  await expect(routeQuestion.locator('.flow-box')).toHaveText(spec.questions[0].flow);
-  await expect(routeQuestion.locator('.flow > .flow-arrow')).toHaveText(['↓', '↓']);
+  await expect(routeQuestion.locator('.flow .node .label')).toHaveText(spec.questions[0].flow);
+  await expect(routeQuestion.locator('.flow svg')).toHaveAttribute('aria-roledescription', 'flowchart-v2');
+  await expect(routeQuestion.locator('.flow .flowchart-link')).toHaveCount(2);
   await expect(routeQuestion.locator('.flow')).toBeVisible();
   expect(await routeQuestion.evaluate((question) => {
     const context = question.querySelector('.context');
@@ -169,8 +170,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
   })).toBe(true);
   await expect(routeQuestion.locator('.flow + .answer-controls > .options')).toBeVisible();
   expect(await routeQuestion.locator('.context li').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
-  expect(await routeQuestion.locator('.flow-box').first().evaluate((element) => getComputedStyle(element).fontSize)).toBe('17px');
-  expect(await routeQuestion.locator('.flow-box').evaluateAll((boxes) => boxes.map((box) => getComputedStyle(box).borderStyle))).toEqual(['solid', 'solid', 'solid']);
+  await expect(routeQuestion.locator('.flow .node > rect')).toHaveCount(3);
   await routeQuestion.getByLabel('Other', { exact: true }).check();
   await expect(routeQuestion.getByLabel('Other response')).toBeVisible();
   await page.getByRole('button', { name: 'Submit answers' }).click();
@@ -289,7 +289,7 @@ test('answers work on a phone and the page remains accessible', async ({ page })
 });
 
 for (const branchCount of [2, 4]) {
-  test(`nested bullets and ${branchCount} flow branches render as a responsive chart`, async ({ page }) => {
+  test(`nested bullets and ${branchCount} flow branches render as a responsive chart`, async ({ page }, testInfo) => {
     const question = structuredClone(spec.questions[0]);
     const items = ['Use the existing path.', 'Keep its lifecycle.'];
     const branches = ['Deliver the result.', 'Repair the result.', 'Review the result.', 'Hold the result.'].slice(0, branchCount);
@@ -324,24 +324,22 @@ for (const branchCount of [2, 4]) {
         await expect(card.locator('.context > li > ul')).toHaveRole('list');
         await expect(card.locator('.context > li > ul > li')).toHaveText(items);
         await expect(card.locator('.flow-label')).toHaveText('Flow');
-        await expect(card.locator('.flow-decision')).toHaveText('Did the checks pass?');
-        await expect(card.locator('.flow-branch > .flow-box')).toHaveText(branches);
-        await expect(card.locator('.flow-branch > .flow-arrow')).toHaveCount(branchCount);
-        await expect(card.locator('.flow > .flow-arrow')).toHaveText('↓');
-        await expect(card.locator('.flow-number')).toHaveCount(0);
-        expect(await card.locator('.flow-box').evaluateAll((boxes) => boxes.map((box) => getComputedStyle(box).fontSize))).toEqual(Array(branchCount + 2).fill('17px'));
-        const positions = await card.locator('.flow-branch').evaluateAll((elements) => elements.map((element) => {
+        await expect(card.locator('.flow svg')).toHaveAttribute('aria-roledescription', 'flowchart-v2');
+        await expect(card.locator('.flow .node .label')).toHaveText(['Run the checks.', 'Did the checks pass?', ...branches]);
+        await expect(card.locator('.flow .node polygon')).toHaveCount(1);
+        await expect(card.locator('.flow .node > rect')).toHaveCount(branchCount + 1);
+        expect(await card.locator('.flow .node .label').evaluateAll((labels) => labels.map((label) => getComputedStyle(label).fontSize))).toEqual(Array(branchCount + 2).fill('17px'));
+        await expect(card.locator('.flow .flowchart-link')).toHaveCount(branchCount + 1);
+        const positions = await card.locator('.flow .node').evaluateAll((elements) => elements.map((element) => {
           const { x, y } = element.getBoundingClientRect();
           return { x, y };
         }));
-        if (width === 420) {
-          expect(new Set(positions.map(({ x }) => x)).size).toBe(1);
-          expect(new Set(positions.map(({ y }) => y)).size).toBe(branchCount);
-        } else {
-          expect(new Set(positions.map(({ x }) => x)).size).toBe(branchCount);
-          expect(new Set(positions.map(({ y }) => y)).size).toBe(1);
-        }
-        expect(await card.locator('.flow-branch > .flow-arrow').evaluateAll((arrows) => arrows.map((arrow) => getComputedStyle(arrow, '::before').content))).toEqual(Array(branchCount).fill(width === 420 ? '"→"' : '"↓"'));
+        expect(positions[1].y).toBeGreaterThan(positions[0].y);
+        for (const branch of positions.slice(2)) expect(branch.y).toBeGreaterThan(positions[1].y);
+        expect(new Set(positions.slice(2).map(({ x }) => x)).size).toBe(branchCount);
+        expect(new Set(positions.slice(2).map(({ y }) => Math.round(y))).size).toBe(1);
+        if (width === 420) expect(await card.locator('.diagram-box').evaluate((box) => box.scrollWidth > box.clientWidth)).toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`branches-${width}.png`), fullPage: true });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       }
     } finally {
@@ -404,7 +402,7 @@ for (const { name, width } of [
       await expect(card.locator('.flow-label')).toHaveText(question.flows.map(({ title }) => title));
       for (const [index, flow] of question.flows.entries()) {
         await expect(card.locator('.flow').nth(index)).toBeVisible();
-        await expect(card.locator('.flow').nth(index).locator('.flow-box')).toHaveText(flow.steps);
+        await expect(card.locator('.flow').nth(index).locator('.node .label')).toHaveText(flow.steps);
       }
       await page.screenshot({ path: testInfo.outputPath('content.png'), fullPage: true });
     } finally {

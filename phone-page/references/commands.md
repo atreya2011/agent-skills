@@ -4,7 +4,7 @@ Write page content as a read or question spec and publish it through its rendere
 
 - `phone-page read <spec> [id]` validates a [read spec](read-spec.md), renders it and publishes or replaces the page; it does not create a question inbox entry or pass an asking tab to the store.
 - `phone-page publish <file> [id]` passes an already-rendered HTML file to the store, or replaces page `id` in place; author read pages through `read` rather than this low-level command.
-- `phone-page ask <spec> [id]` validates a question spec, renders it, publishes it or replaces page `id` in place, and prints the same JSON object. When publishing a new page and `HERDR_TAB_ID` is nonempty, it passes that asking tab to the store; without it, the page has no asking tab. A replaced page keeps its id, url and asking tab.
+- `phone-page ask <spec> [id]` validates a question spec, renders it, publishes it or replaces page `id` in place, and prints the same JSON object. When `HERDR_TAB_ID` is nonempty, it passes that asking tab to the store for a new or replaced page; without it, a new page has no asking tab and a replaced page keeps its asking tab. A replaced page keeps its id and url.
 - `phone-page delete <id>` deletes the page and removes its inbox line. Exit 4 means the page was already gone; its inbox line is still removed.
 - `phone-page inbox` prunes and prints the local inbox of open question pages.
 - `phone-page render <spec>` validates a read or question spec and prints the complete HTML page.

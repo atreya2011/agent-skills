@@ -143,9 +143,9 @@ case "$command" in
       publish_args=(update "$2" "$rendered")
     else
       publish_args=(publish "$rendered")
-      if [[ "$command" == ask && -n "${HERDR_TAB_ID:-}" ]]; then
-        publish_args+=("$HERDR_TAB_ID")
-      fi
+    fi
+    if [[ "$command" == ask && -n "${HERDR_TAB_ID:-}" ]]; then
+      publish_args+=("$HERDR_TAB_ID")
     fi
     published=$(store "${publish_args[@]}")
     if [[ "$command" == ask ]]; then

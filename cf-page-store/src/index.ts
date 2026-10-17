@@ -71,6 +71,7 @@ export class PageEvents extends DurableObject<Env> {
 
 const pageLimit = 1024 * 1024;
 const submissionLimit = 64 * 1024;
+const tabIdPattern = /^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/;
 const assetNames = new Set(manifest.assets.map((asset) => asset.name));
 const pageHeaders = {
   "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
@@ -128,7 +129,7 @@ app.post("/api/pages", async (c) => {
   }
 
   const tabId = c.req.header("X-Herdr-Tab-Id");
-  if (tabId !== undefined && !/^w[A-Za-z0-9]+:t[A-Za-z0-9]+$/.test(tabId)) {
+  if (tabId !== undefined && !tabIdPattern.test(tabId)) {
     return c.body(null, 400);
   }
 
@@ -152,8 +153,14 @@ app.put("/api/pages/:id", async (c) => {
     return page;
   }
 
+  const tabId = c.req.header("X-Herdr-Tab-Id");
+  if (tabId !== undefined && !tabIdPattern.test(tabId)) {
+    return c.body(null, 400);
+  }
+
   await c.env.DB.batch([
-    c.env.DB.prepare("UPDATE pages SET title = ?, html = ?, published_at = CURRENT_TIMESTAMP WHERE id = ?").bind(page.title, page.html, id),
+    c.env.DB.prepare("UPDATE pages SET title = ?, html = ?, herdr_tab_id = COALESCE(?, herdr_tab_id), published_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(page.title, page.html, tabId ?? null, id),
     c.env.DB.prepare("DELETE FROM submissions WHERE page_id = ?").bind(id),
   ]);
   return c.json({ id, url: new URL(`/p/${id}`, c.req.url).href });

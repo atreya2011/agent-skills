@@ -18,7 +18,7 @@ Read sections and questions use the same optional context, cards, table, flow an
 
 `flow` is an array of two or more steps. A step is a non-empty string or an object `{"text": "<one sentence decision>", "branches": ["<one sentence outcome>", ...]}` with a non-empty `text` and 2 to 4 non-empty branches. Alternatively, `flows` holds 1 to 4 objects `{"title": "<title>", "steps": [<flow steps>]}` with a non-empty title of up to 40 characters. A question or section uses `flow` or `flows`, not both.
 
-Charts use the existing CSS renderer: bordered boxes and arrows, with decision outcomes side by side or stacked beside a shared connector on narrow screens. They are not numbered lists or code blocks.
+Charts render as Mermaid top-down flowcharts: steps are boxes joined by arrows, and each decision is a diamond with an arrow to each outcome box. Labels are literal text, escaped before rendering. Wide charts scroll inside their own bordered box without widening the page. Flow charts do not count toward the separate limit of four `mermaid` diagrams.
 
 ## Mermaid diagrams
 

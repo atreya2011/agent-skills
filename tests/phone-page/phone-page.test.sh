@@ -545,7 +545,7 @@ else
   pass "$name"
 fi
 
-name='ask with an id replaces the page in place and its inbox line'
+name='ask with an id replaces the page in place with its asking tab and its inbox line'
 printf '%s\n' '- 2026-01-01 12:00 Old title: https://store.example/p/page-1' '- 2026-01-01 12:00 Other: https://store.example/p/page-2' >"$PHONE_PAGE_INBOX_FILE"
 jq '.title = "Revised route"' "$tmp/valid.json" >"$tmp/revised.json"
 export STORE_CAPTURE="$tmp/revised.html"
@@ -555,7 +555,7 @@ call=$(tail -n 1 "$STORE_CALLS")
 embedded=$(sed -n 's#.*<script type="application/json" id="spec">\(.*\)</script>.*#\1#p' "$tmp/revised.html")
 if [[ "$output" != '{"id":"page-1","url":"https://store.example/p/page-1"}' ]]; then
   fail "$name" "unexpected output: $output"
-elif [[ ! "$call" =~ ^update\ page-1\ .*/page\.html$ ]]; then
+elif [[ ! "$call" =~ ^update\ page-1\ .*/page\.html\ wTEST:tU$ ]]; then
   fail "$name" "unexpected call: $call"
 elif [[ "$(printf '%s' "$embedded" | jq -cS .)" != "$(jq -cS . "$tmp/revised.json")" ]]; then
   fail "$name" 'replaced page spec differs from the input'

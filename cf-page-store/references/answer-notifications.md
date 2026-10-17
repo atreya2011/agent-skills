@@ -2,7 +2,7 @@
 
 Run every command in this file from the `cf-page-store` directory.
 
-Before updating an existing store, apply `migrations/0002_herdr_tab_id.sql` once with `bunx --bun wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql --config "$DEPLOY_CONFIG"`. Existing pages keep a null asking tab.
+Before updating an existing store, apply `migrations/0002_herdr_tab_id.sql` once with `bunx --bun wrangler d1 execute "$DATABASE_NAME" --remote --file migrations/0002_herdr_tab_id.sql --config "$DEPLOY_CONFIG"`. Existing pages keep a null asking tab until an `update` sends one.
 
 The `EVENTS` binding points to one SQLite-backed `PageEvents` Durable Object. Its Wrangler migration is `v1` with `new_sqlite_classes: ["PageEvents"]`, separate from the D1 migration above. For an existing rendered deploy config, copy these two sections from the template before deploying:
 

@@ -124,15 +124,21 @@ describe("pages", () => {
       .bind(page.id).first()).toEqual({ body: '{"choice":"submitted"}' });
   });
 
-  it.each(["", "wTEST", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing a page", async (tabId) => {
+  it.each(["", "wTEST", "wTEST:t-1", "wTEST:t1 extra", "wTEST:t1] @everyone", "../tab", "w_TEST:t1"])("rejects invalid asking tab %j without storing or changing a page", async (tabId) => {
+    const assertion = await token();
+    const page = await publish(assertion, "wTEST:tK");
     const before = await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first();
-    const response = await request("/api/pages", {
-      method: "POST",
-      headers: { "Content-Type": "text/html", "X-Herdr-Tab-Id": tabId },
-      body: html,
-    }, await token());
-    expect(response.status).toBe(400);
+    for (const [method, path] of [["POST", "/api/pages"], ["PUT", `/api/pages/${page.id}`]]) {
+      const response = await request(path, {
+        method,
+        headers: { "Content-Type": "text/html", "X-Herdr-Tab-Id": tabId },
+        body: "<!doctype html><html><head><title>Revised</title></head><body>Choose again</body></html>",
+      }, assertion);
+      expect(response.status, `${method} ${path}`).toBe(400);
+    }
     expect(await env.DB.prepare("SELECT COUNT(*) AS count FROM pages").first()).toEqual(before);
+    expect(await env.DB.prepare("SELECT title, html, herdr_tab_id FROM pages WHERE id = ?").bind(page.id).first())
+      .toEqual({ title: "Question", html, herdr_tab_id: "wTEST:tK" });
   });
 
   it.each([
@@ -148,9 +154,13 @@ describe("pages", () => {
     expect(await (await request(`/p/${page.id}`, {}, assertion)).text()).toBe(html);
   });
 
-  it.each([undefined, "wTEST:tU"])("replaces a page in place with asking tab %s and discards its submission", async (tabId) => {
+  it.each([
+    { publishedTab: undefined, updatedTab: undefined, storedTab: null },
+    { publishedTab: "wTEST:tU", updatedTab: undefined, storedTab: "wTEST:tU" },
+    { publishedTab: undefined, updatedTab: "wTEST:tU", storedTab: "wTEST:tU" },
+  ])("replaces a page in place with update tab $updatedTab, keeps asking tab $storedTab and discards its submission", async ({ publishedTab, updatedTab, storedTab }) => {
     const assertion = await token();
-    const page = await publish(assertion, tabId);
+    const page = await publish(assertion, publishedTab);
     expect((await request(`/p/${page.id}/answers`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: '{"choice":"old"}',
     }, assertion)).status).toBe(204);
@@ -158,14 +168,14 @@ describe("pages", () => {
     const replaced = "<!doctype html><html><head><title>Revised</title></head><body>Choose again</body></html>";
     const response = await request(`/api/pages/${page.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "text/html" },
+      headers: { "Content-Type": "text/html", ...(updatedTab === undefined ? {} : { "X-Herdr-Tab-Id": updatedTab }) },
       body: replaced,
     }, assertion);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(page);
 
     expect(await env.DB.prepare("SELECT title, html, herdr_tab_id FROM pages WHERE id = ?").bind(page.id).first())
-      .toEqual({ title: "Revised", html: replaced, herdr_tab_id: tabId ?? null });
+      .toEqual({ title: "Revised", html: replaced, herdr_tab_id: storedTab });
     expect((await request(`/p/${page.id}`, {}, assertion)).status).toBe(200);
     expect((await request(`/p/${page.id}/answers`, {}, assertion)).status).toBe(404);
   });

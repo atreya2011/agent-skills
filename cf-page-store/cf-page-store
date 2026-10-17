@@ -18,7 +18,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: cf-page-store {publish <file> [tab-id]|update <id> <file>|delete <id>|answers <id>|pages|listen}\n' >&2
+  printf 'usage: cf-page-store {publish <file> [tab-id]|update <id> <file> [tab-id]|delete <id>|answers <id>|pages|listen}\n' >&2
   exit 2
 }
 
@@ -82,9 +82,14 @@ case "$command" in
     printf '\n'
     ;;
   update)
-    [[ $# -eq 2 && "$1" =~ ^[[:xdigit:]]{8}-([[:xdigit:]]{4}-){3}[[:xdigit:]]{12}$ && -f "$2" ]] || usage
+    [[ ( $# -eq 2 || $# -eq 3 ) && "$1" =~ ^[[:xdigit:]]{8}-([[:xdigit:]]{4}-){3}[[:xdigit:]]{12}$ && -f "$2" ]] || usage
+    headers=()
+    if [[ $# -eq 3 ]]; then
+      [[ "$3" =~ ^w[A-Za-z0-9]+:t[A-Za-z0-9]+$ ]] || die "invalid herdr tab id"
+      headers+=(--header "X-Herdr-Tab-Id: $3")
+    fi
     status=$(request PUT "$address/api/pages/$1" "$cleanup_path" \
-      --header 'Content-Type: text/html' --data-binary "@$2") || die "request failed"
+      --header 'Content-Type: text/html' "${headers[@]}" --data-binary "@$2") || die "request failed"
     case "$status" in
       200)
         cat "$cleanup_path"

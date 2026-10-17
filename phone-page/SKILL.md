@@ -32,6 +32,7 @@ Read [references/commands.md](references/commands.md) before running any other `
 
 ## Reply and continue
 
-- After publishing, reply in one line that says what the page contains and what the user should do, followed by its link. A chat reply that points to a page has at most two sentences plus the link, with no code block, table or list.
+- After publishing, run `phone-page attach` so the page is annotated on the task of its asking tab; read [references/tab-tasks.md](references/tab-tasks.md) for the tab-task model, `herdr-tab-sync` and `phone-page close`.
+- Then reply in one line that says what the page contains and what the user should do, followed by its link. A chat reply that points to a page has at most two sentences plus the link, with no code block, table or list.
 - After the user replies `done`, or when the store's listener prompts this tab about a new submission, run `phone-page answers <id>` and continue from that submission.
 - When the user asks for a change to a page they already have, rebuild it in place with `phone-page ask <spec> <id>` or `phone-page read <spec> <id>` and reply with the same link. Never publish a replacement page for content the user already has a link to. Replacing a page discards its previous submission.

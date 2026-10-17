@@ -36,6 +36,7 @@ async function handleEvent(socket, data) {
         await $`herdr agent prompt ${agents[0].pane_id} ${
           `AGENT MESSAGE (page store, not a human). Page ${event.page_id} has a new submission. Read it with phone-page answers ${event.page_id}.`
         }`.quiet();
+        console.log(`delivered page=${event.page_id} tab=${event.tab_id} at=${new Date().toISOString()}`);
       } else {
         console.error(`page store listener: no eligible agent for page ${JSON.stringify(event.page_id)} tab ${JSON.stringify(event.tab_id)}`);
       }

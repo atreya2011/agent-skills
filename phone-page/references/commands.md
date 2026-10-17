@@ -10,8 +10,10 @@ Write page content as a read or question spec and publish it through its rendere
 - `phone-page render <spec>` validates a read or question spec and prints the complete HTML page.
 - `phone-page answers <id>` prints the latest submission. Exit 3 means an existing page has no submission; exit 4 means the page no longer exists.
 - `phone-page assets <directory>` downloads and verifies every file in `assets.json` before installing it in the directory.
+- `phone-page attach [--dry-run]` annotates the Taskwarrior task of each page's asking tab with `phone-page <id> <url>`, and with `phone-page <id> answered <time>` once the listener has delivered the answer; pages without a task go to the unmatched file. Read [tab-tasks.md](tab-tasks.md).
+- `phone-page close [--dry-run]` deletes answered pages, pages whose asking tab is gone and pages with no asking tab, and logs every page's status. Read [tab-tasks.md](tab-tasks.md).
 
-`publish`, `read`, `ask`, `delete` and `answers` preserve the store command's output and exit status.
+`publish`, `read`, `ask`, `delete` and `answers` preserve the store command's output and exit status. `attach` and `close` run the store command's `pages` command to list pages.
 
 The renderer identifies a read spec by `sections` and a question spec by `questions`; a spec cannot contain both. `read` and `ask` require their matching spec type.
 

@@ -8,6 +8,7 @@ phone-page runs the store command named in its local file to publish pages and r
 - `update <id> <file>` replaces that page's content in place while keeping its id, url and asking tab, discards its submission, and prints the same JSON line.
 - `delete <id>` removes the page and its submission.
 - `answers <id>` prints the latest submission JSON, exits 3 when an existing page has no submission, or exits 4 when the page no longer exists.
+- `pages` prints one JSON array with every page as `{id, title, created_at, herdr_tab_id, submitted_at, url}`; `herdr_tab_id` and `submitted_at` are null when absent. It changes nothing.
 - `update` and `delete` also exit 4 when the page no longer exists. Any other failure is nonzero.
 
 ## Page routes

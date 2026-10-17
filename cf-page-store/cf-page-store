@@ -2,6 +2,9 @@
 set -euo pipefail
 
 local_file="$HOME/.agents/local/cf-page-store.md"
+script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
+pages_query='SELECT pages.id, pages.title, pages.created_at, pages.herdr_tab_id, submissions.submitted_at FROM pages LEFT JOIN submissions ON submissions.page_id = pages.id ORDER BY pages.created_at'
 cleanup_path=""
 
 cleanup() {
@@ -15,7 +18,7 @@ die() {
 }
 
 usage() {
-  printf 'usage: cf-page-store {publish <file> [tab-id]|update <id> <file>|delete <id>|answers <id>|listen}\n' >&2
+  printf 'usage: cf-page-store {publish <file> [tab-id]|update <id> <file>|delete <id>|answers <id>|pages|listen}\n' >&2
   exit 2
 }
 
@@ -102,11 +105,22 @@ case "$command" in
     ;;
   listen)
     [[ $# -eq 0 ]] || usage
-    script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
-    script_dir=$(cd -- "$(dirname -- "$script_path")" && pwd)
     client_id=$(keyring_value service-token-id)
     client_secret=$(keyring_value service-token-secret)
     printf '%s\n' "$client_id" "$client_secret" | bun "$script_dir/listen.mjs" "$address"
+    ;;
+  pages)
+    [[ $# -eq 0 ]] || usage
+    account_id=$(sed -n 's/^Cloudflare account id: //p' "$local_file")
+    deploy_config=$(sed -n 's/^Deploy config: //p' "$local_file")
+    [[ -n "$account_id" && -f "$deploy_config" ]] || die "local file must name the account id and an existing deploy config"
+    database=$(jq -er '.d1_databases[0].database_name' "$deploy_config" 2>/dev/null) || die "deploy config has no D1 database name"
+    api_token=$(keyring_value api-token)
+    (cd "$script_dir" && CLOUDFLARE_API_TOKEN=$api_token CLOUDFLARE_ACCOUNT_ID=$account_id \
+      bunx --bun wrangler d1 execute "$database" --remote --config "$deploy_config" --json \
+        --command "$pages_query" >"$cleanup_path") || die "pages query failed"
+    jq -e --arg address "$address" '.[0].results | map(. + {url: ($address + "/p/" + .id)})' "$cleanup_path" ||
+      die "pages query returned no result rows"
     ;;
   answers)
     [[ $# -eq 1 ]] || usage

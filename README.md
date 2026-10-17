@@ -50,6 +50,10 @@ The same rule covers commit messages, pull-request text and issues: none may con
 
 Use the latest Bun release. Run `bun install --frozen-lockfile` and `bun run test` from `tests/phone-page` or `cf-page-store`; run `bun run typecheck` from `cf-page-store` too. Package scripts use `--bun` so tools run on Bun. Playwright binary response bodies require a `Buffer`; wrap `Bun.file(...).bytes()` in `Buffer.from(...)` before passing the bytes to `route.fulfill`.
 
+## Shell and Python tests
+
+`tests/phone-page/phone-page.test.sh` tests the `phone-page` renderer and asset download. `tests/phone-page/test_tabtasks.py` tests tab classification, task fields, input parsing, sync and annotation idempotency, close decisions and report persistence with synthetic data and temporary files, without mocked services, task-store writes or page deletes; run it with `python3 tests/phone-page/test_tabtasks.py`. Open pages are never selected for deletion, and unknown lookup results select no action. These Python tests cover the planning functions used by the commands; they do not run live sync, attach, close or inbox deletion. `tests/cf-page-store/cf-page-store.test.sh` tests `cf-page-store pages` against a fake Wrangler. None needs a local file, a herdr server or Cloudflare.
+
 ## Gauntlet tests
 
 `tests/gauntlet/seats.test.sh`, `tests/gauntlet/close-decision.test.sh`, `tests/gauntlet/send.test.sh` and `tests/gauntlet/receipt.test.sh` test `gauntlet/seats.sh`, `gauntlet/close-decision.sh`, the agent marker check of `gauntlet/send.sh` and `gauntlet/receipt.sh`. Each runs without a local file or a herdr server, except that `receipt.test.sh` skips without a herdr server, and the `gauntlet` workflow runs each script in a separate job; the fixtures under `tests/gauntlet/` hold no machine values.

@@ -25,6 +25,7 @@ type taskItem struct {
 	Tags        []string `json:"tags"`
 	Due         string   `json:"due"`
 	End         string   `json:"end"`
+	GitHubURL   string   `json:"githuburl"`
 	Annotations []struct {
 		Description string `json:"description"`
 	} `json:"annotations"`
@@ -80,7 +81,7 @@ func parseTodo(it taskItem, closedAt string) Todo {
 			}
 		}
 	}
-	texts := []string{it.Description}
+	texts := []string{it.GitHubURL, it.Description}
 	for _, a := range it.Annotations {
 		t.Annotations = append(t.Annotations, a.Description)
 		if ownAnnotation(a.Description) {

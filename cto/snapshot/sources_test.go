@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
@@ -167,6 +168,55 @@ func TestTodos(t *testing.T) {
 			}
 			got.UUID, got.Description = "", ""
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestTodoGitHubLinks(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []Link
+	}{
+		{
+			name:  "issue from githuburl",
+			input: `{"description":"Fix the parser","githuburl":"https://github.com/example/alpha/issues/3"}`,
+			want:  []Link{{Kind: "issue", URL: "https://github.com/example/alpha/issues/3", slug: "example/alpha"}},
+		},
+		{
+			name:  "pull request from githuburl",
+			input: `{"description":"Review the parser","githuburl":"https://github.com/example/alpha/pull/7"}`,
+			want:  []Link{{Kind: "pr", URL: "https://github.com/example/alpha/pull/7", slug: "example/alpha"}},
+		},
+		{
+			name:  "description fallback without githuburl",
+			input: `{"description":"Fix https://github.com/example/beta/issues/9"}`,
+			want:  []Link{{Kind: "issue", URL: "https://github.com/example/beta/issues/9", slug: "example/beta"}},
+		},
+		{
+			name:  "annotation fallback without githuburl",
+			input: `{"description":"Review the parser","annotations":[{"description":"pr: https://github.com/example/alpha/pull/7"}]}`,
+			want:  []Link{{Kind: "pr", URL: "https://github.com/example/alpha/pull/7", slug: "example/alpha"}},
+		},
+		{
+			name:  "githuburl comes first and duplicate links are omitted",
+			input: `{"githuburl":"https://github.com/example/alpha/issues/3","description":"https://github.com/example/beta/issues/9 https://github.com/example/alpha/issues/3","annotations":[{"description":"https://github.com/example/alpha/issues/3"}]}`,
+			want: []Link{
+				{Kind: "issue", URL: "https://github.com/example/alpha/issues/3", slug: "example/alpha"},
+				{Kind: "issue", URL: "https://github.com/example/beta/issues/9", slug: "example/beta"},
+			},
+		},
+		{
+			name:  "unrecognized githuburl retains description fallback",
+			input: `{"githuburl":"https://example.com/other","description":"Fix https://github.com/example/beta/issues/9"}`,
+			want:  []Link{{Kind: "issue", URL: "https://github.com/example/beta/issues/9", slug: "example/beta"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var item taskItem
+			require.NoError(t, json.Unmarshal([]byte(tt.input), &item))
+			assert.Equal(t, tt.want, parseTodo(item, "").Links)
 		})
 	}
 }
